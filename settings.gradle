@@ -1,1 +1,3 @@
 rootProject.name = 'lp-auction'
+
+include 'common'
