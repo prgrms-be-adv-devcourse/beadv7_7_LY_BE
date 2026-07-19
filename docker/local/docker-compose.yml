@@ -1,0 +1,22 @@
+name: lp-auction-local-mysql
+
+services:
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "33340:3306"
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: lp_auction
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./volumes/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pmemoria" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:
