@@ -39,6 +39,12 @@ subprojects {
         testCompileOnly 'org.projectlombok:lombok'
         testAnnotationProcessor 'org.projectlombok:lombok'
 
+        // Spring Actuator
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+        // Prometheus
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+
         // Junit
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
