@@ -13,7 +13,7 @@ services:
       - mysql-data:/var/lib/mysql
       - ./volumes/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pmemoria" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot" ]
       interval: 10s
       timeout: 5s
       retries: 5
