@@ -1,3 +1,22 @@
+server:
+  port: 8080
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
 spring:
   application:
     name: core-service
+
+  profiles:
+    active: local
+
+  jpa:
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health
+      base-path: /api/actuator
