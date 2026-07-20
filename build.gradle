@@ -1,29 +1,55 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '4.1.0'
-    id 'io.spring.dependency-management' version '1.1.7'
+    // 루트에서는 버전만 등록하고(apply false), 실제 적용은 각 모듈에서 한다.
+    id 'org.springframework.boot' version '4.1.0' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'site'
-version = '0.0.1-SNAPSHOT'
-description = 'lp-auction'
+allprojects {
+    group = 'site'
+    version = '0.0.1-SNAPSHOT'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+    repositories {
+        mavenCentral()
     }
 }
 
-repositories {
-    mavenCentral()
-}
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
 
-tasks.named('test') {
-    useJUnitPlatform()
+    // Boot 플러그인을 적용하지 않은 모듈(common)도
+    // Spring Boot BOM으로 의존성 버전을 통일해서 관리한다.
+    dependencyManagement {
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+        }
+    }
+
+    // 모든 모듈이 공통으로 쓰는 것만 여기에 ex) Lombok
+    dependencies {
+        // Lombok
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+
+        // Spring Actuator
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+        // Prometheus
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+
+        // Junit
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
 }
