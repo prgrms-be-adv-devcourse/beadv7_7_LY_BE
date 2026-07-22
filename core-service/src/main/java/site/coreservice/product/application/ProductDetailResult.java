@@ -25,7 +25,7 @@ public record ProductDetailResult(
                 product.getId(),
                 product.getCatalogNumber(),
                 product.getTitle(),
-                new ArtistResult(artist.getId(), artist.getName(), List.copyOf(artist.getAliases())),
+                new ArtistResult(artist.getId(), artist.getName(), artist.getAliases()),
                 product.getLabel(),
                 product.getReleaseCountry(),
                 product.getReleaseYear(),
