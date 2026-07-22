@@ -5,6 +5,10 @@ server:
       enabled: true
 
 spring:
+  Jackson:
+    mapper:
+      SORT_PROPERTIES_ALPHABETICALLY: false
+
   application:
     name: core-service
 
