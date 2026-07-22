@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.dto;
 
 import java.util.List;
 import site.coreservice.product.domain.Artist;

@@ -1,10 +1,10 @@
-package site.coreservice.product.presentation;
+package site.coreservice.product.presentation.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.product.application.ProductSnapshotResult;
+import site.coreservice.product.application.dto.ProductSnapshotResult;
 import site.coreservice.product.domain.PressType;
 
 /**

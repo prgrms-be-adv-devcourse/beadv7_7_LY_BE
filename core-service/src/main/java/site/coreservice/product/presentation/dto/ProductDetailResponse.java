@@ -1,7 +1,7 @@
-package site.coreservice.product.presentation;
+package site.coreservice.product.presentation.dto;
 
 import java.util.List;
-import site.coreservice.product.application.ProductDetailResult;
+import site.coreservice.product.application.dto.ProductDetailResult;
 
 /** 상세 응답(명세 1-3). 필드명은 api명세 기준(catalogNo·country·coverImageUrl). openAuctionCount는 경매 count 연동(D7~) 때 추가. */
 public record ProductDetailResponse(

@@ -3,6 +3,8 @@ package site.coreservice.product.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.coreservice.product.application.dto.ProductDetailResult;
+import site.coreservice.product.application.dto.ProductSnapshotResult;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 import site.coreservice.product.domain.Product;

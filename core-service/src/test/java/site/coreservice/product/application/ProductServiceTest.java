@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.coreservice.product.application.dto.ProductDetailResult;
+import site.coreservice.product.application.dto.ProductSnapshotResult;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 import site.coreservice.product.domain.PressType;

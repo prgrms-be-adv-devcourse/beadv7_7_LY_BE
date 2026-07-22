@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.coreservice.product.application.ProductService;
+import site.coreservice.product.presentation.dto.ProductDetailResponse;
 
 @RestController
 @RequestMapping("/api/v1/products")

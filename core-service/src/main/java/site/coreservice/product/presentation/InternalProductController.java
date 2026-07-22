@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.coreservice.product.application.ProductService;
+import site.coreservice.product.presentation.dto.ProductSnapshotResponse;
 
 /** 내부 시스템용 상품 API. 같은 core-service 안에서는 ProductService 직접 호출이 정식 창구다. */
 @RestController
