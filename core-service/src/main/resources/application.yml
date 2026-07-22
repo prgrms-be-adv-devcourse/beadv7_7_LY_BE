@@ -20,3 +20,8 @@ management:
       exposure:
         include: prometheus, health
       base-path: /api/actuator
+
+toss:
+  payments:
+    client-key: ${TOSS_CLIENT_KEY}
+    secret-key: ${TOSS_SECRET_KEY}

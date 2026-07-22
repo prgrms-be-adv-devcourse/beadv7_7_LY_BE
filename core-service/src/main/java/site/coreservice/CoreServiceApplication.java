@@ -2,11 +2,14 @@ package site.coreservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import site.coreservice.pointwallet.deposit.infrastructure.toss.TossPaymentsProperties;
 
 @SpringBootApplication(scanBasePackages = {
     "site.coreservice",
     "site.common"
 })
+@EnableConfigurationProperties(TossPaymentsProperties.class)
 public class CoreServiceApplication {
 
     public static void main(String[] args) {
