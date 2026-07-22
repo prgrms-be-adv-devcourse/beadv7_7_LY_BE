@@ -17,6 +17,12 @@ import static site.common.response.ApiResponse.fail;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
+        final ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.fail(errorCode, e.getMessage()));
+    }
+
     @ExceptionHandler
     public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(final NoResourceFoundException e) {
         log.warn("{} 발생!", e.getClass().getSimpleName(), e);
@@ -26,7 +32,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler
     public ResponseEntity<ApiResponse<Void>> handleException(final Exception e) {
         log.error("{} 발생!", e.getClass().getSimpleName(), e);
-        return ResponseEntity.internalServerError()
-            .body(fail(INTERNAL_SERVER_APPLICATION_ERROR));
+        return ResponseEntity.internalServerError().body(fail(INTERNAL_SERVER_APPLICATION_ERROR, INTERNAL_SERVER_APPLICATION_ERROR.getMessage()));
     }
 }
