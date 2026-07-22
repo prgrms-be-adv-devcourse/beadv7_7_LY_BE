@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.coreservice.pointwallet.deposit.exception.DepositErrorCode;
+import site.coreservice.pointwallet.deposit.exception.DepositException;
 import site.coreservice.pointwallet.shared.Money;
 
 /**

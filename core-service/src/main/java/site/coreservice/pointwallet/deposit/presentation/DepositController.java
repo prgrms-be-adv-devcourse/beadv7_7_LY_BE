@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.coreservice.pointwallet.deposit.application.DepositRequestResult;
 import site.coreservice.pointwallet.deposit.application.DepositService;
-import site.coreservice.pointwallet.deposit.domain.DepositErrorCode;
-import site.coreservice.pointwallet.deposit.domain.DepositException;
+import site.coreservice.pointwallet.deposit.exception.DepositErrorCode;
 import site.coreservice.pointwallet.deposit.presentation.dto.DepositConfirmRequest;
 import site.coreservice.pointwallet.deposit.presentation.dto.DepositRequestRequest;
 import site.coreservice.pointwallet.deposit.presentation.dto.DepositRequestResponse;
@@ -27,7 +26,7 @@ public class DepositController {
 
     @PostMapping
     public ApiResponse<DepositRequestResponse> requestDeposit(
-            @RequestHeader("X-User-Id") Long userId, // TODO: 인증 방식 확정되면 교체
+            @RequestHeader("X-User-Id") Long userId,
             @RequestBody DepositRequestRequest request
     ) {
         DepositRequestResult result = depositService.requestDeposit(userId, Money.of(request.amount()));
@@ -40,15 +39,13 @@ public class DepositController {
         return ApiResponse.success();
     }
 
-    // TODO: PR #50(common BusinessException) 머지되면 삭제.
-    @ExceptionHandler(DepositException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDepositException(DepositException e) {
-        return ResponseEntity.badRequest().body(ApiResponse.fail(e.getErrorCode()));
-    }
+    // DepositException 핸들러는 삭제 — common의 GlobalExceptionHandler가 BusinessException을 잡아서 처리함
 
-    // record 컴팩트 생성자에서 던지는 입력값 검증 실패를 400으로 매핑
+    // record 컴팩트 생성자의 입력값 검증 실패(IllegalArgumentException)만 여기서 자체 처리
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(IllegalArgumentException e) {
-        return ResponseEntity.badRequest().body(ApiResponse.fail(DepositErrorCode.INVALID_REQUEST));
+        DepositErrorCode errorCode = DepositErrorCode.INVALID_REQUEST;
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode));
     }
 }

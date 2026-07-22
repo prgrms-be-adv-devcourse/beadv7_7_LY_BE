@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import site.coreservice.pointwallet.deposit.exception.DepositErrorCode;
+import site.coreservice.pointwallet.deposit.exception.DepositException;
 import site.coreservice.pointwallet.shared.Money;
 
 @DisplayName("Deposit 엔티티")
