@@ -205,5 +205,9 @@ gradle-app.setting
 .env
 .env.*
 !.env.example
-# End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all
 
+# 개인 문서·AI 도구 산출물
+/docs
+.claude/
+
+# End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all
