@@ -201,9 +201,9 @@ gradle-app.setting
 # Java heap dump
 *.hprof
 
-# Secret configs
-application-secret*.yml
-application-secret*.yaml
-
+# 새로 추가
+.env
+.env.*
+!.env.example
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all
 
