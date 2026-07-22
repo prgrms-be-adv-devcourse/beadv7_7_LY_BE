@@ -20,7 +20,7 @@ import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
-import site.coreservice.product.domain.ProductNotFoundException;
+import site.coreservice.product.exception.ProductNotFoundException;
 import site.coreservice.product.domain.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
