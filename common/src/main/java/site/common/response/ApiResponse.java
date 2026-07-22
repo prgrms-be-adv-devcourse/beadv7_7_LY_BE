@@ -26,11 +26,11 @@ public class ApiResponse<T> {
         );
     }
 
-    public static ApiResponse<Void> fail(final ErrorCode errorCode, final String message) {
+    public static ApiResponse<Void> fail(final ErrorCode errorCode) {
         return new ApiResponse<>(
             false,
             null,
-            new Error(errorCode.getValue(), message)
+            new Error(errorCode.getValue(), errorCode.getMessage())
         );
     }
 

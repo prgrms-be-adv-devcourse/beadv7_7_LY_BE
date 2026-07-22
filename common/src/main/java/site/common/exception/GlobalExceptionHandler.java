@@ -18,9 +18,11 @@ import static site.common.response.ApiResponse.fail;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(final BusinessException e) {
+        log.error("{} 발생!", e.getClass().getSimpleName(), e);
+
         final ErrorCode errorCode = e.getErrorCode();
-        return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.fail(errorCode, e.getMessage()));
+        return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.fail(errorCode));
     }
 
     @ExceptionHandler
@@ -32,6 +34,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler
     public ResponseEntity<ApiResponse<Void>> handleException(final Exception e) {
         log.error("{} 발생!", e.getClass().getSimpleName(), e);
-        return ResponseEntity.internalServerError().body(fail(INTERNAL_SERVER_APPLICATION_ERROR, INTERNAL_SERVER_APPLICATION_ERROR.getMessage()));
+        return ResponseEntity.internalServerError().body(fail(INTERNAL_SERVER_APPLICATION_ERROR));
     }
 }
