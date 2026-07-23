@@ -12,65 +12,65 @@ class MoneyTest {
 
     @Test
     @DisplayName("음수 금액으로 생성하면 예외가 발생한다")
-    void testOf_negativeValue_throws() {
+    void testFrom_negativeValue_throws() {
         // given
         BigDecimal negativeAmount = BigDecimal.valueOf(-1);
 
         // when & then
-        assertThatThrownBy(() -> Money.of(negativeAmount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Money.from(negativeAmount)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("null 금액으로 생성하면 예외가 발생한다")
-    void testOf_nullValue_throws() {
+    void testFrom_nullValue_throws() {
         // when & then
-        assertThatThrownBy(() -> Money.of(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Money.from(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("0원은 유효한 금액이다")
-    void testOf_zero_isValid() {
+    void testFrom_zero_isValid() {
         // when
-        Money money = Money.of(BigDecimal.ZERO);
+        Money money = Money.from(BigDecimal.ZERO);
 
         // then
-        assertThat(money).isEqualTo(Money.from(0L));
+        assertThat(money).isEqualTo(Money.of(0L));
     }
 
     @Test
     @DisplayName("두 금액을 더하면 합산된다")
     void testPlus_addsAmounts() {
         // given
-        Money money = Money.from(1_000L);
-        Money addAmount = Money.from(500L);
+        Money money = Money.of(1_000L);
+        Money addAmount = Money.of(500L);
 
         // when
         Money result = money.plus(addAmount);
 
         // then
-        assertThat(result).isEqualTo(Money.from(1_500L));
+        assertThat(result).isEqualTo(Money.of(1_500L));
     }
 
     @Test
     @DisplayName("두 금액을 빼면 차감된다")
     void testMinus_subtractsAmounts() {
         // given
-        Money money = Money.from(1_000L);
-        Money subtractAmount = Money.from(300L);
+        Money money = Money.of(1_000L);
+        Money subtractAmount = Money.of(300L);
 
         // when
         Money result = money.minus(subtractAmount);
 
         // then
-        assertThat(result).isEqualTo(Money.from(700L));
+        assertThat(result).isEqualTo(Money.of(700L));
     }
 
     @Test
     @DisplayName("빼기 결과가 음수가 되면 예외가 발생한다")
     void testMinus_negativeResult_throws() {
         // given
-        Money money = Money.from(1_000L);
-        Money subtractAmount = Money.from(1_500L);
+        Money money = Money.of(1_000L);
+        Money subtractAmount = Money.of(1_500L);
 
         // when & then
         assertThatThrownBy(() -> money.minus(subtractAmount)).isInstanceOf(IllegalArgumentException.class);
@@ -80,8 +80,8 @@ class MoneyTest {
     @DisplayName("크기 비교 연산이 정확하다")
     void testComparison_operations() {
         // given
-        Money small = Money.from(1_000L);
-        Money large = Money.from(2_000L);
+        Money small = Money.of(1_000L);
+        Money large = Money.of(2_000L);
 
         // then
         assertThat(large.isGreaterThan(small)).isTrue();
@@ -95,8 +95,8 @@ class MoneyTest {
     @DisplayName("스케일이 달라도 값이 같으면 동일한 금액이다")
     void testIsSameAmount_ignoresScale() {
         // given
-        Money withoutScale = Money.of(new BigDecimal("1000"));
-        Money withScale = Money.of(new BigDecimal("1000.00"));
+        Money withoutScale = Money.from(new BigDecimal("1000"));
+        Money withScale = Money.from(new BigDecimal("1000.00"));
 
         // then
         assertThat(withoutScale.isSameAmount(withScale)).isTrue();
@@ -106,11 +106,11 @@ class MoneyTest {
 
     @Test
     @DisplayName("단위 금액의 배수인지 판별한다")
-    void testIsMultipleFrom_checksMultiple() {
+    void testIsMultipleOf_checksMultiple() {
         // given
-        Money amount = Money.from(1_050L);
-        Money unit = Money.from(50L);
-        Money notMultiple = Money.from(40L);
+        Money amount = Money.of(1_050L);
+        Money unit = Money.of(50L);
+        Money notMultiple = Money.of(40L);
 
         // then
         assertThat(amount.isMultipleOf(unit)).isTrue();

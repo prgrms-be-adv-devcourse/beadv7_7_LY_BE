@@ -28,14 +28,14 @@ class BidRepositoryImplTest {
     @Test
     @DisplayName("입찰을 저장하면 모든 값이 정상적으로 조회된다")
     void testSave_reloadsBidWithAllValues() {
-        final Bid bid = Bid.place(1L, 2L, Money.from(10_500L), LocalDateTime.now());
+        final Bid bid = Bid.place(1L, 2L, Money.of(10_500L), LocalDateTime.now());
 
         final Bid saved = bidRepository.save(bid);
         final Bid found = bidJpaRepository.findById(saved.getId()).orElseThrow();
 
         assertThat(found.getAuctionId()).isEqualTo(1L);
         assertThat(found.getBidderId()).isEqualTo(2L);
-        assertThat(found.getAmount()).isEqualTo(Money.from(10_500L));
+        assertThat(found.getAmount()).isEqualTo(Money.of(10_500L));
         assertThat(found.getOutcome()).isEqualTo(BidOutcome.ACTIVE);
     }
 
@@ -50,10 +50,10 @@ class BidRepositoryImplTest {
     @Test
     @DisplayName("진행 중인 입찰만 조회한다")
     void testFindActiveBid_returnsOnlyActiveBid() {
-        final Bid activeBid = Bid.place(1L, 2L, Money.from(10_500L), LocalDateTime.now());
+        final Bid activeBid = Bid.place(1L, 2L, Money.of(10_500L), LocalDateTime.now());
         bidJpaRepository.save(activeBid);
 
-        final Bid outbidBid = Bid.place(1L, 3L, Money.from(9_500L), LocalDateTime.now());
+        final Bid outbidBid = Bid.place(1L, 3L, Money.of(9_500L), LocalDateTime.now());
         outbidBid.markOutbid();
         bidJpaRepository.save(outbidBid);
 
@@ -66,7 +66,7 @@ class BidRepositoryImplTest {
     @Test
     @DisplayName("진행 중인 입찰이 없으면 빈 Optional을 반환한다")
     void testFindActiveBid_noActiveBid_returnsEmpty() {
-        final Bid outbidBid = Bid.place(1L, 3L, Money.from(9_500L), LocalDateTime.now());
+        final Bid outbidBid = Bid.place(1L, 3L, Money.of(9_500L), LocalDateTime.now());
         outbidBid.markOutbid();
         bidJpaRepository.save(outbidBid);
 

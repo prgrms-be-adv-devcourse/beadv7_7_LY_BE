@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AuctionTest {
 
     private final ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", null);
-    private final Pricing pricing = Pricing.of(Money.from(1_000L), Money.from(10L), Money.from(0L));
+    private final Pricing pricing = Pricing.of(Money.of(1_000L), Money.of(10L), Money.of(0L));
     private final AuctionSchedule schedule = AuctionSchedule.of(
             Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
             false, null
@@ -77,7 +77,7 @@ class AuctionTest {
     @DisplayName("최고입찰 정보가 있으면 hasBid()는 true를 반환한다")
     void testHasBid_trueWhenHighestBidPresent() {
         // given
-        HighestBid highestBid = HighestBid.of(Money.from(1_500L), 2L, 10L);
+        HighestBid highestBid = HighestBid.of(Money.of(1_500L), 2L, 10L);
 
         // when
         Auction auction = Auction.of(1L, 100L, itemInfo, pricing, schedule, AuctionStatus.RUNNING, highestBid);

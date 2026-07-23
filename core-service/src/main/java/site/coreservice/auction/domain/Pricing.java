@@ -14,8 +14,8 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Pricing {
-    private static final Money MIN_START_PRICE = Money.from(1000L);
-    private static final Money MIN_BID_UNIT    = Money.from(10L);
+    private static final Money MIN_START_PRICE = Money.of(1000L);
+    private static final Money MIN_BID_UNIT    = Money.of(10L);
 
     @Embedded
     @AttributeOverride(name = "value", column = @Column(name = "start_price", nullable = false))
