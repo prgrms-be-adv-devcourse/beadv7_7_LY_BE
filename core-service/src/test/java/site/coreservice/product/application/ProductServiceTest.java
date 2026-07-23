@@ -49,13 +49,13 @@ class ProductServiceTest {
 
     @Test
     @DisplayName("상세 조회는 상품과 아티스트를 합성해 반환한다")
-    void getProductDetail_상품과_아티스트를_합성해_반환() {
+    void getActiveProductDetail_상품과_아티스트를_합성해_반환() {
         // given
         given(productRepository.findById(55L)).willReturn(Optional.of(product));
         given(artistRepository.findById(3L)).willReturn(Optional.of(artist));
 
         // when
-        ProductDetailResult result = productService.getProductDetail(55L);
+        ProductDetailResult result = productService.getActiveProductDetail(55L);
 
         // then
         assertThat(result.productId()).isEqualTo(55L);
@@ -76,37 +76,37 @@ class ProductServiceTest {
 
     @Test
     @DisplayName("상세 조회는 없는 상품이면 상품없음 예외를 던진다")
-    void getProductDetail_없는_상품이면_예외() {
+    void getActiveProductDetail_없는_상품이면_예외() {
         // given
         given(productRepository.findById(99L)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> productService.getProductDetail(99L))
+        assertThatThrownBy(() -> productService.getActiveProductDetail(99L))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
     @Test
     @DisplayName("상세 조회는 비활성 상품이면 상품없음 예외를 던진다 (사용자에겐 없는 상품)")
-    void getProductDetail_비활성_상품이면_예외() {
+    void getActiveProductDetail_비활성_상품이면_예외() {
         // given
         product.deactivate();
         given(productRepository.findById(55L)).willReturn(Optional.of(product));
 
         // when & then
-        assertThatThrownBy(() -> productService.getProductDetail(55L))
+        assertThatThrownBy(() -> productService.getActiveProductDetail(55L))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
     @Test
     @DisplayName("내부 조회는 비활성 상품도 active 플래그와 함께 반환한다 (검증 소스)")
-    void getProduct_비활성_상품도_반환() {
+    void getProductSnapshot_비활성_상품도_반환() {
         // given
         product.deactivate();
         given(productRepository.findById(55L)).willReturn(Optional.of(product));
         given(artistRepository.findById(3L)).willReturn(Optional.of(artist));
 
         // when
-        ProductSnapshotResult result = productService.getProduct(55L);
+        ProductSnapshotResult result = productService.getProductSnapshot(55L);
 
         // then
         assertThat(result.productId()).isEqualTo(55L);
@@ -117,24 +117,24 @@ class ProductServiceTest {
 
     @Test
     @DisplayName("내부 조회는 없는 상품이면 상품없음 예외를 던진다")
-    void getProduct_없는_상품이면_예외() {
+    void getProductSnapshot_없는_상품이면_예외() {
         // given
         given(productRepository.findById(99L)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> productService.getProduct(99L))
+        assertThatThrownBy(() -> productService.getProductSnapshot(99L))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
     @Test
     @DisplayName("상품이 참조하는 아티스트가 없으면 정합성 예외를 던진다")
-    void getProductDetail_아티스트_부재면_정합성_예외() {
+    void getActiveProductDetail_아티스트_부재면_정합성_예외() {
         // given
         given(productRepository.findById(55L)).willReturn(Optional.of(product));
         given(artistRepository.findById(3L)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> productService.getProductDetail(55L))
+        assertThatThrownBy(() -> productService.getActiveProductDetail(55L))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

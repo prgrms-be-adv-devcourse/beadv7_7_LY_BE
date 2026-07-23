@@ -17,7 +17,7 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/{productId}")
-    public ApiResponse<ProductDetailResponse> getProductDetail(@PathVariable Long productId) {
-        return ApiResponse.success(ProductDetailResponse.from(productService.getProductDetail(productId)));
+    public ApiResponse<ProductDetailResponse> getActiveProductDetail(@PathVariable Long productId) {
+        return ApiResponse.success(ProductDetailResponse.from(productService.getActiveProductDetail(productId)));
     }
 }

@@ -18,7 +18,7 @@ public class InternalProductController {
     private final ProductService productService;
 
     @GetMapping("/{productId}")
-    public ApiResponse<ProductSnapshotResponse> getProduct(@PathVariable Long productId) {
-        return ApiResponse.success(ProductSnapshotResponse.from(productService.getProduct(productId)));
+    public ApiResponse<ProductSnapshotResponse> getProductSnapshot(@PathVariable Long productId) {
+        return ApiResponse.success(ProductSnapshotResponse.from(productService.getProductSnapshot(productId)));
     }
 }

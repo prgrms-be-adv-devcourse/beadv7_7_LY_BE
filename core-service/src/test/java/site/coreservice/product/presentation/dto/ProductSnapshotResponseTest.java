@@ -8,7 +8,7 @@ import site.coreservice.product.application.dto.ProductSnapshotResult;
 import site.coreservice.product.domain.PressType;
 
 /**
- * 내부 getProduct 응답(2-1)은 경매(07)·주문(06)이 소비하는 계약 표면.
+ * 내부 getProductSnapshot 응답(2-1)은 경매(07)·주문(06)이 소비하는 계약 표면.
  * 필드명·enum→String 변환이 조용히 어긋나는 회귀를 막는다.
  */
 class ProductSnapshotResponseTest {
