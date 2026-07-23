@@ -1,0 +1,29 @@
+package site.coreservice.auction.application;
+
+import java.math.BigDecimal;
+import org.springframework.stereotype.Component;
+import site.common.event.EventPublisher;
+import site.coreservice.auction.domain.AuctionWonEvent;
+
+@Component
+public class AuctionEventPublisher {
+
+    private final EventPublisher eventPublisher;
+
+    public AuctionEventPublisher(final EventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    public void publishWon(
+        final Long auctionId,
+        final Long productId,
+        final Long winnerId,
+        final Long sellerId,
+        final String itemCondition,
+        final String firstImageUrl,
+        final BigDecimal winningPrice
+    ) {
+        eventPublisher.publish(
+            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition, firstImageUrl, winningPrice));
+    }
+}
