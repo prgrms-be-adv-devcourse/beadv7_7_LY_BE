@@ -1,4 +1,4 @@
-package site.coreservice.global.web;
+package site.common.web;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;

@@ -1,4 +1,4 @@
-package site.coreservice.global.web;
+package site.common.web;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

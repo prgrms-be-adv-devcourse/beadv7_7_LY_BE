@@ -1,4 +1,4 @@
-package site.coreservice.global.web;
+package site.common.web;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
