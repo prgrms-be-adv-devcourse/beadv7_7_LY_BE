@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,9 +39,9 @@ class ProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        artist = Artist.of("The Beatles", "thebeatles", List.of("비틀즈", "Beatles"));
+        artist = Artist.of("The Beatles");
         ReflectionTestUtils.setField(artist, "id", 3L);
-        product = Product.of("PCS 7088", "pcs7088", 3L, "Abbey Road", "abbeyroad", "UK", 1969,
+        product = Product.of("PCS 7088", 3L, "Abbey Road", "UK", 1969,
                 PressType.ORIGINAL, "LP", "Apple Records", "Rock", null, "1969년 영국 오리지널 프레싱");
         ReflectionTestUtils.setField(product, "id", 55L);
     }
@@ -63,7 +62,6 @@ class ProductServiceTest {
         assertThat(result.title()).isEqualTo("Abbey Road");
         assertThat(result.artist().artistId()).isEqualTo(3L);
         assertThat(result.artist().name()).isEqualTo("The Beatles");
-        assertThat(result.artist().aliases()).containsExactly("비틀즈", "Beatles");
         assertThat(result.label()).isEqualTo("Apple Records");
         assertThat(result.country()).isEqualTo("UK");
         assertThat(result.releaseYear()).isEqualTo(1969);

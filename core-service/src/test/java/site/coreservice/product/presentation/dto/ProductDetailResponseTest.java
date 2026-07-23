@@ -2,7 +2,6 @@ package site.coreservice.product.presentation.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.coreservice.product.application.dto.ProductDetailResult;
@@ -19,7 +18,7 @@ class ProductDetailResponseTest {
     void from_명세_필드명으로_매핑() {
         // given
         ProductDetailResult result = new ProductDetailResult(55L, "PCS 7088", "Abbey Road",
-                new ProductDetailResult.ArtistResult(3L, "The Beatles", List.of("비틀즈")),
+                new ProductDetailResult.ArtistResult(3L, "The Beatles"),
                 "Apple Records", "UK", 1969, PressType.ORIGINAL, "LP", "Rock",
                 "https://cdn.example/55.jpg", "1969년 영국 오리지널 프레싱");
 
@@ -32,7 +31,6 @@ class ProductDetailResponseTest {
         assertThat(response.title()).isEqualTo("Abbey Road");
         assertThat(response.artist().artistId()).isEqualTo(3L);
         assertThat(response.artist().name()).isEqualTo("The Beatles");
-        assertThat(response.artist().aliases()).containsExactly("비틀즈");
         assertThat(response.label()).isEqualTo("Apple Records");
         assertThat(response.country()).isEqualTo("UK");
         assertThat(response.releaseYear()).isEqualTo(1969);

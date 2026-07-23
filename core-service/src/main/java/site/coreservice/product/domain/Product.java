@@ -121,11 +121,17 @@ public class Product extends BaseEntity {
         this.description = description;
     }
 
-    public static Product of(String catalogNumber, String normalizedCatalogNumber, Long artistId, String title,
-            String normalizedTitle, String releaseCountry, int releaseYear, PressType pressType, String format,
-            String label, String genre, String coverImage, String description) {
-        return new Product(catalogNumber, normalizedCatalogNumber, artistId, title, normalizedTitle, releaseCountry,
-                releaseYear, pressType, format, label, genre, coverImage, description);
+    public static Product of(String catalogNumber, Long artistId, String title, String releaseCountry,
+            int releaseYear, PressType pressType, String format, String label, String genre, String coverImage,
+            String description) {
+        String rawCatalogNumber = (catalogNumber == null || catalogNumber.isBlank()) ? null : catalogNumber;
+        String normalizedTitle = TextNormalizer.normalize(title);
+        if (normalizedTitle == null) {
+            throw new IllegalArgumentException("정규화하면 아무 문자도 남지 않는 제목입니다: " + title);
+        }
+        return new Product(rawCatalogNumber, TextNormalizer.normalize(rawCatalogNumber), artistId, title,
+                normalizedTitle, releaseCountry, releaseYear, pressType, format, label, genre, coverImage,
+                description);
     }
 
     /** 부가 정보만 수정한다. 음반을 가리키는 속성은 인자에 없다 — 그게 바뀌면 다른 상품이 되기 때문. */
