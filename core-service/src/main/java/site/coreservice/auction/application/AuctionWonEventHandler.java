@@ -1,8 +1,9 @@
-package site.coreservice.auction.domain;
+package site.coreservice.auction.application;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import site.common.event.EventHandler;
+import site.coreservice.auction.domain.AuctionWonEvent;
 
 // TODO: 낙찰 이벤트 처리 예시(주문 생성 처리 참고용) - 이후 삭제 #16
 @Slf4j

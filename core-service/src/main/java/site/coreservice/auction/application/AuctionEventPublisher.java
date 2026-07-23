@@ -1,8 +1,9 @@
-package site.coreservice.auction.domain;
+package site.coreservice.auction.application;
 
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 import site.common.event.EventPublisher;
+import site.coreservice.auction.domain.AuctionWonEvent;
 
 @Component
 public class AuctionEventPublisher {

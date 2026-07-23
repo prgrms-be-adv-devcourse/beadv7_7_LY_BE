@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
-import site.coreservice.auction.domain.AuctionEventPublisher;
+import site.coreservice.auction.application.AuctionEventPublisher;
 
 import java.math.BigDecimal;
 
