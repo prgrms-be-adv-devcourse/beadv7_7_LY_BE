@@ -16,6 +16,7 @@ import site.common.entity.BaseEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "orders")
@@ -25,7 +26,6 @@ public class Order extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
     @Column(name = "auction_id", nullable = false)
@@ -74,6 +74,7 @@ public class Order extends BaseEntity {
 
     private Order(Long auctionId, Long productId, Long buyerId, Long sellerId, BigDecimal finalBidPrice,
             LocalDateTime orderDeadline, OrderItemSnapshot itemSnapshot) {
+        validate(auctionId, productId, buyerId, sellerId, finalBidPrice, orderDeadline, itemSnapshot);
         this.auctionId = auctionId;
         this.productId = productId;
         this.buyerId = buyerId;
@@ -87,6 +88,17 @@ public class Order extends BaseEntity {
     public static Order of(Long auctionId, Long productId, Long buyerId, Long sellerId, BigDecimal finalBidPrice,
             LocalDateTime orderDeadline, OrderItemSnapshot itemSnapshot) {
         return new Order(auctionId, productId, buyerId, sellerId, finalBidPrice, orderDeadline, itemSnapshot);
+    }
+
+    private static void validate(Long auctionId, Long productId, Long buyerId, Long sellerId,
+            BigDecimal finalBidPrice, LocalDateTime orderDeadline, OrderItemSnapshot itemSnapshot) {
+        Objects.requireNonNull(auctionId, "auctionId는 null일 수 없습니다.");
+        Objects.requireNonNull(productId, "productId는 null일 수 없습니다.");
+        Objects.requireNonNull(buyerId, "buyerId는 null일 수 없습니다.");
+        Objects.requireNonNull(sellerId, "sellerId는 null일 수 없습니다.");
+        Objects.requireNonNull(finalBidPrice, "finalBidPrice는 null일 수 없습니다.");
+        Objects.requireNonNull(orderDeadline, "orderDeadline은 null일 수 없습니다.");
+        Objects.requireNonNull(itemSnapshot, "itemSnapshot은 null일 수 없습니다.");
     }
 
 

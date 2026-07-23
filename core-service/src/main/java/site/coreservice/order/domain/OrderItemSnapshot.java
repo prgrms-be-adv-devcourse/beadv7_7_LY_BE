@@ -5,11 +5,15 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Objects;
+
 @Embeddable
 @Getter
+@EqualsAndHashCode
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderItemSnapshot {
 
@@ -40,6 +44,7 @@ public class OrderItemSnapshot {
 
     private OrderItemSnapshot(String albumTitle, String artistName, Integer releaseYear, String releaseCountry,
             String pressType, String format, ConditionGrade conditionGrade, String representativeImageUrl) {
+        validate(albumTitle, artistName, conditionGrade, representativeImageUrl);
         this.albumTitle = albumTitle;
         this.artistName = artistName;
         this.releaseYear = releaseYear;
@@ -55,5 +60,13 @@ public class OrderItemSnapshot {
             String representativeImageUrl) {
         return new OrderItemSnapshot(albumTitle, artistName, releaseYear, releaseCountry, pressType, format,
                 conditionGrade, representativeImageUrl);
+    }
+
+    private static void validate(String albumTitle, String artistName, ConditionGrade conditionGrade,
+            String representativeImageUrl) {
+        Objects.requireNonNull(albumTitle, "albumTitle은 null일 수 없습니다.");
+        Objects.requireNonNull(artistName, "artistName은 null일 수 없습니다.");
+        Objects.requireNonNull(conditionGrade, "conditionGrade는 null일 수 없습니다.");
+        Objects.requireNonNull(representativeImageUrl, "representativeImageUrl은 null일 수 없습니다.");
     }
 }
