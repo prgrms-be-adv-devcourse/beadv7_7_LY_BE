@@ -1,0 +1,61 @@
+package site.coreservice.auction.presentation;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import site.common.response.ApiResponse;
+import site.coreservice.auction.application.AuctionService;
+import site.coreservice.auction.application.dto.AuctionResult;
+import site.coreservice.auction.application.dto.CreateAuctionCommand;
+import site.coreservice.auction.presentation.dto.AuctionCreateRequest;
+import site.coreservice.auction.presentation.dto.AuctionResultResponse;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+@ExtendWith(MockitoExtension.class)
+class AuctionControllerTest {
+
+    @Mock
+    private AuctionService auctionService;
+
+    @InjectMocks
+    private AuctionController auctionController;
+
+    @Test
+    @DisplayName("경매 생성 요청을 커맨드로 변환해 서비스에 위임하고 결과를 감싸 반환한다")
+    void testCreateAuction_delegatesToServiceAndWrapsResult() {
+        // given
+        AuctionCreateRequest request = new AuctionCreateRequest(
+                100L,
+                "MINT",
+                "충분히 긴 상품 설명입니다.",
+                List.of("1.png"),
+                BigDecimal.valueOf(10_000),
+                BigDecimal.valueOf(3_000),
+                BigDecimal.valueOf(500),
+                LocalDateTime.of(2026, 7, 1, 0, 0),
+                LocalDateTime.of(2026, 7, 2, 0, 0),
+                true,
+                5
+        );
+        given(auctionService.createAuction(any(CreateAuctionCommand.class), eq(1L))).willReturn(new AuctionResult(1L, "SCHEDULED"));
+
+        // when
+        ApiResponse<AuctionResultResponse> response = auctionController.createAuction(request);
+
+        // then
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getData().auctionId()).isEqualTo(1L);
+        assertThat(response.getData().status()).isEqualTo("SCHEDULED");
+    }
+}
