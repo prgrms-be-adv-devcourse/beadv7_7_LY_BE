@@ -5,9 +5,9 @@ import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
 
 /**
- * 내부 getProductSnapshot 결과(명세 2-1) — 경매 등록 검증 + 검색 뷰 스냅샷 소스.
- * ⚠️ 스냅샷 필드 셋은 경매팀과 협의 진행 중(스펙 §4) — 잠정이며 협의 결과로 조정한다.
- * mergedIntoId: 병합은 파이널 기능이라 세미엔 항상 null (Product에 컬럼 없음).
+ * 내부 getProductSnapshot 결과(명세 2-1). 경매가 등록 시점에 상품 정보를 복사해 가는(스냅샷) 원천이다.
+ * ⚠️ 필드 구성은 경매팀과 협의 진행 중 — 잠정이며 협의 결과에 따라 조정한다.
+ * mergedIntoId: 상품 병합은 파이널 기능이라 세미엔 항상 null (Product에 컬럼 자체가 없음).
  */
 public record ProductSnapshotResult(
         Long productId,

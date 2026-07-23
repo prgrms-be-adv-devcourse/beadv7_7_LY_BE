@@ -16,16 +16,19 @@ import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
 
 /**
- * 상품 = Discogs 'Release' 수준의 특정 프레싱 (D-2). 레이블 + 카탈로그번호 + 발매국가 + 발매연도 + 프레스구분 + 포맷으로 1건.
+ * 상품 1건 = 특정 시기·국가에서 찍어낸 LP 한 종류 (예: Abbey Road 1969년 영국 초판).
+ * 같은 앨범이라도 카탈로그번호·발매국가·발매연도·프레스구분·포맷이 다르면 서로 다른 상품이다.
  * <p>
- * 하드 식별 속성(카탈로그번호·발매국가·발매연도·프레스구분·포맷·artistId)은 생성 후 불변 — 고치면 '다른 상품을 가리키게 되는' 것이라 쌓인 시세 이력이 엉뚱한 릴리스에 붙는다.
- * 서술 속성(레이블·장르·커버·설명)만 {@link #updateDescriptive}로 수정한다.
+ * 위의 "어떤 음반인지 가리키는" 속성들은 한번 저장하면 고칠 수 없다. 고치는 순간 다른 음반을 가리키게 되어,
+ * 그동안 쌓인 거래 시세가 엉뚱한 음반에 붙기 때문이다. 레이블·장르·커버·설명 같은 부가 정보만
+ * {@link #updateDescriptive}로 수정한다.
  * <p>
- * 제목·정규화된제목은 표시/검색용이라 성격상 서술 속성이지만, 세미엔 상품 수정 API 자체가 없어 D1에선 생성자로만 설정한다.
- * 폴백 자연키(정규화된제목+아티스트+연도) 방어는 dedup·정규화를 구현하는 D3에서 정한다.
+ * 같은 상품이 두 번 등록되는 것은 (정규화된 카탈로그번호, 포맷, 발매국가) 유니크 제약이 막는다.
+ * 카탈로그번호가 없는 음반(부틀렉·자체 제작반 등)은 이 제약을 그냥 지나칠 수 있는데 — MySQL이 null끼리는
+ * 유니크 검사를 하지 않기 때문 — 그런 음반끼리의 중복은 저장 전에 별도 기준
+ * (정규화 제목 + 아티스트 + 발매연도 + 발매국가 + 포맷 + 프레스구분)으로 조회해서 막는다.
  * <p>
- * 아티스트는 artistId(Long)로 논리 참조한다 (객체 참조 금지). dedup 자연키: (normalized_catalog_number, format, release_country) —
- * MySQL은 유니크 인덱스에서 NULL을 서로 다른 값으로 취급하므로, 카탈로그번호가 없는 행은 자동으로 충돌하지 않는다(= 부분 유니크).
+ * 아티스트는 객체가 아니라 artistId 숫자로만 참조한다 (다른 영역의 객체를 직접 들고 다니지 않는 팀 규칙).
  */
 @Entity
 @Table(
@@ -45,13 +48,13 @@ public class Product extends BaseEntity {
     @Column(name = "id")
     private Long id;
 
-    // === 식별 속성 (생성 후 불변) ===
+    // === 어떤 음반인지 가리키는 속성 — 한번 저장하면 수정 불가 ===
 
-    /** 원본 카탈로그 넘버 (nullable). 예: CL 1355 */
+    /** 음반사가 부여한 카탈로그번호 원문 (예: CL 1355). 번호가 없거나 알 수 없는 음반은 null. */
     @Column(name = "catalog_number")
     private String catalogNumber;
 
-    /** 정규화된 카탈로그 넘버 — dedup 자연키 구성. 정규화는 쓰기 시점(세미는 시드가 직접 주입). */
+    /** 중복 확인·검색용으로 표기를 통일(소문자화·기호 제거)한 카탈로그번호. 원문이 없으면 null. */
     @Column(name = "normalized_catalog_number")
     private String normalizedCatalogNumber;
 
@@ -72,17 +75,17 @@ public class Product extends BaseEntity {
     @Column(name = "format", nullable = false)
     private String format;
 
-    // === 표시·검색 속성 (성격상 서술 · 세미엔 상품 수정 API 없어 D1은 생성자 전용 · 폴백키 방어는 D3) ===
+    // === 제목 — 성격은 부가 정보에 가깝지만, 상품 수정 API가 없어 생성 시에만 설정 ===
 
-    /** 표시용 원본 제목. */
+    /** 화면 표시용 원본 제목. */
     @Column(name = "title", nullable = false)
     private String title;
 
-    /** 정규화된 제목 — 검색 인덱스용. 폴백 자연키(정규화된제목+아티스트+연도) 재료는 D3에서 다룬다. */
+    /** 검색·중복 확인용으로 표기를 통일한 제목. */
     @Column(name = "normalized_title", nullable = false)
     private String normalizedTitle;
 
-    // === 서술 속성 (수정 가능) ===
+    // === 부가 정보 (수정 가능) ===
 
     @Column(name = "label")
     private String label;
@@ -96,7 +99,7 @@ public class Product extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    /** soft delete — 삭제해도 시세 이력을 보존하기 위해 비활성 플래그로만 처리. */
+    /** 삭제 대신 쓰는 비활성 표시. 행을 실제로 지우면 이 상품에 쌓인 시세 이력까지 잃기 때문. */
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
@@ -125,7 +128,7 @@ public class Product extends BaseEntity {
                 releaseYear, pressType, format, label, genre, coverImage, description);
     }
 
-    /** 서술 속성만 수정한다. 식별 속성은 인자에 없다 — 바뀌면 다른 릴리스가 되기 때문. */
+    /** 부가 정보만 수정한다. 음반을 가리키는 속성은 인자에 없다 — 그게 바뀌면 다른 상품이 되기 때문. */
     public void updateDescriptive(String label, String genre, String coverImage, String description) {
         this.label = label;
         this.genre = genre;

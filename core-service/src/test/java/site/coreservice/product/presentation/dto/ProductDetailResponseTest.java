@@ -9,8 +9,8 @@ import site.coreservice.product.application.dto.ProductDetailResult;
 import site.coreservice.product.domain.PressType;
 
 /**
- * Response record 컴포넌트명 = JSON 필드명 = 타팀이 소비하는 api명세 표면.
- * 이름 변경(catalogNumber→catalogNo)·enum→String 변환이 조용히 어긋나는 회귀를 막는다.
+ * 응답 record의 필드명이 그대로 JSON 필드명이 되고, 그 JSON이 다른 팀이 보는 API 명세다.
+ * 필드명(catalogNumber→catalogNo 같은 변환)이나 enum→문자열 변환이 모르는 사이 어긋나는 걸 막는 테스트.
  */
 class ProductDetailResponseTest {
 

@@ -23,15 +23,15 @@ import java.util.List;
  * 로컬 적재 시엔 application-local.yml(커밋하지 않는 변경)에 {@code product.seed.enabled: true}와
  * {@code ddl-auto: update}를 함께 둔다.
  * <p>
- * 멱등성: 자연키(정규화된_카탈로그넘버 + 포맷 + 발매국가)로 존재를 확인하고 없을 때만 적재하므로,
- * 카탈로그번호가 있는 행은 앱을 몇 번 재실행해도 중복이 안 쌓인다. D1 시드는 전부 카탈로그번호를 가진다.
+ * 여러 번 실행해도 안전하다: 저장 전에 (정규화 카탈로그번호 + 포맷 + 발매국가)로 "이미 있는 상품인지"
+ * 확인하고 없을 때만 넣는다. 그래서 앱을 몇 번 재시작해도 중복이 쌓이지 않는다. D1 시드는 전부 카탈로그번호를 가진다.
  * <p>
- * 한계 — 카탈로그번호가 null이면 파생 쿼리가 '= NULL'이 되어 매칭이 안 되고(매 실행마다 재삽입),
- * MySQL의 NULL-distinct 특성상 유니크 제약도 이를 막지 못한다. 카탈로그번호 없는 상품의 dedup은
- * 폴백 자연키(정규화된_제목 + 아티스트 + 발매연도)와 함께 D3에서 다룬다. (D1엔 해당 행이 없어 무해)
+ * 한계 — 카탈로그번호가 null인 상품은 위 확인이 동작하지 않는다. SQL에서 "컬럼 = null" 비교는 항상 거짓이라
+ * 조회가 빈손으로 돌아오고(매 실행마다 다시 저장됨), 유니크 제약도 null끼리는 검사하지 않아 막지 못한다.
+ * 번호 없는 상품의 중복 확인은 별도 기준(제목 + 아티스트 + 발매연도 등)과 함께 D3에서 다룬다. (D1엔 해당 행이 없어 무해)
  * <p>
- * 정규화 로직은 D3 작업이라, 여기서는 시드 전용 간이 정규화(소문자화 + 영숫자만)로
- * 정규화된 값을 직접 주입한다.
+ * 표기 통일(정규화) 로직은 D3 작업이라, 여기서는 시드 전용 간이 버전(소문자화 + 영문·숫자만 남김)으로
+ * 값을 직접 만들어 넣는다.
  */
 @Slf4j
 @Order(1)
@@ -83,7 +83,7 @@ public class ProductSeedLoader implements CommandLineRunner {
                 releaseCountry, releaseYear, pressType, format, label, genre, coverImage, description));
     }
 
-    /** 시드 전용 간이 정규화. 실제 쓰기 모델 정규화 로직은 D3에서 구현한다. */
+    /** 시드 전용 간이 표기 통일 (소문자화 + 영문·숫자만 남김). 실제 정규화 로직은 D3에서 구현한다. */
     private static String normalize(String value) {
         if (value == null) {
             return null;
