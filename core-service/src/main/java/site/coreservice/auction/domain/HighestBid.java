@@ -30,7 +30,7 @@ public class HighestBid {
         this.bidId = bidId;
     }
 
-    public static HighestBid from(Money amount, Long bidderId, Long bidId) {
+    public static HighestBid of(Money amount, Long bidderId, Long bidId) {
         Objects.requireNonNull(amount, "최고입찰 금액은 null일 수 없습니다.");
         Objects.requireNonNull(bidderId, "최고입찰자는 null일 수 없습니다.");
         Objects.requireNonNull(bidId, "최고입찰 ID는 null일 수 없습니다.");

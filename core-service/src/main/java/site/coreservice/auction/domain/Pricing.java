@@ -8,15 +8,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.Objects;
 
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Pricing {
-    private static final Money MIN_START_PRICE = Money.of(1000L);
-    private static final Money MIN_BID_UNIT    = Money.of(10L);
+    private static final Money MIN_START_PRICE = Money.from(1000L);
+    private static final Money MIN_BID_UNIT    = Money.from(10L);
 
     @Embedded
     @AttributeOverride(name = "value", column = @Column(name = "start_price", nullable = false))
@@ -36,7 +35,7 @@ public class Pricing {
         this.shippingFee = shippingFee;
     }
 
-    public static Pricing from(Money startPrice, Money bidUnit, Money shippingFee) {
+    public static Pricing of(Money startPrice, Money bidUnit, Money shippingFee) {
         Objects.requireNonNull(startPrice, "시작가는 null일 수 없습니다.");
         Objects.requireNonNull(bidUnit, "입찰 단위는 null일 수 없습니다.");
         Objects.requireNonNull(shippingFee, "배송비는 null일 수 없습니다.");

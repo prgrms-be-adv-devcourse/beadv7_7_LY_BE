@@ -51,7 +51,7 @@ public class Auction extends BaseEntity {
         this.highestBid = highestBid;
     }
 
-    public static Auction from(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, AuctionStatus status, HighestBid highestBid) {
+    public static Auction of(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, AuctionStatus status, HighestBid highestBid) {
         return new Auction(sellerId, productId, itemInfo, pricing, schedule, status, highestBid);
     }
 

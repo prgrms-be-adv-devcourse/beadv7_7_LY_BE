@@ -35,7 +35,7 @@ public class ItemInfo {
         this.imageUrls = imageUrls;
     }
 
-    public static ItemInfo from(ItemCondition condition, String description, List<String> imageUrls) {
+    public static ItemInfo of(ItemCondition condition, String description, List<String> imageUrls) {
         Objects.requireNonNull(condition, "경매 상품 상태는 null일 수 없습니다.");
         if (description != null && (description.length() < MIN_DESC_LENGTH || description.length() > MAX_DESC_LENGTH)) {
             throw new IllegalArgumentException("상품 설명은 %d~%d자여야 합니다.".formatted(MIN_DESC_LENGTH, MAX_DESC_LENGTH));

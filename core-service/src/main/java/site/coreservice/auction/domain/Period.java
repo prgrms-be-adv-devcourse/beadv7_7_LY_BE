@@ -26,7 +26,7 @@ public class Period {
         this.endAt = endAt;
     }
 
-    public static Period from(LocalDateTime startAt, LocalDateTime endAt) {
+    public static Period of(LocalDateTime startAt, LocalDateTime endAt) {
         Objects.requireNonNull(startAt, "시작 시각은 null일 수 없습니다.");
         Objects.requireNonNull(endAt, "종료 시각은 null일 수 없습니다.");
         if (startAt.plusHours(MIN_DURATION_HOURS).isAfter(endAt))
@@ -35,7 +35,7 @@ public class Period {
     }
 
     public boolean contains(LocalDateTime at) {
-        return !at.isBefore(startAt) && at.isBefore(endAt);
+        return !at.isBefore(startAt) && !at.isAfter(endAt);
     }
 
     public boolean isStarted(LocalDateTime at) {

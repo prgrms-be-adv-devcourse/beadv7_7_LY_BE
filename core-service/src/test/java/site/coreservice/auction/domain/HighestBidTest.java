@@ -10,18 +10,18 @@ class HighestBidTest {
 
     @Test
     @DisplayName("필수 값이 null이면 예외가 발생한다")
-    void testFrom_nullFields_throws() {
+    void testOf_nullFields_throws() {
         // when & then
-        assertThatThrownBy(() -> HighestBid.from(null, 1L, 1L)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> HighestBid.from(Money.of(1_000L), null, 1L)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> HighestBid.from(Money.of(1_000L), 1L, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> HighestBid.of(null, 1L, 1L)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> HighestBid.of(Money.from(1_000L), null, 1L)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> HighestBid.of(Money.from(1_000L), 1L, null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("최고입찰자 여부를 판별한다")
     void testIsBidder_checksBidderId() {
         // given
-        HighestBid highestBid = HighestBid.from(Money.of(1_000L), 42L, 1L);
+        HighestBid highestBid = HighestBid.of(Money.from(1_000L), 42L, 1L);
 
         // then
         assertThat(highestBid.isBidder(42L)).isTrue();

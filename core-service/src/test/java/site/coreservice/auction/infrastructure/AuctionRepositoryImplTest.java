@@ -1,5 +1,6 @@
 package site.coreservice.auction.infrastructure;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -31,11 +32,12 @@ class AuctionRepositoryImplTest {
     private AuctionJpaRepository auctionJpaRepository;
 
     @Test
+    @DisplayName("경매를 저장하면 모든 값 객체를 포함하여 조회된다")
     void testSave_reloadsAuctionWithAllVoValues() {
-        final ItemInfo itemInfo = ItemInfo.from(ItemCondition.MINT, "실제 저장 확인용 상품 설명입니다.", List.of("1.png", "2.png"));
-        final Pricing pricing = Pricing.from(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
-        final AuctionSchedule schedule = AuctionSchedule.from(
-                Period.from(LocalDateTime.now(), LocalDateTime.now().plusDays(1)),
+        final ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "실제 저장 확인용 상품 설명입니다.", List.of("1.png", "2.png"));
+        final Pricing pricing = Pricing.of(Money.from(10_000L), Money.from(500L), Money.from(3_000L));
+        final AuctionSchedule schedule = AuctionSchedule.of(
+                Period.of(LocalDateTime.now(), LocalDateTime.now().plusDays(1)),
                 true, 5
         );
         final Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
@@ -47,12 +49,13 @@ class AuctionRepositoryImplTest {
         assertThat(found.getProductId()).isEqualTo(100L);
         assertThat(found.getStatus()).isEqualTo(AuctionStatus.SCHEDULED);
         assertThat(found.getItemInfo().getImageUrls()).containsExactly("1.png", "2.png");
-        assertThat(found.getPricing().getStartPrice()).isEqualTo(Money.of(10_000L));
+        assertThat(found.getPricing().getStartPrice()).isEqualTo(Money.from(10_000L));
         assertThat(found.getSchedule().getExtensionTime()).isEqualTo(5);
         assertThat(found.hasBid()).isFalse();
     }
 
     @Test
+    @DisplayName("존재하지 않는 경매 ID로 조회하면 빈 Optional을 반환한다")
     void testFindById_notFound_returnsEmpty() {
         final Optional<Auction> result = auctionRepository.findById(999L);
 

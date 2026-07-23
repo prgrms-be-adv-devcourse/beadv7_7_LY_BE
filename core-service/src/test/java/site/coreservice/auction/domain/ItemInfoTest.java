@@ -13,16 +13,16 @@ class ItemInfoTest {
 
     @Test
     @DisplayName("상품 상태가 null이면 예외가 발생한다")
-    void testFrom_nullCondition_throws() {
+    void testOf_nullCondition_throws() {
         // when & then
-        assertThatThrownBy(() -> ItemInfo.from(null, "충분히 긴 설명입니다.", null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> ItemInfo.of(null, "충분히 긴 설명입니다.", null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("설명이 없으면(null) 길이 검증을 건너뛴다")
-    void testFrom_nullDescription_isAllowed() {
+    void testOf_nullDescription_isAllowed() {
         // when
-        ItemInfo itemInfo = ItemInfo.from(ItemCondition.MINT, null, null);
+        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, null, null);
 
         // then
         assertThat(itemInfo.getDescription()).isNull();
@@ -30,42 +30,42 @@ class ItemInfoTest {
 
     @Test
     @DisplayName("설명이 최소 길이보다 짧으면 예외가 발생한다")
-    void testFrom_descriptionTooShort_throws() {
+    void testOf_descriptionTooShort_throws() {
         // given
         String tooShort = "짧음";
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.from(ItemCondition.MINT, tooShort, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooShort, null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("설명이 최대 길이보다 길면 예외가 발생한다")
-    void testFrom_descriptionTooLong_throws() {
+    void testOf_descriptionTooLong_throws() {
         // given
         String tooLong = "가".repeat(501);
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.from(ItemCondition.MINT, tooLong, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooLong, null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("이미지가 최대 개수를 초과하면 예외가 발생한다")
-    void testFrom_tooManyImages_throws() {
+    void testOf_tooManyImages_throws() {
         // given
         List<String> images = List.of("1.png", "2.png", "3.png", "4.png", "5.png", "6.png");
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.from(ItemCondition.MINT, "충분히 긴 설명입니다.", images)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, "충분히 긴 설명입니다.", images)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("최대 개수의 이미지는 유효하다")
-    void testFrom_maxImageCount_succeeds() {
+    void testOf_maxImageCount_succeeds() {
         // given
         List<String> images = List.of("1.png", "2.png", "3.png", "4.png", "5.png");
 
         // when
-        ItemInfo itemInfo = ItemInfo.from(ItemCondition.MINT, "충분히 긴 설명입니다.", images);
+        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 설명입니다.", images);
 
         // then
         assertThat(itemInfo.getImageUrls()).hasSize(5);
@@ -73,10 +73,10 @@ class ItemInfoTest {
 
     @Test
     @DisplayName("전달받은 이미지 목록을 방어적으로 복사하여 외부 변경에 영향받지 않는다")
-    void testFrom_defensivelyCopiesImageList() {
+    void testOf_defensivelyCopiesImageList() {
         // given
         List<String> mutableImages = new ArrayList<>(List.of("1.png"));
-        ItemInfo itemInfo = ItemInfo.from(ItemCondition.MINT, "충분히 긴 설명입니다.", mutableImages);
+        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 설명입니다.", mutableImages);
 
         // when
         mutableImages.add("2.png");
@@ -89,7 +89,7 @@ class ItemInfoTest {
     @DisplayName("withDescription은 설명만 교체한 새 인스턴스를 반환한다")
     void testWithDescription_replacesOnlyDescription() {
         // given
-        ItemInfo original = ItemInfo.from(ItemCondition.MINT, "원본 상품 설명입니다.", List.of("1.png"));
+        ItemInfo original = ItemInfo.of(ItemCondition.MINT, "원본 상품 설명입니다.", List.of("1.png"));
 
         // when
         ItemInfo updated = original.withDescription("변경된 상품 설명입니다.");
@@ -105,7 +105,7 @@ class ItemInfoTest {
     @DisplayName("withCondition은 상태만 교체한 새 인스턴스를 반환한다")
     void testWithCondition_replacesOnlyCondition() {
         // given
-        ItemInfo original = ItemInfo.from(ItemCondition.MINT, "원본 상품 설명입니다.", null);
+        ItemInfo original = ItemInfo.of(ItemCondition.MINT, "원본 상품 설명입니다.", null);
 
         // when
         ItemInfo updated = original.withCondition(ItemCondition.GOOD);

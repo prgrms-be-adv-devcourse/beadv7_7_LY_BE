@@ -18,14 +18,14 @@ public class Money {
         this.value = value;
     }
 
-    public static Money from(BigDecimal value) {
+    public static Money of(BigDecimal value) {
         Objects.requireNonNull(value, "금액은 null일 수 없습니다.");
         if (value.compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("금액은 0원 이상이어야 합니다. 입력값: " + value);
         return new Money(value);
     }
 
-    public static Money of(long value) {
+    public static Money from(long value) {
         return new Money(BigDecimal.valueOf(value));
     }
 
@@ -34,7 +34,7 @@ public class Money {
     }
 
     public Money minus(Money other) {
-        return Money.from(this.value.subtract(other.value));
+        return Money.of(this.value.subtract(other.value));
     }
 
     public boolean isGreaterThanOrEqual(Money other) {

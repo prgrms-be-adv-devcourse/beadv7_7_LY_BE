@@ -31,7 +31,7 @@ public class AuctionSchedule {
         this.extensionTime = extensionTime;
     }
 
-    public static AuctionSchedule from(Period period, boolean extensionEnabled, Integer extensionTime) {
+    public static AuctionSchedule of(Period period, boolean extensionEnabled, Integer extensionTime) {
         Objects.requireNonNull(period, "경매 기간은 null일 수 없습니다.");
         if (extensionEnabled) {
             if (extensionTime == null || extensionTime < MIN_EXTENSION_MINUTES)

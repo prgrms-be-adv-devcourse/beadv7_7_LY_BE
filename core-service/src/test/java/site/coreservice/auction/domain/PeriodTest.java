@@ -15,22 +15,22 @@ class PeriodTest {
 
     @Test
     @DisplayName("최소 지속 시간(1시간) 미만이면 예외가 발생한다")
-    void testFrom_tooShortDuration_throws() {
+    void testOf_tooShortDuration_throws() {
         // given
         LocalDateTime tooShortEnd = start.plusMinutes(59);
 
         // when & then
-        assertThatThrownBy(() -> Period.from(start, tooShortEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Period.of(start, tooShortEnd)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("정확히 최소 지속 시간이면 생성에 성공한다")
-    void testFrom_exactlyMinDuration_succeeds() {
+    void testOf_exactlyMinDuration_succeeds() {
         // given
         LocalDateTime minDurationEnd = start.plusHours(1);
 
         // when
-        Period period = Period.from(start, minDurationEnd);
+        Period period = Period.of(start, minDurationEnd);
 
         // then
         assertThat(period.getEndAt()).isEqualTo(minDurationEnd);
@@ -38,22 +38,22 @@ class PeriodTest {
 
     @Test
     @DisplayName("시작/종료 시각이 null이면 예외가 발생한다")
-    void testFrom_nullDates_throws() {
+    void testOf_nullDates_throws() {
         // when & then
-        assertThatThrownBy(() -> Period.from(null, end)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Period.from(start, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Period.of(null, end)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Period.of(start, null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    @DisplayName("시작 시각 이상, 종료 시각 미만인 경우에만 포함된다")
+    @DisplayName("시작 시각 이상, 종료 시각 이하인 경우에만 포함된다")
     void testContains_checksHalfOpenRange() {
         // given
-        Period period = Period.from(start, end);
+        Period period = Period.of(start, end);
 
         // then
         assertThat(period.contains(start)).isTrue();
         assertThat(period.contains(start.plusHours(1))).isTrue();
-        assertThat(period.contains(end)).isFalse();
+        assertThat(period.contains(end)).isTrue();
         assertThat(period.contains(start.minusSeconds(1))).isFalse();
     }
 
@@ -61,7 +61,7 @@ class PeriodTest {
     @DisplayName("시작 시각 이후인지 판별한다")
     void testIsStarted_checksStartBoundary() {
         // given
-        Period period = Period.from(start, end);
+        Period period = Period.of(start, end);
 
         // then
         assertThat(period.isStarted(start)).isTrue();
@@ -72,7 +72,7 @@ class PeriodTest {
     @DisplayName("종료 시각 이후인지 판별한다")
     void testIsEnded_checksEndBoundary() {
         // given
-        Period period = Period.from(start, end);
+        Period period = Period.of(start, end);
 
         // then
         assertThat(period.isEnded(end)).isTrue();
