@@ -30,12 +30,12 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
             @Param("releaseCountry") String releaseCountry, @Param("format") String format,
             @Param("pressType") PressType pressType);
 
+    // 주의: 검색 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
     @Query("""
             select new site.coreservice.product.domain.ProductSearchHit(
                     p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType)
-            from Product p, Artist a
-            where a.id = p.artistId
-              and p.active = true
+            from Product p join Artist a on a.id = p.artistId
+            where p.active = true
               and (p.normalizedTitle like :pattern
                    or a.normalizedName like :pattern
                    or exists (select 1 from ProductAlias pa
@@ -48,9 +48,8 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
 
     @Query("""
             select count(p)
-            from Product p, Artist a
-            where a.id = p.artistId
-              and p.active = true
+            from Product p join Artist a on a.id = p.artistId
+            where p.active = true
               and (p.normalizedTitle like :pattern
                    or a.normalizedName like :pattern
                    or exists (select 1 from ProductAlias pa

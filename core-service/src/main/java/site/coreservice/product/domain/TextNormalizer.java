@@ -2,6 +2,7 @@ package site.coreservice.product.domain;
 
 import java.text.Normalizer;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * 검색·중복 확인에 쓰는 표기 통일(정규화) 규칙의 단일 구현.
@@ -9,6 +10,9 @@ import java.util.Locale;
  * 정규화가 필요한 모든 곳은 이 클래스만 사용한다.
  */
 public final class TextNormalizer {
+
+    // 고정 정규식은 한 번만 컴파일해 재사용 — 호출마다 다시 컴파일하지 않도록
+    private static final Pattern NON_LETTER_OR_DIGIT = Pattern.compile("[^\\p{L}\\p{N}]");
 
     private TextNormalizer() {
     }
@@ -22,9 +26,9 @@ public final class TextNormalizer {
         if (value == null) {
             return null;
         }
-        String result = Normalizer.normalize(value, Normalizer.Form.NFKC)
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]", "");
+        String result = NON_LETTER_OR_DIGIT
+                .matcher(Normalizer.normalize(value, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT))
+                .replaceAll("");
         return result.isEmpty() ? null : result;
     }
 }

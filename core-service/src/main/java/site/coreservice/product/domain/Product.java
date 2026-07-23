@@ -124,12 +124,14 @@ public class Product extends BaseEntity {
     public static Product of(String catalogNumber, Long artistId, String title, String releaseCountry,
             int releaseYear, PressType pressType, String format, String label, String genre, String coverImage,
             String description) {
-        String rawCatalogNumber = (catalogNumber == null || catalogNumber.isBlank()) ? null : catalogNumber;
+        // 정규화해서 아무 문자도 남지 않는 카탈로그번호("---", 공백 등)는 "없음"으로 취급 — 원본도 null로 통일
+        String normalizedCatalogNumber = TextNormalizer.normalize(catalogNumber);
+        String rawCatalogNumber = (normalizedCatalogNumber == null) ? null : catalogNumber;
         String normalizedTitle = TextNormalizer.normalize(title);
         if (normalizedTitle == null) {
             throw new IllegalArgumentException("정규화하면 아무 문자도 남지 않는 제목입니다: " + title);
         }
-        return new Product(rawCatalogNumber, TextNormalizer.normalize(rawCatalogNumber), artistId, title,
+        return new Product(rawCatalogNumber, normalizedCatalogNumber, artistId, title,
                 normalizedTitle, releaseCountry, releaseYear, pressType, format, label, genre, coverImage,
                 description);
     }
