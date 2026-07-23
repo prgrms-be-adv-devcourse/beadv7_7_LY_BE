@@ -42,6 +42,18 @@ class ProductTest {
     }
 
     @Test
+    @DisplayName("카탈로그번호가 기호만이면 원본·정규화 모두 null로 저장한다 (없음 취급)")
+    void of_카탈로그번호_기호만이면_원본도_null() {
+        // given & when
+        Product product = Product.of("---", 1L, "Kum Back", "US", 1969,
+                PressType.ORIGINAL, "LP", null, "Rock", null, "부틀렉");
+
+        // then
+        assertThat(product.getCatalogNumber()).isNull();
+        assertThat(product.getNormalizedCatalogNumber()).isNull();
+    }
+
+    @Test
     @DisplayName("정규화하면 아무것도 남지 않는 제목은 거부한다")
     void of_제목_기호만이면_예외() {
         // given & when & then

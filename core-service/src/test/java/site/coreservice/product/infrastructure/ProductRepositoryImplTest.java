@@ -66,4 +66,34 @@ class ProductRepositoryImplTest {
         // then
         assertThat(result).isEmpty();
     }
+
+    @Test
+    @DisplayName("포맷이 다르면 번호 없는 상품이라도 다른 상품이다")
+    void findByFallbackNaturalKey_포맷_다르면_미매칭() {
+        // given
+        productJpaRepository.save(Product.of(null, 1L, "Kum Back", "US", 1969,
+                PressType.ORIGINAL, "LP", null, "Rock", null, null));
+
+        // when
+        Optional<Product> result = productRepository.findByFallbackNaturalKey("kumback", 1L, 1969,
+                "US", "180g", PressType.ORIGINAL);
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("프레스구분이 다르면 번호 없는 상품이라도 다른 상품이다")
+    void findByFallbackNaturalKey_프레스구분_다르면_미매칭() {
+        // given
+        productJpaRepository.save(Product.of(null, 1L, "Kum Back", "US", 1969,
+                PressType.ORIGINAL, "LP", null, "Rock", null, null));
+
+        // when
+        Optional<Product> result = productRepository.findByFallbackNaturalKey("kumback", 1L, 1969,
+                "US", "LP", PressType.REISSUE);
+
+        // then
+        assertThat(result).isEmpty();
+    }
 }

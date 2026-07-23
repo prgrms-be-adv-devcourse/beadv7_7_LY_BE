@@ -81,8 +81,12 @@ class ProductSeedLoaderTest {
     @DisplayName("전부 이미 있으면 아무것도 저장하지 않는다 (여러 번 실행해도 안전)")
     void run_전부_있으면_저장_없음() {
         // given
-        given(artistRepository.findByNormalizedName(any()))
+        given(artistRepository.findByNormalizedName("thebeatles"))
                 .willReturn(Optional.of(artistWithId("The Beatles", 1L)));
+        given(artistRepository.findByNormalizedName("pinkfloyd"))
+                .willReturn(Optional.of(artistWithId("Pink Floyd", 2L)));
+        given(artistRepository.findByNormalizedName("milesdavis"))
+                .willReturn(Optional.of(artistWithId("Miles Davis", 3L)));
         given(artistAliasRepository.hasAlias(any(), any())).willReturn(true);
         given(productRepository.findByNaturalKey(any(), any(), any()))
                 .willReturn(Optional.of(productWithId(10L)));
@@ -104,8 +108,12 @@ class ProductSeedLoaderTest {
     @DisplayName("아티스트가 이미 있어도 없는 별칭은 채워진다 (확인 단위 = 자원 각각)")
     void run_기존_아티스트여도_별칭은_채움() {
         // given — 아티스트는 전부 존재, 별칭은 전부 없음
-        given(artistRepository.findByNormalizedName(any()))
+        given(artistRepository.findByNormalizedName("thebeatles"))
                 .willReturn(Optional.of(artistWithId("The Beatles", 1L)));
+        given(artistRepository.findByNormalizedName("pinkfloyd"))
+                .willReturn(Optional.of(artistWithId("Pink Floyd", 2L)));
+        given(artistRepository.findByNormalizedName("milesdavis"))
+                .willReturn(Optional.of(artistWithId("Miles Davis", 3L)));
         given(artistAliasRepository.hasAlias(any(), any())).willReturn(false);
         given(productRepository.findByNaturalKey(any(), any(), any()))
                 .willReturn(Optional.of(productWithId(10L)));
@@ -125,8 +133,12 @@ class ProductSeedLoaderTest {
     @DisplayName("카탈로그번호 없는 상품은 예비 기준(폴백 키)으로 존재를 확인한다")
     void run_번호_없는_상품은_폴백_키_사용() {
         // given
-        given(artistRepository.findByNormalizedName(any()))
+        given(artistRepository.findByNormalizedName("thebeatles"))
                 .willReturn(Optional.of(artistWithId("The Beatles", 1L)));
+        given(artistRepository.findByNormalizedName("pinkfloyd"))
+                .willReturn(Optional.of(artistWithId("Pink Floyd", 2L)));
+        given(artistRepository.findByNormalizedName("milesdavis"))
+                .willReturn(Optional.of(artistWithId("Miles Davis", 3L)));
         given(artistAliasRepository.hasAlias(any(), any())).willReturn(true);
         given(productRepository.findByNaturalKey(any(), any(), any()))
                 .willReturn(Optional.of(productWithId(10L)));
