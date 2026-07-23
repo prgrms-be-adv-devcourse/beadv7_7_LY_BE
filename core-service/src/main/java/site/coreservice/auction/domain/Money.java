@@ -32,7 +32,7 @@ public class Money {
     }
 
     public Money plus(Money other) {
-        return new Money(this.value.add(other.value));
+        return Money.from(this.value.add(other.value));
     }
 
     public Money minus(Money other) {
