@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -27,8 +26,7 @@ import site.common.entity.BaseEntity;
         uniqueConstraints = @UniqueConstraint(
                 name = "ukProductAliasOwnerNormalized",
                 columnNames = {"product_id", "normalized_name"}
-        ),
-        indexes = @Index(name = "idxProductAliasNormalizedName", columnList = "normalized_name")
+        )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
