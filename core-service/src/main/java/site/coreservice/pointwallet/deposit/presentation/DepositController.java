@@ -25,18 +25,18 @@ public class DepositController {
     private final DepositService depositService;
 
     @PostMapping
-    public ApiResponse<DepositRequestResponse> requestDeposit(
-            @RequestHeader("X-User-Id") Long userId,
+    public ResponseEntity<ApiResponse<DepositRequestResponse>> requestDeposit(
+            @RequestHeader("X-Member-Id") Long userId,
             @RequestBody DepositRequestRequest request
     ) {
         DepositRequestResult result = depositService.requestDeposit(userId, Money.of(request.amount()));
-        return ApiResponse.success(new DepositRequestResponse(result.orderId(), result.amount().getValue()));
+        return ResponseEntity.ok(ApiResponse.success(new DepositRequestResponse(result.orderId(), result.amount().getValue())));
     }
 
     @PostMapping("/confirm")
-    public ApiResponse<Void> confirmDeposit(@RequestBody DepositConfirmRequest request) {
+    public ResponseEntity<ApiResponse<Void>> confirmDeposit(@RequestBody DepositConfirmRequest request) {
         depositService.confirmDeposit(request.paymentKey(), request.orderId(), Money.of(request.amount()));
-        return ApiResponse.success();
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     // DepositException 핸들러는 삭제 — common의 GlobalExceptionHandler가 BusinessException을 잡아서 처리함

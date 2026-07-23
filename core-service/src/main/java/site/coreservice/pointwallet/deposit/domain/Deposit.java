@@ -1,6 +1,5 @@
 package site.coreservice.pointwallet.deposit.domain;
 
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;

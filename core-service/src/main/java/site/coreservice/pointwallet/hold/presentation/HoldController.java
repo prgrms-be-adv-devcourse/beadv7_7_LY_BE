@@ -1,5 +1,4 @@
 package site.coreservice.pointwallet.hold.presentation;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,11 +27,11 @@ public class HoldController {
     private final HoldService holdService;
 
     @PutMapping("/hold")
-    public ApiResponse<HoldResponse> hold(@RequestBody HoldRequest request) {
+    public ResponseEntity<ApiResponse<HoldResponse>> hold(@RequestBody HoldRequest request) {
         HoldResult result = holdService.hold(request.auctionId(), request.memberId(), Money.of(request.amount()));
-        return ApiResponse.success(
+        return ResponseEntity.ok(ApiResponse.success(
                 new HoldResponse(result.holdId(), result.releasedHoldId(), result.balanceAfter().getValue())
-        );
+        ));
     }
 
     // record 컴팩트 생성자의 입력값 검증 실패(IllegalArgumentException)만 여기서 자체 처리
