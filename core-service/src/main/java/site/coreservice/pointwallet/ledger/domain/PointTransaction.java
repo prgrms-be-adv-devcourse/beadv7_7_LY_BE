@@ -30,7 +30,6 @@ public class PointTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
     @Column(name = "wallet_id", nullable = false, updatable = false)

@@ -32,7 +32,6 @@ public class Wallet extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
     @Column(name = "user_id", nullable = false, updatable = false)
