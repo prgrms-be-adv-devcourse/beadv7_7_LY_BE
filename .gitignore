@@ -205,5 +205,7 @@ gradle-app.setting
 .env
 .env.*
 !.env.example
+.claude/settings.local.json
+CLAUDE.md
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all
 
