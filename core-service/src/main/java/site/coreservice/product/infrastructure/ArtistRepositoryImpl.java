@@ -22,4 +22,9 @@ public class ArtistRepositoryImpl implements ArtistRepository {
     public Optional<Artist> findByNormalizedName(String normalizedName) {
         return artistJpaRepository.findByNormalizedName(normalizedName);
     }
+
+    @Override
+    public Optional<Artist> findById(Long id) {
+        return artistJpaRepository.findById(id);
+    }
 }
