@@ -14,7 +14,7 @@ public enum GlobalErrorCode implements ErrorCode {
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "GERR-0002", "존재하지 않는 리소스입니다."),
 
     // inner
-    MEMBER_ID_HEADER_REQUIRED(HttpStatus.BAD_REQUEST, "INER-0003", "Member-Id 헤더가 필요합니다.");
+    MEMBER_ID_HEADER_REQUIRED(HttpStatus.BAD_REQUEST, "INER-0001", "X-Member-Id 헤더가 필요합니다.");
 
     private final HttpStatus status;
     private final String value;

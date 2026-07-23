@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MemberId {
 
-    String HEADER_NAME = "Member-Id";
+    String HEADER_NAME = "X-Member-Id";
 }
