@@ -24,4 +24,9 @@ public class ProductRepositoryImpl implements ProductRepository {
         return productJpaRepository.findByNormalizedCatalogNumberAndFormatAndReleaseCountry(
                 normalizedCatalogNumber, format, releaseCountry);
     }
+
+    @Override
+    public Optional<Product> findById(Long id) {
+        return productJpaRepository.findById(id);
+    }
 }

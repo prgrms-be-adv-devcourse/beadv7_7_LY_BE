@@ -55,4 +55,12 @@ public class Artist extends BaseEntity {
     public static Artist of(String name, String normalizedName, List<String> aliases) {
         return new Artist(name, normalizedName, aliases);
     }
+
+    /**
+     * 별칭 목록 (불변 복사본). 필드 초기화(new ArrayList)는 Hibernate 하이드레이션이 DB의 NULL로
+     * 덮어쓰므로, DB에 aliases IS NULL인 행이 있어도 null이 새어나가지 않게 여기서 방어한다.
+     */
+    public List<String> getAliases() {
+        return aliases == null ? List.of() : List.copyOf(aliases);
+    }
 }

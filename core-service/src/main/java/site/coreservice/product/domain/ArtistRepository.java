@@ -11,4 +11,6 @@ public interface ArtistRepository {
     Artist save(Artist artist);
 
     Optional<Artist> findByNormalizedName(String normalizedName);
+
+    Optional<Artist> findById(Long id);
 }
