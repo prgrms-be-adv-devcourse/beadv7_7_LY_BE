@@ -1,11 +1,14 @@
 package site.coreservice.product.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
+import site.coreservice.product.domain.ProductSearchHit;
 
 public interface ProductJpaRepository extends JpaRepository<Product, Long> {
 
@@ -26,4 +29,34 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
             @Param("artistId") Long artistId, @Param("releaseYear") int releaseYear,
             @Param("releaseCountry") String releaseCountry, @Param("format") String format,
             @Param("pressType") PressType pressType);
+
+    @Query("""
+            select new site.coreservice.product.domain.ProductSearchHit(
+                    p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType)
+            from Product p, Artist a
+            where a.id = p.artistId
+              and p.active = true
+              and (p.normalizedTitle like :pattern
+                   or a.normalizedName like :pattern
+                   or exists (select 1 from ProductAlias pa
+                              where pa.productId = p.id and pa.normalizedName like :pattern)
+                   or exists (select 1 from ArtistAlias aa
+                              where aa.artistId = p.artistId and aa.normalizedName like :pattern))
+            order by p.id asc
+            """)
+    List<ProductSearchHit> searchActiveHits(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("""
+            select count(p)
+            from Product p, Artist a
+            where a.id = p.artistId
+              and p.active = true
+              and (p.normalizedTitle like :pattern
+                   or a.normalizedName like :pattern
+                   or exists (select 1 from ProductAlias pa
+                              where pa.productId = p.id and pa.normalizedName like :pattern)
+                   or exists (select 1 from ArtistAlias aa
+                              where aa.artistId = p.artistId and aa.normalizedName like :pattern))
+            """)
+    long countActiveHits(@Param("pattern") String pattern);
 }
