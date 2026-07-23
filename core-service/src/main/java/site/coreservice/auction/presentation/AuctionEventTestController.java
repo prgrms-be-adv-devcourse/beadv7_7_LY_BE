@@ -30,6 +30,8 @@ public class AuctionEventTestController {
             request.productId(),
             request.winnerId(),
             request.sellerId(),
+            "MINT",
+            "mock image url",
             request.winningPrice()
         );
         return ApiResponse.success(request);

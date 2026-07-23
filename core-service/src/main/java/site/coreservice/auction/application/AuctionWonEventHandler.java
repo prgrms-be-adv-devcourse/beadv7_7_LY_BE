@@ -13,11 +13,13 @@ public class AuctionWonEventHandler implements EventHandler<AuctionWonEvent> {
     @Override
     public void handle(final AuctionWonEvent event) {
         log.info(
-            "AuctionWonEvent 처리: auctionId={}, productId={}, winnerId={}, sellerId={}, winningPrice={}",
+            "AuctionWonEvent 처리: auctionId={}, productId={}, winnerId={}, sellerId={}, itemCondition={}, firstImageUrl={}, winningPrice={}",
             event.getAuctionId(),
             event.getProductId(),
             event.getWinnerId(),
             event.getSellerId(),
+            event.getItemCondition(),
+            event.getFirstImageUrl(),
             event.getWinningPrice()
         );
     }

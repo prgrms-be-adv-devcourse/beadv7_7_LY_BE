@@ -12,6 +12,8 @@ public class AuctionWonEvent extends Event {
     private final Long productId;
     private final Long winnerId;
     private final Long sellerId;
+    private final String itemCondition;
+    private final String firstImageUrl;
     private final BigDecimal winningPrice;
 
     public AuctionWonEvent(
@@ -19,12 +21,16 @@ public class AuctionWonEvent extends Event {
         final Long productId,
         final Long winnerId,
         final Long sellerId,
+        final String itemCondition,
+        final String firstImageUrl,
         final BigDecimal winningPrice
     ) {
         this.auctionId = auctionId;
         this.productId = productId;
         this.winnerId = winnerId;
         this.sellerId = sellerId;
+        this.itemCondition = itemCondition;
+        this.firstImageUrl = firstImageUrl;
         this.winningPrice = winningPrice;
     }
 

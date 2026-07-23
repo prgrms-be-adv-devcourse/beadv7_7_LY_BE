@@ -19,9 +19,11 @@ public class AuctionEventPublisher {
         final Long productId,
         final Long winnerId,
         final Long sellerId,
+        final String itemCondition,
+        final String firstImageUrl,
         final BigDecimal winningPrice
     ) {
         eventPublisher.publish(
-            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, winningPrice));
+            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition, firstImageUrl, winningPrice));
     }
 }
