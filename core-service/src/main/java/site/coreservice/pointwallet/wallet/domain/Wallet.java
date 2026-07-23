@@ -54,4 +54,17 @@ public class Wallet extends BaseEntity {
     public void charge(Money amount) {
         this.balance = this.balance.add(amount);
     }
+
+    /** 홀드 등으로 차감하기 전에 잔액이 충분한지 확인한다. 호출 측(Application Service)에서 먼저 검사해서 도메인에 맞는 예외로 변환하는 게 원칙. */
+    public boolean hasEnoughBalance(Money amount) {
+        return this.balance.isGreaterThanOrEqual(amount);
+    }
+
+    /** 입찰 홀드 등으로 잔액을 차감한다. 잔액이 부족하면 스스로 예외를 던진다 — 호출자가 미리 확인할 필요 없음. */
+    public void deduct(Money amount) {
+        if (!hasEnoughBalance(amount)) {
+            throw new InsufficientBalanceException();
+        }
+        this.balance = this.balance.subtract(amount);
+    }
 }
