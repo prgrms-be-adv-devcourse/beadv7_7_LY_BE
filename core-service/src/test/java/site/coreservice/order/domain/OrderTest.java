@@ -87,13 +87,14 @@ class OrderTest {
             Order order = pendingOrder();
             DeliveryInfo deliveryInfo = defaultDeliveryInfo();
             LocalDateTime completionDeadline = LocalDateTime.now().plusDays(7);
+            LocalDateTime now = LocalDateTime.now();
 
             // when
-            order.confirmOrder(deliveryInfo, completionDeadline);
+            order.confirmOrder(deliveryInfo, completionDeadline, now);
 
             // then
             assertThat(order.getStatus()).isEqualTo(OrderStatus.ORDERED);
-            assertThat(order.getOrderedAt()).isNotNull();
+            assertThat(order.getOrderedAt()).isEqualTo(now);
             assertThat(order.getCompletionDeadline()).isEqualTo(completionDeadline);
             assertThat(order.getDeliveryInfo()).isEqualTo(deliveryInfo);
         }
@@ -105,7 +106,7 @@ class OrderTest {
             Order order = pendingOrder();
 
             // when & then
-            assertThatThrownBy(() -> order.confirmOrder(null, LocalDateTime.now().plusDays(7)))
+            assertThatThrownBy(() -> order.confirmOrder(null, LocalDateTime.now().plusDays(7), LocalDateTime.now()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("배송지 정보는 필수입니다.");
         }
@@ -115,11 +116,41 @@ class OrderTest {
         void confirmWhenNotPending_throwsException() {
             // given
             Order order = pendingOrder();
-            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7));
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when & then
-            assertThatThrownBy(() -> order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7)))
+            assertThatThrownBy(() -> order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now()))
                     .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("주문 확정 기한 정각에 확정하면 ORDERED로 바뀐다")
+        void confirmExactlyAtDeadline_succeeds() {
+            // given
+            LocalDateTime deadline = LocalDateTime.now().plusHours(24);
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    deadline, defaultItemSnapshot());
+
+            // when
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), deadline);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.ORDERED);
+        }
+
+        @Test
+        @DisplayName("주문 확정 기한이 지나면 예외가 발생한다")
+        void confirmAfterDeadline_throwsException() {
+            // given
+            LocalDateTime deadline = LocalDateTime.now().plusHours(24);
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    deadline, defaultItemSnapshot());
+
+            // when & then
+            assertThatThrownBy(() -> order.confirmOrder(
+                    defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), deadline.plusSeconds(1)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("주문 확정 기한이 지났습니다.");
         }
     }
 
@@ -160,7 +191,7 @@ class OrderTest {
         void cancelAfterOrdered_throwsException() {
             // given
             Order order = pendingOrder();
-            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7));
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when & then
             assertThatThrownBy(() -> order.cancelOrder(CancelReason.BUYER_DECLINED))
@@ -177,7 +208,7 @@ class OrderTest {
         void completeFromOrdered() {
             // given
             Order order = pendingOrder();
-            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7));
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when
             order.completeOrder();

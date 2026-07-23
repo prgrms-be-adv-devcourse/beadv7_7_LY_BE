@@ -102,15 +102,18 @@ public class Order extends BaseEntity {
     }
 
 
-    public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline) {
+    public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline, LocalDateTime now) {
         if (status != OrderStatus.PENDING) {
             throw new IllegalStateException("PENDING 상태에서만 주문할 수 있습니다. 현재 상태: " + status);
         }
         if (deliveryInfo == null) {
             throw new IllegalArgumentException("배송지 정보는 필수입니다.");
         }
+        if (now.isAfter(orderDeadline)) {
+            throw new IllegalStateException("주문 확정 기한이 지났습니다.");
+        }
         this.status = OrderStatus.ORDERED;
-        this.orderedAt = LocalDateTime.now();
+        this.orderedAt = now;
         this.completionDeadline = completionDeadline;
         this.deliveryInfo = deliveryInfo;
     }
