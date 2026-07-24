@@ -3,8 +3,8 @@ package site.coreservice.product.presentation.dto;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
 
 /**
- * 내부 getProductSnapshot 응답(명세 2-1). 소비자: 경매(07) 등록 검증+스냅샷, 주문(06) 표시.
- * ⚠️ 스냅샷 필드 셋은 경매팀과 협의 진행 중 — 잠정. mergedIntoId는 세미 항상 null.
+ * 내부 getProductSnapshot 응답(명세 2-1). 쓰는 곳: 경매(07)의 등록 검증·상품 정보 복사, 주문(06)의 표시.
+ * ⚠️ 필드 구성은 경매팀과 협의 진행 중 — 잠정. mergedIntoId는 세미 동안 항상 null.
  */
 public record ProductSnapshotResponse(
         Long productId,

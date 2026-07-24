@@ -10,16 +10,11 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import site.common.entity.BaseEntity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * 아티스트 (카탈로그 쓰기 모델). 이 컨텍스트가 원본을 소유한다.
- * PRODUCT가 artistId(Long)로 논리 참조한다 — 객체 참조 대신 ID 참조.
+ * 아티스트. 상품(Product)이 이 테이블을 artistId 숫자로 참조한다.
+ * 아티스트 정보의 원본은 상품 도메인이 만들고 관리한다 (다른 도메인은 조회만).
  */
 @Entity
 @Table(
@@ -41,26 +36,16 @@ public class Artist extends BaseEntity {
     @Column(name = "normalized_name", nullable = false)
     private String normalizedName;
 
-    /** 표기 변형 매칭용 별칭 (비틀즈 / The Beatles). MySQL json 컬럼. */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "aliases", columnDefinition = "json")
-    private List<String> aliases = new ArrayList<>();
-
-    private Artist(String name, String normalizedName, List<String> aliases) {
+    private Artist(String name, String normalizedName) {
         this.name = name;
         this.normalizedName = normalizedName;
-        this.aliases = aliases != null ? new ArrayList<>(aliases) : new ArrayList<>();
     }
 
-    public static Artist of(String name, String normalizedName, List<String> aliases) {
-        return new Artist(name, normalizedName, aliases);
-    }
-
-    /**
-     * 별칭 목록 (불변 복사본). 필드 초기화(new ArrayList)는 Hibernate 하이드레이션이 DB의 NULL로
-     * 덮어쓰므로, DB에 aliases IS NULL인 행이 있어도 null이 새어나가지 않게 여기서 방어한다.
-     */
-    public List<String> getAliases() {
-        return aliases == null ? List.of() : List.copyOf(aliases);
+    public static Artist of(String name) {
+        String normalizedName = TextNormalizer.normalize(name);
+        if (normalizedName == null) {
+            throw new IllegalArgumentException("정규화하면 아무 문자도 남지 않는 아티스트 이름입니다: " + name);
+        }
+        return new Artist(name, normalizedName);
     }
 }

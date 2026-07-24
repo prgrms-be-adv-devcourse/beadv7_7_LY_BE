@@ -1,6 +1,5 @@
 package site.coreservice.product.application.dto;
 
-import java.util.List;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
@@ -25,7 +24,7 @@ public record ProductDetailResult(
                 product.getId(),
                 product.getCatalogNumber(),
                 product.getTitle(),
-                new ArtistResult(artist.getId(), artist.getName(), artist.getAliases()),
+                new ArtistResult(artist.getId(), artist.getName()),
                 product.getLabel(),
                 product.getReleaseCountry(),
                 product.getReleaseYear(),
@@ -37,6 +36,6 @@ public record ProductDetailResult(
         );
     }
 
-    public record ArtistResult(Long artistId, String name, List<String> aliases) {
+    public record ArtistResult(Long artistId, String name) {
     }
 }

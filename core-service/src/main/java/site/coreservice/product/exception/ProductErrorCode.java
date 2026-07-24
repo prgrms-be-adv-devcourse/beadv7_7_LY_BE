@@ -13,6 +13,7 @@ import site.common.exception.ErrorCode;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum ProductErrorCode implements ErrorCode {
 
+    SEARCH_KEYWORD_REQUIRED(HttpStatus.BAD_REQUEST, "PERR-4001", "검색어(q)는 필수입니다"),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PERR-4100", "상품을 찾을 수 없습니다"),
     ;
 

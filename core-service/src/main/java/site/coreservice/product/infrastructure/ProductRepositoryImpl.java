@@ -2,6 +2,7 @@ package site.coreservice.product.infrastructure;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductRepository;
 
@@ -23,6 +24,13 @@ public class ProductRepositoryImpl implements ProductRepository {
             String normalizedCatalogNumber, String format, String releaseCountry) {
         return productJpaRepository.findByNormalizedCatalogNumberAndFormatAndReleaseCountry(
                 normalizedCatalogNumber, format, releaseCountry);
+    }
+
+    @Override
+    public Optional<Product> findByFallbackNaturalKey(String normalizedTitle, Long artistId, int releaseYear,
+            String releaseCountry, String format, PressType pressType) {
+        return productJpaRepository.findByFallbackNaturalKey(normalizedTitle, artistId, releaseYear, releaseCountry,
+                format, pressType);
     }
 
     @Override
