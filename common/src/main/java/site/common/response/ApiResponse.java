@@ -14,7 +14,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(
             true,
             null,
-            null
+            Error.empty()
         );
     }
 
@@ -22,7 +22,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(
             true,
             data,
-            null
+            Error.empty()
         );
     }
 
@@ -44,5 +44,9 @@ public class ApiResponse<T> {
         this.error = error;
     }
 
-    record Error(String code, String message) {}
+    record Error(String code, String message) {
+        static Error empty() {
+            return new Error(null, null);
+        }
+    }
 }
