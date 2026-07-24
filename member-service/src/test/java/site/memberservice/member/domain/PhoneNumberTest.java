@@ -1,10 +1,11 @@
-package site.memberservice.domain;
+package site.memberservice.member.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import site.memberservice.exception.MemberException;
+import site.memberservice.member.exception.MemberException;
+import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.util.NullAndBlankSource;
 
 import static java.lang.String.format;

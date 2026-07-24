@@ -1,4 +1,4 @@
-package site.memberservice.domain;
+package site.memberservice.member.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
