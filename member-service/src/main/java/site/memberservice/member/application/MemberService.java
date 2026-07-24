@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.memberservice.global.crypto.hashing.Hasher;
+import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
@@ -14,6 +15,7 @@ import site.memberservice.member.exception.MemberException;
 
 import static java.lang.String.format;
 import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
+import static site.memberservice.member.exception.MemberErrorCode.MEMBER_NOT_FOUND;
 
 @RequiredArgsConstructor
 @Service
@@ -62,5 +64,12 @@ public class MemberService {
         if (memberRepository.existsByPhoneNumber(phoneNumber)) {
             throw new MemberException(INVALID_MEMBER_INFO, format("이미 존재하는 회원 전화번호입니다. input: %s", phoneNumber));
         }
+    }
+
+    public AddressDto getMemberAddress(final Long memberId) {
+        final Member member = memberRepository.findById(memberId)
+            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
+
+        return AddressDto.from(member.getAddress());
     }
 }

@@ -7,6 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
@@ -18,6 +19,7 @@ import site.memberservice.member.exception.MemberException;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Transactional
 @SpringBootTest
@@ -151,5 +153,49 @@ class MemberServiceTest {
         assertThatThrownBy(() -> memberService.register(request))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("이미 존재하는 회원 전화번호입니다. input: %s", new PhoneNumber(duplicatePhoneNumber)));
+    }
+
+    @DisplayName("회원의 주소 정보를 조회한다.")
+    @Test
+    void getMemberAddress() {
+        // Given
+        final Member savedMember = memberRepository.save(
+            Member.create(
+                new Email("test@email.com"),
+                "testerPw1234!",
+                "tester",
+                "tester",
+                new PhoneNumber("010-1234-5678"),
+                new Address(
+                    "06671",
+                    "서울특별시 서초구 반포대로 45",
+                    "4층(서초동, 명정빌딩)"
+                )
+            )
+        );
+
+        // When
+        final AddressDto result = memberService.getMemberAddress(savedMember.getId());
+
+        // Then
+        final Address savedMemberAddress = savedMember.getAddress();
+
+        assertSoftly(softly -> {
+            softly.assertThat(result.zipcode()).isEqualTo(savedMemberAddress.getZipcode());
+            softly.assertThat(result.baseAddress()).isEqualTo(savedMemberAddress.getBaseAddress());
+            softly.assertThat(result.detailAddress()).isEqualTo(savedMemberAddress.getDetailAddress());
+        });
+    }
+    
+    @DisplayName("회원의 주소 정보 조회에 존재하지 않는 회원 id를 입력하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenGetMemberAddressNotFoundMemberId() {
+        // Given
+        final Long notFoundMemberId = -99999L;
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.getMemberAddress(notFoundMemberId))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
     }
 }
