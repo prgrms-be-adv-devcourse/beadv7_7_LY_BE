@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.coreservice.global.event.AuctionWonEvent;
+import site.coreservice.order.domain.CancelReason;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
@@ -27,6 +28,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductPort productPort;
+    private final OrderEventPublisher orderEventPublisher;
 
     public void createOrder(AuctionWonEvent event) {
         if (orderRepository.existsByAuctionId(event.getAuctionId())) {
@@ -78,5 +80,16 @@ public class OrderService {
 
         LocalDateTime now = LocalDateTime.now();
         order.confirmOrder(deliveryInfo, now.plusDays(COMPLETION_PERIOD_DAYS), now);
+    }
+
+    public void cancelOrder(Long orderId, Long buyerId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
     }
 }

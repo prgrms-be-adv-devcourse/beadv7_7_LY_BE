@@ -15,6 +15,7 @@ public enum OrderErrorCode implements ErrorCode {
     ADDRESS_REQUIRED(HttpStatus.BAD_REQUEST, "OERR-2003", "배송지 정보는 필수입니다"),
     ORDER_NOT_PENDING(HttpStatus.CONFLICT, "OERR-2004", "PENDING 상태의 주문만 확정할 수 있습니다"),
     ORDER_DEADLINE_EXPIRED(HttpStatus.CONFLICT, "OERR-2005", "주문 확정 기한이 지났습니다"),
+    ORDER_NOT_CANCELLABLE(HttpStatus.CONFLICT, "OERR-2006", "취소할 수 없는 주문 상태입니다"),
     ;
 
     private final HttpStatus status;

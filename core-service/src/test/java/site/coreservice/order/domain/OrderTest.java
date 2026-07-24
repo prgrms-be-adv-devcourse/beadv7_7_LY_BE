@@ -167,11 +167,12 @@ class OrderTest {
             Order order = pendingOrder();
 
             // when
-            order.cancelOrder(CancelReason.BUYER_DECLINED);
+            LocalDateTime now = LocalDateTime.now();
+            order.cancelOrder(CancelReason.BUYER_DECLINED, now);
 
             // then
             assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
-            assertThat(order.getCancelledAt()).isNotNull();
+            assertThat(order.getCancelledAt()).isEqualTo(now);
             assertThat(order.getCancelReason()).isEqualTo(CancelReason.BUYER_DECLINED);
         }
 
@@ -182,7 +183,7 @@ class OrderTest {
             Order order = pendingOrder();
 
             // when
-            order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT);
+            order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT, LocalDateTime.now());
 
             // then
             assertThat(order.getCancelReason()).isEqualTo(CancelReason.CONFIRMATION_TIMEOUT);
@@ -196,8 +197,9 @@ class OrderTest {
             order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when & then
-            assertThatThrownBy(() -> order.cancelOrder(CancelReason.BUYER_DECLINED))
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("취소할 수 없는 주문 상태입니다");
         }
     }
 

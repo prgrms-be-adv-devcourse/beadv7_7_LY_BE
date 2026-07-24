@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.coreservice.global.event.AuctionWonEvent;
+import site.coreservice.order.domain.CancelReason;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
@@ -40,6 +41,9 @@ class OrderServiceTest {
 
     @Mock
     private ProductPort productInfoPort;
+
+    @Mock
+    private OrderEventPublisher orderEventPublisher;
 
     @InjectMocks
     private OrderService orderService;
@@ -165,6 +169,75 @@ class OrderServiceTest {
             // when & then
             assertThatThrownBy(() -> orderService.placeOrder(1L, 301L, null))
                     .isInstanceOf(OrderException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("cancelOrder")
+    class CancelOrder {
+
+        private Order pendingOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+        }
+
+        @Test
+        @DisplayName("본인 주문을 취소하면 CANCELLED로 바뀐다")
+        void cancelsOrderForOwningBuyer() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.cancelOrder(1L, 301L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+            assertThat(order.getCancelReason()).isEqualTo(CancelReason.BUYER_DECLINED);
+            verify(orderEventPublisher).publishCancelled(order);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        @DisplayName("주문의 구매자가 아니면 예외가 발생한다")
+        void throwsWhenNotOrderBuyer() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.cancelOrder(1L, 999L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        @DisplayName("PENDING 상태가 아니면 예외가 발생한다")
+        void throwsWhenOrderNotCancellable() {
+            // given
+            Order order = pendingOrder();
+            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCancelled(any());
         }
     }
 }
