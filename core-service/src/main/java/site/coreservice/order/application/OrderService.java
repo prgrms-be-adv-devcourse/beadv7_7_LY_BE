@@ -3,6 +3,7 @@ package site.coreservice.order.application;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -58,7 +59,11 @@ public class OrderService {
             itemSnapshot
         );
 
-        orderRepository.save(order);
+        try {
+            orderRepository.save(order);
+        } catch (DataIntegrityViolationException e) {
+            log.info("이미 주문이 생성된 낙찰 이벤트입니다(동시성). 중복 처리로 건너뜁니다. auctionId={}", event.getAuctionId());
+        }
     }
 
     public void placeOrder(final Long orderId, final Long buyerId, final DeliveryInfo deliveryInfo) {
