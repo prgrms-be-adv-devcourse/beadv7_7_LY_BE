@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 
 @Embeddable
@@ -27,6 +28,7 @@ public class DeliveryInfo {
     private String detailAddress;
 
     private DeliveryInfo(String recipientName, String phoneNumber, String baseAddress, String detailAddress) {
+        validate(recipientName, phoneNumber, baseAddress, detailAddress);
         this.recipientName = recipientName;
         this.phoneNumber = phoneNumber;
         this.baseAddress = baseAddress;
@@ -36,5 +38,21 @@ public class DeliveryInfo {
     public static DeliveryInfo of(String recipientName, String phoneNumber, String baseAddress,
             String detailAddress) {
         return new DeliveryInfo(recipientName, phoneNumber, baseAddress, detailAddress);
+    }
+
+    private static void validate(String recipientName, String phoneNumber, String baseAddress,
+            String detailAddress) {
+        if (!StringUtils.hasText(recipientName)) {
+            throw new IllegalArgumentException("recipientName은 필수입니다.");
+        }
+        if (!StringUtils.hasText(phoneNumber)) {
+            throw new IllegalArgumentException("phoneNumber는 필수입니다.");
+        }
+        if (!StringUtils.hasText(baseAddress)) {
+            throw new IllegalArgumentException("baseAddress는 필수입니다.");
+        }
+        if (!StringUtils.hasText(detailAddress)) {
+            throw new IllegalArgumentException("detailAddress는 필수입니다.");
+        }
     }
 }

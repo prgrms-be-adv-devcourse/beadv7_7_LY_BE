@@ -2,8 +2,6 @@ package site.coreservice.order.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -29,16 +27,15 @@ public class OrderItemSnapshot {
     @Column(name = "product_press_type")
     private String pressType;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "condition_grade", nullable = false, length = 20)
-    private ConditionGrade conditionGrade;
+    private String conditionGrade;
 
-    @Column(name = "representative_image_url", nullable = false, length = 500)
+    @Column(name = "representative_image_url", length = 500)
     private String representativeImageUrl;
 
     private OrderItemSnapshot(String albumTitle, String artistName, Integer releaseYear, String pressType,
-            ConditionGrade conditionGrade, String representativeImageUrl) {
-        validate(albumTitle, artistName, conditionGrade, representativeImageUrl);
+            String conditionGrade, String representativeImageUrl) {
+        validate(albumTitle, artistName, conditionGrade);
         this.albumTitle = albumTitle;
         this.artistName = artistName;
         this.releaseYear = releaseYear;
@@ -48,16 +45,14 @@ public class OrderItemSnapshot {
     }
 
     public static OrderItemSnapshot of(String albumTitle, String artistName, Integer releaseYear,
-            String pressType, ConditionGrade conditionGrade, String representativeImageUrl) {
+            String pressType, String conditionGrade, String representativeImageUrl) {
         return new OrderItemSnapshot(albumTitle, artistName, releaseYear, pressType, conditionGrade,
                 representativeImageUrl);
     }
 
-    private static void validate(String albumTitle, String artistName, ConditionGrade conditionGrade,
-            String representativeImageUrl) {
+    private static void validate(String albumTitle, String artistName, String conditionGrade) {
         Objects.requireNonNull(albumTitle, "albumTitle은 null일 수 없습니다.");
         Objects.requireNonNull(artistName, "artistName은 null일 수 없습니다.");
         Objects.requireNonNull(conditionGrade, "conditionGrade는 null일 수 없습니다.");
-        Objects.requireNonNull(representativeImageUrl, "representativeImageUrl은 null일 수 없습니다.");
     }
 }

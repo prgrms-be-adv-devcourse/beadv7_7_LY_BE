@@ -6,9 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import site.coreservice.auction.domain.AuctionWonEvent;
-import site.coreservice.order.domain.ConditionGrade;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
@@ -43,7 +41,7 @@ public class OrderService {
             productInfo.artistName(),
             productInfo.releaseYear(),
             productInfo.pressType(),
-            ConditionGrade.valueOf(event.getItemCondition()),
+            event.getItemCondition(),
             event.getFirstImageUrl()
         );
 
@@ -62,7 +60,7 @@ public class OrderService {
         try {
             orderRepository.save(order);
         } catch (DataIntegrityViolationException e) {
-            log.info("이미 주문이 생성된 낙찰 이벤트입니다(동시성). 중복 처리로 건너뜁니다. auctionId={}", event.getAuctionId());
+            log.warn("이미 주문이 생성된 낙찰 이벤트입니다(동시성). 중복 처리로 건너뜁니다. auctionId={}", event.getAuctionId());
         }
     }
 
@@ -74,7 +72,7 @@ public class OrderService {
             throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
         }
 
-        if (deliveryInfo == null || !StringUtils.hasText(deliveryInfo.getBaseAddress())) {
+        if (deliveryInfo == null) {
             throw new OrderException(OrderErrorCode.ADDRESS_REQUIRED);
         }
 

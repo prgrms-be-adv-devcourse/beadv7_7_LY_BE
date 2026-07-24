@@ -22,7 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.coreservice.auction.domain.AuctionWonEvent;
-import site.coreservice.order.domain.ConditionGrade;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
@@ -84,7 +83,7 @@ class OrderServiceTest {
             assertThat(savedOrder.getOrderDeadline()).isAfter(java.time.LocalDateTime.now().plusHours(23));
             assertThat(savedOrder.getItemSnapshot().getAlbumTitle()).isEqualTo("Abbey Road");
             assertThat(savedOrder.getItemSnapshot().getArtistName()).isEqualTo("비틀즈");
-            assertThat(savedOrder.getItemSnapshot().getConditionGrade()).isEqualTo(ConditionGrade.VERY_GOOD_PLUS);
+            assertThat(savedOrder.getItemSnapshot().getConditionGrade()).isEqualTo("VERY_GOOD_PLUS");
             assertThat(savedOrder.getItemSnapshot().getRepresentativeImageUrl())
                     .isEqualTo("https://cdn.example.com/listings/5001/photo1.jpg");
         }
@@ -113,7 +112,7 @@ class OrderServiceTest {
         private Order pendingOrder() {
             OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
                     "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
                     LocalDateTime.now().plusHours(24), itemSnapshot);
         }
@@ -157,15 +156,14 @@ class OrderServiceTest {
         }
 
         @Test
-        @DisplayName("배송지 주소가 없으면 예외가 발생한다")
-        void throwsWhenBaseAddressMissing() {
+        @DisplayName("배송지 정보가 없으면 예외가 발생한다")
+        void throwsWhenDeliveryInfoIsNull() {
             // given
             Order order = pendingOrder();
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
-            DeliveryInfo blankAddress = DeliveryInfo.of("홍길동", "010-1234-5678", null, null);
 
             // when & then
-            assertThatThrownBy(() -> orderService.placeOrder(1L, 301L, blankAddress))
+            assertThatThrownBy(() -> orderService.placeOrder(1L, 301L, null))
                     .isInstanceOf(OrderException.class);
         }
     }

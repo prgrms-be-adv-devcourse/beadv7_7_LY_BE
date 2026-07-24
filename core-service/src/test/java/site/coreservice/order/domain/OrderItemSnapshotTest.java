@@ -18,9 +18,9 @@ class OrderItemSnapshotTest {
         void sameValuesAreEqual() {
             // given
             OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
 
             // when & then
             assertThat(a).isEqualTo(b);
@@ -32,9 +32,9 @@ class OrderItemSnapshotTest {
         void differentValuesAreNotEqual() {
             // given
             OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    ConditionGrade.GOOD, "https://cdn.example.com/listings/5001/photo1.jpg");
+                    "GOOD", "https://cdn.example.com/listings/5001/photo1.jpg");
 
             // when & then
             assertThat(a).isNotEqualTo(b);
