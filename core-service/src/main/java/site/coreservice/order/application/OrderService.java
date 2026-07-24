@@ -13,10 +13,10 @@ import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.application.port.ProductInfo;
+import site.coreservice.order.application.port.ProductPort;
 import site.coreservice.order.exception.OrderErrorCode;
 import site.coreservice.order.exception.OrderException;
-import site.coreservice.product.application.ProductService;
-import site.coreservice.product.application.dto.ProductSnapshotResult;
 
 @Slf4j
 @Service
@@ -28,28 +28,28 @@ public class OrderService {
     private static final long COMPLETION_PERIOD_DAYS = 7L;
 
     private final OrderRepository orderRepository;
-    private final ProductService productService;
+    private final ProductPort productPort;
 
-    public void createOrder(final AuctionWonEvent event) {
+    public void createOrder(AuctionWonEvent event) {
         if (orderRepository.existsByAuctionId(event.getAuctionId())) {
             log.info("이미 주문이 생성된 낙찰 이벤트입니다. 중복 처리로 건너뜁니다. auctionId={}", event.getAuctionId());
             return;
         }
 
-        final ProductSnapshotResult productSnapshot = productService.getProductSnapshot(event.getProductId());
+        ProductInfo productInfo = productPort.getProductInfo(event.getProductId());
 
-        final OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-            productSnapshot.title(),
-            productSnapshot.artistName(),
-            productSnapshot.releaseYear(),
-            productSnapshot.pressType().name(),
+        OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+            productInfo.title(),
+            productInfo.artistName(),
+            productInfo.releaseYear(),
+            productInfo.pressType(),
             ConditionGrade.valueOf(event.getItemCondition()),
             event.getFirstImageUrl()
         );
 
-        final LocalDateTime orderDeadline = LocalDateTime.now().plusHours(ORDER_CONFIRMATION_HOURS);
+        LocalDateTime orderDeadline = LocalDateTime.now().plusHours(ORDER_CONFIRMATION_HOURS);
 
-        final Order order = Order.of(
+        Order order = Order.of(
             event.getAuctionId(),
             event.getProductId(),
             event.getWinnerId(),
@@ -66,8 +66,8 @@ public class OrderService {
         }
     }
 
-    public void placeOrder(final Long orderId, final Long buyerId, final DeliveryInfo deliveryInfo) {
-        final Order order = orderRepository.findById(orderId)
+    public void placeOrder(Long orderId, Long buyerId, DeliveryInfo deliveryInfo) {
+        Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
 
         if (!order.getBuyerId().equals(buyerId)) {
@@ -78,7 +78,7 @@ public class OrderService {
             throw new OrderException(OrderErrorCode.ADDRESS_REQUIRED);
         }
 
-        final LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         order.confirmOrder(deliveryInfo, now.plusDays(COMPLETION_PERIOD_DAYS), now);
     }
 }

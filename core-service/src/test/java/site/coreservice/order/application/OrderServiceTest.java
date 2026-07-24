@@ -28,10 +28,9 @@ import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
 import site.coreservice.order.domain.OrderStatus;
+import site.coreservice.order.application.port.ProductInfo;
+import site.coreservice.order.application.port.ProductPort;
 import site.coreservice.order.exception.OrderException;
-import site.coreservice.product.application.ProductService;
-import site.coreservice.product.application.dto.ProductSnapshotResult;
-import site.coreservice.product.domain.PressType;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderService")
@@ -41,7 +40,7 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private ProductService productService;
+    private ProductPort productInfoPort;
 
     @InjectMocks
     private OrderService orderService;
@@ -50,7 +49,7 @@ class OrderServiceTest {
     private ArgumentCaptor<Order> orderCaptor;
 
     private AuctionWonEvent auctionWonEvent;
-    private ProductSnapshotResult productSnapshot;
+    private ProductInfo productInfo;
 
     @BeforeEach
     void setUp() {
@@ -58,9 +57,7 @@ class OrderServiceTest {
                 5001L, 1201L, 301L, 302L, "VERY_GOOD_PLUS",
                 "https://cdn.example.com/listings/5001/photo1.jpg", BigDecimal.valueOf(85_000));
 
-        productSnapshot = new ProductSnapshotResult(
-                1201L, "Abbey Road", "비틀즈", "https://cdn.example.com/cover.jpg",
-                "Rock", PressType.ORIGINAL, 1969, true, null);
+        productInfo = new ProductInfo("Abbey Road", "비틀즈", 1969, "ORIGINAL");
     }
 
     @Nested
@@ -71,7 +68,7 @@ class OrderServiceTest {
         @DisplayName("낙찰 이벤트와 상품 스냅샷을 합성해 PENDING 주문을 생성한다")
         void createsPendingOrderFromEventAndProductSnapshot() {
             // given
-            given(productService.getProductSnapshot(1201L)).willReturn(productSnapshot);
+            given(productInfoPort.getProductInfo(1201L)).willReturn(productInfo);
             given(orderRepository.save(orderCaptor.capture())).willAnswer(invocation -> invocation.getArgument(0));
 
             // when
@@ -102,7 +99,7 @@ class OrderServiceTest {
             orderService.createOrder(auctionWonEvent);
 
             // then
-            verify(productService, never()).getProductSnapshot(anyLong());
+            verify(productInfoPort, never()).getProductInfo(anyLong());
             verify(orderRepository, never()).save(any());
         }
     }
