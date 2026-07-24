@@ -14,6 +14,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.coreservice.order.exception.OrderErrorCode;
+import site.coreservice.order.exception.OrderException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -105,13 +107,13 @@ public class Order extends BaseEntity {
 
     public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline, LocalDateTime now) {
         if (status != OrderStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태에서만 주문할 수 있습니다. 현재 상태: " + status);
+            throw new OrderException(OrderErrorCode.ORDER_NOT_PENDING);
         }
         if (deliveryInfo == null) {
             throw new IllegalArgumentException("배송지 정보는 필수입니다.");
         }
         if (now.isAfter(orderDeadline)) {
-            throw new IllegalStateException("주문 확정 기한이 지났습니다.");
+            throw new OrderException(OrderErrorCode.ORDER_DEADLINE_EXPIRED);
         }
         this.status = OrderStatus.ORDERED;
         this.orderedAt = now;
