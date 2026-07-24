@@ -4,7 +4,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import site.memberservice.exception.MemberException;
+import site.memberservice.member.exception.MemberException;
+import site.memberservice.member.domain.Address;
+import site.memberservice.member.domain.Email;
+import site.memberservice.member.domain.Member;
+import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.util.NullAndBlankSource;
 
 import static java.lang.String.format;
@@ -18,7 +22,7 @@ class MemberTest {
     void createMember() {
         // Given
         final Email email = new Email("test@email.com");
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
@@ -43,7 +47,7 @@ class MemberTest {
     void throwExceptionWhenInputEmailNull() {
         // Given
         final Email email = null;
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
@@ -92,7 +96,7 @@ class MemberTest {
     void throwExceptionWhenInputNicknameNullOrEmpty(final String nickname) {
         // Given
         final Email email = new Email("test@email.com");
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
@@ -116,7 +120,7 @@ class MemberTest {
     void throwExceptionWhenInputInvalidLengthNickname(final String nickname) {
         // Given
         final Email email = new Email("test@email.com");
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
@@ -141,7 +145,7 @@ class MemberTest {
         // Given
         final Email email = new Email("test@email.com");
         final String nickname = "tester";
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
@@ -163,7 +167,7 @@ class MemberTest {
     void throwExceptionWhenInputPhoneNumberNull() {
         // Given
         final Email email = new Email("test@email.com");
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
         final PhoneNumber phoneNumber = null;
@@ -187,7 +191,7 @@ class MemberTest {
     void throwExceptionWhenInputAddressNull() {
         // Given
         final Email email = new Email("test@email.com");
-        final String password = "testPw1234";
+        final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
