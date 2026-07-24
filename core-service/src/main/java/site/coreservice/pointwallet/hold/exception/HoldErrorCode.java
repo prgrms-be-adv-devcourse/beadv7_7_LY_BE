@@ -10,9 +10,9 @@ import site.common.exception.ErrorCode;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum HoldErrorCode implements ErrorCode {
 
-    WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "HOLD-0001", "지갑을 찾을 수 없습니다."),
-    INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_ENTITY, "HOLD-0002", "예치금이 부족합니다."),
-    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "HOLD-0003", "요청 값이 올바르지 않습니다."),
+    WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "HOLD-3001", "지갑을 찾을 수 없습니다."),
+    INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_CONTENT, "HOLD-3002", "예치금이 부족합니다."),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "HOLD-3003", "요청 값이 올바르지 않습니다."),
     ;
 
     private final HttpStatus status;

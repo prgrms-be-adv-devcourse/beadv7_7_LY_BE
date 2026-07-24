@@ -26,7 +26,7 @@ import site.coreservice.pointwallet.shared.Money;
 @Entity
 @Table(
         name = "deposit",
-        uniqueConstraints = @UniqueConstraint(name = "ukDepositOrderId", columnNames = "order_id")
+        uniqueConstraints = @UniqueConstraint(name = "uk_deposit_orderId", columnNames = "order_id")
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
