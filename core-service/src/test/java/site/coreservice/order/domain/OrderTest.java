@@ -14,7 +14,7 @@ class OrderTest {
 
     private static OrderItemSnapshot defaultItemSnapshot() {
         return OrderItemSnapshot.of(
-                "Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
+                "Abbey Road", "비틀즈", 1969, "ORIGINAL",
                 ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
     }
 
