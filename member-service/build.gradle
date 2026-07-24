@@ -15,4 +15,10 @@ dependencies {
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+
+    // Spring Security Crypto
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    // BouncyCastle
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.84'
 }
