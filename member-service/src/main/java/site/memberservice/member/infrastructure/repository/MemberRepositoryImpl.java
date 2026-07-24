@@ -6,6 +6,8 @@ import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.repository.MemberRepository;
 
+import java.util.Optional;
+
 @RequiredArgsConstructor
 @Repository
 public class MemberRepositoryImpl implements MemberRepository {
@@ -15,6 +17,11 @@ public class MemberRepositoryImpl implements MemberRepository {
     @Override
     public Member save(final Member member) {
         return memberJpaRepository.save(member);
+    }
+
+    @Override
+    public Optional<Member> findById(final Long memberId) {
+        return memberJpaRepository.findById(memberId);
     }
 
     @Override
