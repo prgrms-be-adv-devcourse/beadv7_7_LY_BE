@@ -15,7 +15,8 @@ import site.coreservice.auction.domain.ItemInfo;
 import site.coreservice.auction.domain.Money;
 import site.coreservice.auction.domain.Period;
 import site.coreservice.auction.domain.Pricing;
-import site.coreservice.auction.exception.AuctionSearchViewNotFoundException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 import site.coreservice.support.RepositoryTest;
 
 import java.time.LocalDateTime;
@@ -98,6 +99,8 @@ class AuctionSearchRepositoryImplTest {
 
         // when & then
         assertThatThrownBy(() -> auctionSearchViewRepository.updateStatus(auction))
-                .isInstanceOf(AuctionSearchViewNotFoundException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND);
     }
 }

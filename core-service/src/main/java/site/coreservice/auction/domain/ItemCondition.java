@@ -2,7 +2,7 @@ package site.coreservice.auction.domain;
 
 import lombok.Getter;
 import site.coreservice.auction.exception.AuctionErrorCode;
-import site.coreservice.auction.exception.InvalidValueException;
+import site.coreservice.auction.exception.AuctionException;
 
 @Getter
 public enum ItemCondition {
@@ -23,7 +23,7 @@ public enum ItemCondition {
         try {
             return ItemCondition.valueOf(value);
         } catch (IllegalArgumentException e) {
-            throw new InvalidValueException(AuctionErrorCode.ITEM_CONDITION_INVALID);
+            throw new AuctionException(AuctionErrorCode.ITEM_CONDITION_INVALID);
         }
     }
 }

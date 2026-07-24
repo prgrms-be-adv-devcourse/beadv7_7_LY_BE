@@ -23,10 +23,8 @@ import site.coreservice.auction.domain.Money;
 import site.coreservice.auction.domain.Period;
 import site.coreservice.auction.domain.Pricing;
 import site.coreservice.auction.domain.AuctionSchedule;
-import site.coreservice.auction.exception.AuctionAccessDeniedException;
-import site.coreservice.auction.exception.AuctionNotEditableException;
-import site.coreservice.auction.exception.AuctionNotFoundException;
-import site.coreservice.auction.exception.InvalidValueException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -137,7 +135,10 @@ class AuctionServiceTest {
         given(productPort.getProduct(100L)).willReturn(productSnapshot);
 
         // when & then
-        assertThatThrownBy(() -> auctionService.createAuction(validCommand("NOT_A_CONDITION"), 1L)).isInstanceOf(InvalidValueException.class);
+        assertThatThrownBy(() -> auctionService.createAuction(validCommand("NOT_A_CONDITION"), 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ITEM_CONDITION_INVALID);
         verify(auctionRepository, never()).save(any());
         verify(searchViewRepository, never()).save(any(), any(), any());
     }
@@ -181,7 +182,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         verify(searchViewRepository, never()).updateFromAuction(any(), any());
     }
 
@@ -193,7 +196,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
-                .isInstanceOf(AuctionNotFoundException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
     }
 
     @Test
@@ -205,7 +210,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 2L))
-                .isInstanceOf(AuctionAccessDeniedException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_ACCESS_DENIED);
         verify(searchViewRepository, never()).updateFromAuction(any(), any());
     }
 
@@ -248,7 +255,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
-                .isInstanceOf(AuctionNotFoundException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
         verify(searchViewRepository, never()).deleteById(any());
     }
 
@@ -261,7 +270,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 2L))
-                .isInstanceOf(AuctionAccessDeniedException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_ACCESS_DENIED);
         verify(searchViewRepository, never()).deleteById(any());
     }
 
@@ -274,7 +285,9 @@ class AuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         verify(searchViewRepository, never()).deleteById(any());
     }
 }

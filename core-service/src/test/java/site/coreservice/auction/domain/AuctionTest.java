@@ -2,8 +2,8 @@ package site.coreservice.auction.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.auction.exception.AuctionAccessDeniedException;
-import site.coreservice.auction.exception.AuctionNotEditableException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 import java.time.LocalDateTime;
 
@@ -102,7 +102,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.modify(2L, 200L, itemInfo, pricing, schedule, beforeStart))
-                .isInstanceOf(AuctionAccessDeniedException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_ACCESS_DENIED);
     }
 
     @Test
@@ -139,7 +141,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, schedule, afterStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -150,7 +154,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, schedule, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -162,9 +168,13 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> wonAuction.modify(1L, 200L, itemInfo, pricing, schedule, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         assertThatThrownBy(() -> failedAuction.modify(1L, 200L, itemInfo, pricing, schedule, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -188,7 +198,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.cancel(2L, beforeStart))
-                .isInstanceOf(AuctionAccessDeniedException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_ACCESS_DENIED);
     }
 
     @Test
@@ -212,7 +224,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.cancel(1L, afterStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -223,7 +237,9 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> auction.cancel(1L, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -235,8 +251,12 @@ class AuctionTest {
 
         // when & then
         assertThatThrownBy(() -> wonAuction.cancel(1L, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         assertThatThrownBy(() -> failedAuction.cancel(1L, beforeStart))
-                .isInstanceOf(AuctionNotEditableException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 }

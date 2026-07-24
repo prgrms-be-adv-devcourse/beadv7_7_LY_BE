@@ -2,7 +2,8 @@ package site.coreservice.auction.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.auction.exception.InvalidValueException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -20,9 +21,12 @@ class ItemConditionTest {
     }
 
     @Test
-    @DisplayName("유효하지 않은 값이면 InvalidValueException을 던진다")
+    @DisplayName("유효하지 않은 값이면 AuctionException을 던진다")
     void testFrom_invalidValue_throws() {
         // when & then
-        assertThatThrownBy(() -> ItemCondition.from("NOT_A_CONDITION")).isInstanceOf(InvalidValueException.class);
+        assertThatThrownBy(() -> ItemCondition.from("NOT_A_CONDITION"))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ITEM_CONDITION_INVALID);
     }
 }

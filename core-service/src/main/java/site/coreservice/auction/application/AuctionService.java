@@ -11,7 +11,8 @@ import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.*;
-import site.coreservice.auction.exception.AuctionNotFoundException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 import java.time.LocalDateTime;
 
@@ -41,7 +42,7 @@ public class AuctionService {
 
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
-        Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(AuctionNotFoundException::new);
+        Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
         auction.modify(sellerId, command.productId(),
@@ -58,7 +59,7 @@ public class AuctionService {
 
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
-        Auction auction = auctionRepository.findById(auctionId).orElseThrow(AuctionNotFoundException::new);
+        Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
     }

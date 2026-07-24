@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import site.common.entity.BaseEntity;
-import site.coreservice.auction.exception.AuctionAccessDeniedException;
-import site.coreservice.auction.exception.AuctionNotEditableException;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -94,13 +94,13 @@ public class Auction extends BaseEntity {
             default -> false;
         };
         if (!editable) {
-            throw new AuctionNotEditableException();
+            throw new AuctionException(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         }
     }
 
     private void validateOwnership(Long sellerId) {
         if (!this.sellerId.equals(sellerId)) {
-            throw new AuctionAccessDeniedException();
+            throw new AuctionException(AuctionErrorCode.AUCTION_ACCESS_DENIED);
         }
     }
 
