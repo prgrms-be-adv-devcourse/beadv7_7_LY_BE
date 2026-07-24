@@ -1,4 +1,4 @@
-package site.memberservice.exception;
+package site.memberservice.member.exception;
 
 import lombok.AccessLevel;
 import lombok.Getter;

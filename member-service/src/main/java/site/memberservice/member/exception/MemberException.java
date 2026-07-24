@@ -1,4 +1,4 @@
-package site.memberservice.exception;
+package site.memberservice.member.exception;
 
 import site.common.exception.BusinessException;
 import site.common.exception.ErrorCode;

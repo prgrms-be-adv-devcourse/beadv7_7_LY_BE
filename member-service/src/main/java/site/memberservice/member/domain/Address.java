@@ -1,4 +1,4 @@
-package site.memberservice.domain;
+package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -6,12 +6,12 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import site.memberservice.exception.MemberException;
+import site.memberservice.member.exception.MemberException;
 
 import java.util.Objects;
 
 import static java.lang.String.format;
-import static site.memberservice.exception.MemberErrorCode.INVALID_MEMBER_INFO;
+import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
 
 @Getter
 @ToString
