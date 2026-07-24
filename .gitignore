@@ -209,5 +209,6 @@ gradle-app.setting
 # 개인 문서·AI 도구 산출물
 /docs
 .claude/
+CLAUDE.md
 
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all

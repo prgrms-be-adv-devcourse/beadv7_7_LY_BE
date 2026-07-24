@@ -1,0 +1,25 @@
+package site.coreservice.order.infrastructure;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+import site.coreservice.order.domain.Order;
+import site.coreservice.order.domain.OrderRepository;
+
+import java.util.Optional;
+
+@Repository
+@RequiredArgsConstructor
+public class OrderRepositoryImpl implements OrderRepository {
+
+    private final OrderJpaRepository orderJpaRepository;
+
+    @Override
+    public Order save(Order order) {
+        return orderJpaRepository.save(order);
+    }
+
+    @Override
+    public Optional<Order> findById(Long id) {
+        return orderJpaRepository.findById(id);
+    }
+}
