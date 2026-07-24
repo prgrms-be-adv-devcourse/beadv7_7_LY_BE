@@ -10,7 +10,8 @@ import site.common.response.ApiResponse;
 import site.coreservice.auction.application.AuctionService;
 import site.coreservice.auction.application.dto.AuctionResult;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
-import site.coreservice.auction.presentation.dto.AuctionCreateRequest;
+import site.coreservice.auction.application.dto.ModifyAuctionCommand;
+import site.coreservice.auction.presentation.dto.AuctionRequest;
 import site.coreservice.auction.presentation.dto.AuctionResultResponse;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AuctionControllerTest {
@@ -35,7 +37,7 @@ class AuctionControllerTest {
     @DisplayName("경매 생성 요청을 커맨드로 변환해 서비스에 위임하고 결과를 감싸 반환한다")
     void testCreateAuction_delegatesToServiceAndWrapsResult() {
         // given
-        AuctionCreateRequest request = new AuctionCreateRequest(
+        AuctionRequest request = new AuctionRequest(
                 100L,
                 "MINT",
                 "충분히 긴 상품 설명입니다.",
@@ -57,5 +59,44 @@ class AuctionControllerTest {
         assertThat(response.isSuccess()).isTrue();
         assertThat(response.getData().auctionId()).isEqualTo(1L);
         assertThat(response.getData().status()).isEqualTo("SCHEDULED");
+    }
+
+    @Test
+    @DisplayName("경매 수정 요청을 커맨드로 변환해 서비스에 위임하고 결과를 감싸 반환한다")
+    void testModifyAuction_delegatesToServiceAndWrapsResult() {
+        // given
+        AuctionRequest request = new AuctionRequest(
+                100L,
+                "MINT",
+                "충분히 긴 상품 설명입니다.",
+                List.of("1.png"),
+                BigDecimal.valueOf(10_000),
+                BigDecimal.valueOf(3_000),
+                BigDecimal.valueOf(500),
+                LocalDateTime.of(2026, 7, 1, 0, 0),
+                LocalDateTime.of(2026, 7, 2, 0, 0),
+                true,
+                5
+        );
+        given(auctionService.modifyAuction(any(ModifyAuctionCommand.class), eq(1L))).willReturn(new AuctionResult(1L, "SCHEDULED"));
+
+        // when
+        ApiResponse<AuctionResultResponse> response = auctionController.modifyAuction(request, 1L);
+
+        // then
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getData().auctionId()).isEqualTo(1L);
+        assertThat(response.getData().status()).isEqualTo("SCHEDULED");
+    }
+
+    @Test
+    @DisplayName("경매 삭제 요청을 서비스에 위임한다")
+    void testDeleteAuction_delegatesToService() {
+        // when
+        ApiResponse<Void> response = auctionController.deleteAuction(1L);
+
+        // then
+        assertThat(response.isSuccess()).isTrue();
+        verify(auctionService).deleteAuction(1L, 1L);
     }
 }
