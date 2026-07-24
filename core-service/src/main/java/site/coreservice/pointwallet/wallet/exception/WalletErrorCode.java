@@ -11,6 +11,7 @@ import site.common.exception.ErrorCode;
 public enum WalletErrorCode implements ErrorCode {
 
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "WALLET-3001", "잔액이 부족합니다."),
+    WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "WALLET-3002", "지갑을 찾을 수 없습니다."),
     ;
 
     private final HttpStatus status;
