@@ -10,6 +10,7 @@ import site.common.event.Event;
  */
 @Getter
 public class TradeConfirmedEvent extends Event {
+
     private final Long auctionId;
     private final LocalDateTime confirmedAt;
 

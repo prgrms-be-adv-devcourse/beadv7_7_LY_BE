@@ -6,6 +6,7 @@ package site.coreservice.product.domain;
  * 표기는 풀네임 대문자 고정 (M/NM 같은 축약은 화면 표시에서만).
  */
 public enum MediaCondition {
+
     MINT, NEAR_MINT, VERY_GOOD_PLUS, VERY_GOOD, GOOD, POOR;
 
     public static MediaCondition from(String value) {
