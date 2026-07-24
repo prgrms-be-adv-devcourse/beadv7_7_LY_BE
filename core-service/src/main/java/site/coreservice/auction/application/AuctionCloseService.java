@@ -27,6 +27,9 @@ public class AuctionCloseService {
         } else {
             closeWithoutWinner(auction);
         }
+
+        //TODO AuctionSearchView 반영 #18
+
         return auction;
     }
 
