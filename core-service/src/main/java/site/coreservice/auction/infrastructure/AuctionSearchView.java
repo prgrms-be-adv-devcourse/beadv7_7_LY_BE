@@ -120,6 +120,10 @@ public class AuctionSearchView {
         );
     }
 
+    public void updateStatus(AuctionStatus status) {
+        this.status = status;
+    }
+
     public void updateFromAuction(Auction auction, ProductSnapshot product) {
         // 경매 자신의 필드는 항상 갱신
         this.itemCondition = auction.getItemInfo().getCondition();

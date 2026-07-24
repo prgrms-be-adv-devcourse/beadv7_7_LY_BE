@@ -25,6 +25,12 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     }
 
     @Override
+    public void updateStatus(Auction auction) {
+        AuctionSearchView view = searchViewJpaRepository.findById(auction.getId()).orElseThrow(AuctionSearchViewNotFoundException::new);
+        view.updateStatus(auction.getStatus());
+    }
+
+    @Override
     public void deleteById(Long auctionId) {
         searchViewJpaRepository.deleteById(auctionId);
     }

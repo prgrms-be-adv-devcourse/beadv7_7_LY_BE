@@ -9,5 +9,7 @@ public interface AuctionSearchViewRepository {
 
     void updateFromAuction(Auction auction, ProductSnapshot product);
 
+    void updateStatus(Auction auction);
+
     void deleteById(Long auctionId);
 }
