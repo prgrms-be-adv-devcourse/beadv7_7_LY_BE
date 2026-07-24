@@ -37,6 +37,7 @@ class PriceHistoryTest {
     @Test
     @DisplayName("낙찰가는 0이나 음수를 거부하고 1원은 허용한다")
     void of_낙찰가_경계_검증() {
+        // given-when-then
         assertThatThrownBy(() -> PriceHistory.of(closedAuction(0L, 7), CONFIRMED_AT))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> PriceHistory.of(closedAuction(-1000L, 7), CONFIRMED_AT))
@@ -47,6 +48,7 @@ class PriceHistoryTest {
     @Test
     @DisplayName("입찰 수는 음수만 거부하고 0은 허용한다")
     void of_입찰수_경계_검증() {
+        // given-when-then
         assertThatThrownBy(() -> PriceHistory.of(closedAuction(72000L, -1), CONFIRMED_AT))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(PriceHistory.of(closedAuction(72000L, 0), CONFIRMED_AT).getBidCount()).isZero();
@@ -55,6 +57,7 @@ class PriceHistoryTest {
     @Test
     @DisplayName("확정시각이 null이면 예외를 던진다")
     void of_확정시각_null_예외() {
+        // given-when-then
         assertThatThrownBy(() -> PriceHistory.of(closedAuction(72000L, 7), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }

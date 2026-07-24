@@ -23,6 +23,7 @@ class MediaConditionTest {
     @Test
     @DisplayName("null·미지 문자열·소문자·구 축약 표기는 예외를 던진다")
     void from_잘못된_입력은_예외() {
+        // given-when-then
         assertThatThrownBy(() -> MediaCondition.from(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MediaCondition.from("SEALED")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MediaCondition.from("mint")).isInstanceOf(IllegalArgumentException.class);
