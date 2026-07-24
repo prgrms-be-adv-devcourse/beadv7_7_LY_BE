@@ -16,6 +16,7 @@ public enum DepositErrorCode implements ErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "DERR-3005", "요청 값이 올바르지 않습니다."),
     CANCEL_INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_CONTENT, "DERR-3006", "이미 사용된 예치금이 있어 취소할 수 없습니다."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "DERR-3007", "지갑을 찾을 수 없습니다."),
+    PG_API_ERROR(HttpStatus.BAD_GATEWAY, "DERR-3008", "결제 대행사 처리 중 오류가 발생했습니다."),
     ;
 
     private final HttpStatus status;

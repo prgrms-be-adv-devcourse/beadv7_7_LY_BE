@@ -20,7 +20,7 @@ import site.coreservice.pointwallet.shared.Money;
  * 클라이언트는 매번 동일한 요청 형태({auctionId, memberId, amount})만 보내면 된다.
  */
 @RestController
-@RequestMapping("/internal/wallet")
+@RequestMapping("/internal/v1/wallet")
 @RequiredArgsConstructor
 public class HoldController {
 
