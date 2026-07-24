@@ -6,6 +6,7 @@ import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -36,5 +37,10 @@ public class ProductRepositoryImpl implements ProductRepository {
     @Override
     public Optional<Product> findById(Long id) {
         return productJpaRepository.findById(id);
+    }
+
+    @Override
+    public List<Long> findAllActiveIds() {
+        return productJpaRepository.findAllActiveIds();
     }
 }
