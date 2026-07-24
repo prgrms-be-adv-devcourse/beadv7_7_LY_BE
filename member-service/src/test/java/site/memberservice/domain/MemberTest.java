@@ -3,16 +3,21 @@ package site.memberservice.domain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import site.memberservice.member.exception.MemberException;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.PhoneNumber;
+import site.memberservice.member.exception.MemberException;
 import site.memberservice.util.NullAndBlankSource;
 
+import java.util.stream.Stream;
+
 import static java.lang.String.format;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Member Entity")
 class MemberTest {
@@ -208,5 +213,28 @@ class MemberTest {
         ))
             .isInstanceOf(MemberException.class)
             .hasMessage("회원 주소는 null일 수 없습니다.");
+    }
+
+    @DisplayName("회원 비밀번호 조건 충족 여부를 반환한다.")
+    @MethodSource("isValidPasswordTestInputAndExpect")
+    @ParameterizedTest
+    void isValidPassword(final String input, final boolean expect) {
+        // When
+        final boolean isValid = Member.isValidPassword(input);
+
+        // Then
+        assertThat(isValid).isEqualTo(expect);
+    }
+
+    private static Stream<Arguments> isValidPasswordTestInputAndExpect() {
+        return Stream.of(
+            // [1] 실패 케이스: 조건 미충족 (input, expected)
+            Arguments.of("testerPw1234!", true),            // 1. 유효한 비밀번호 (정상 케이스)
+            Arguments.of("P@ss1", false),                   // 2. 8자 미만 (5자)
+            Arguments.of("Password123456789!@#$", false),   // 3. 16자 초과 (20자)
+            Arguments.of("Password!!", false),              // 4. 숫자 누락
+            Arguments.of("Password123", false),             // 5. 특수문자 누락
+            Arguments.of("12345678!@#$", false)             // 6. 영문자 누락
+        );
     }
 }

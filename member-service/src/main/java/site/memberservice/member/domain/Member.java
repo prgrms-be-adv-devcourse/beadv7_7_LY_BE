@@ -1,4 +1,4 @@
-package site.memberservice.domain;
+package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -12,10 +12,13 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import site.memberservice.exception.MemberException;
+import site.common.entity.BaseEntity;
+import site.memberservice.member.exception.MemberException;
+
+import java.util.regex.Pattern;
 
 import static java.lang.String.format;
-import static site.memberservice.exception.MemberErrorCode.INVALID_MEMBER_INFO;
+import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
 
 @Getter
 @ToString
@@ -34,7 +37,10 @@ import static site.memberservice.exception.MemberErrorCode.INVALID_MEMBER_INFO;
     }
 )
 @Entity
-public class Member {
+public class Member extends BaseEntity {
+
+    private static final Pattern PASSWORD_PATTERN =
+        Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,16}$");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -81,6 +87,10 @@ public class Member {
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.address = address;
+    }
+
+    public static boolean isValidPassword(final String password) {
+        return PASSWORD_PATTERN.matcher(password).matches();
     }
 
     public static Member create(
