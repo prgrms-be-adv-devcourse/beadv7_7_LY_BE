@@ -25,4 +25,10 @@ public class AuctionController {
         return ApiResponse.success(AuctionResultResponse.from(auctionService.modifyAuction(auctionRequest.toModifyCommand(auctionId), TEMP_MEMBER_ID)));
     }
 
+    @DeleteMapping("/{auctionId}")
+    public ApiResponse<Void> deleteAuction(@PathVariable Long auctionId) {
+        auctionService.deleteAuction(auctionId, TEMP_MEMBER_ID);
+        return ApiResponse.success();
+    }
+
 }

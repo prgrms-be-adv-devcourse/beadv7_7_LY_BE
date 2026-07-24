@@ -42,19 +42,24 @@ public class AuctionService {
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
         Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(AuctionNotFoundException::new);
-        auction.requireOwnedBy(sellerId);
+        boolean productChanged = !auction.getProductId().equals(command.productId());
 
-        ProductSnapshot product = auction.getProductId().equals(command.productId())
-                ? null
-                : productPort.getProduct(command.productId());
-
-        auction.modify(command.productId(),
+        auction.modify(sellerId, command.productId(),
                 ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(), command.itemImages()),
                 Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()), Money.from(command.shippingFee())),
                 AuctionSchedule.of(Period.of(command.startAt(), command.endAt()), command.extensionEnabled(), command.extensionTime()),
                 LocalDateTime.now()
         );
+
+        ProductSnapshot product = productChanged ? productPort.getProduct(command.productId()) : null;
         searchViewRepository.updateFromAuction(auction, product);
         return AuctionResult.from(auction);
+    }
+
+    @Transactional
+    public void deleteAuction(Long auctionId, Long sellerId) {
+        Auction auction = auctionRepository.findById(auctionId).orElseThrow(AuctionNotFoundException::new);
+        auction.cancel(sellerId, LocalDateTime.now());
+        searchViewRepository.deleteById(auctionId);
     }
 }

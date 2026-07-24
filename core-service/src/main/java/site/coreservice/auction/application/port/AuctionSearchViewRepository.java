@@ -8,4 +8,6 @@ public interface AuctionSearchViewRepository {
     void save(Auction auction, ProductSnapshot product, String sellerNickname);
 
     void updateFromAuction(Auction auction, ProductSnapshot product);
+
+    void deleteById(Long auctionId);
 }

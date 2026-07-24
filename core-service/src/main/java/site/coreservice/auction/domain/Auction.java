@@ -64,13 +64,20 @@ public class Auction extends BaseEntity {
         return new Auction(sellerId, productId, itemInfo, pricing, schedule, AuctionStatus.SCHEDULED, null);
     }
 
-    public void modify(Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, LocalDateTime now) {
-        requireEditable(now);
+    public void modify(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, LocalDateTime now) {
+        validateOwnership(sellerId);
+        validateEditable(now);
         validateContent(productId, itemInfo, pricing, schedule);
         this.productId = productId;
         this.itemInfo = itemInfo;
         this.pricing = pricing;
         this.schedule = schedule;
+    }
+
+    public void cancel(Long sellerId, LocalDateTime now) {
+        validateOwnership(sellerId);
+        validateEditable(now);
+        this.status = AuctionStatus.CANCELED;
     }
 
     private static void validateContent(Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule) {
@@ -80,7 +87,7 @@ public class Auction extends BaseEntity {
         Objects.requireNonNull(schedule, "경매 일정은 null일 수 없습니다.");
     }
 
-    private void requireEditable(LocalDateTime now) {
+    private void validateEditable(LocalDateTime now) {
         boolean editable = switch (this.status) {
             case SCHEDULED -> true;
             case RUNNING -> !this.schedule.getPeriod().isStarted(now);
@@ -91,8 +98,8 @@ public class Auction extends BaseEntity {
         }
     }
 
-    public void requireOwnedBy(Long sellerId)  {
-        if(!this.sellerId.equals(sellerId)) {
+    private void validateOwnership(Long sellerId) {
+        if (!this.sellerId.equals(sellerId)) {
             throw new AuctionAccessDeniedException();
         }
     }

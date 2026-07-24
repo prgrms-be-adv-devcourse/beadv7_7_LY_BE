@@ -24,4 +24,9 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         view.updateFromAuction(auction, product);
     }
 
+    @Override
+    public void deleteById(Long auctionId) {
+        searchViewJpaRepository.deleteById(auctionId);
+    }
+
 }
