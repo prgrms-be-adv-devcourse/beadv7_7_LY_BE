@@ -5,11 +5,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import site.coreservice.auction.domain.AuctionWonEvent;
 import site.coreservice.order.domain.ConditionGrade;
+import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.exception.OrderErrorCode;
+import site.coreservice.order.exception.OrderException;
 import site.coreservice.product.application.ProductService;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
 
@@ -20,6 +24,7 @@ import site.coreservice.product.application.dto.ProductSnapshotResult;
 public class OrderService {
 
     private static final long ORDER_CONFIRMATION_HOURS = 24L;
+    private static final long COMPLETION_PERIOD_DAYS = 7L;
 
     private final OrderRepository orderRepository;
     private final ProductService productService;
@@ -54,5 +59,21 @@ public class OrderService {
         );
 
         orderRepository.save(order);
+    }
+
+    public void placeOrder(final Long orderId, final Long buyerId, final DeliveryInfo deliveryInfo) {
+        final Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        if (deliveryInfo == null || !StringUtils.hasText(deliveryInfo.getBaseAddress())) {
+            throw new OrderException(OrderErrorCode.ADDRESS_REQUIRED);
+        }
+
+        final LocalDateTime now = LocalDateTime.now();
+        order.confirmOrder(deliveryInfo, now.plusDays(COMPLETION_PERIOD_DAYS), now);
     }
 }

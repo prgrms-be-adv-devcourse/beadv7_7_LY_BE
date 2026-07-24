@@ -1,6 +1,7 @@
 package site.coreservice.order.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
@@ -8,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,8 +23,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.coreservice.auction.domain.AuctionWonEvent;
 import site.coreservice.order.domain.ConditionGrade;
+import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
+import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderStatus;
+import site.coreservice.order.exception.OrderException;
 import site.coreservice.product.application.ProductService;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
 import site.coreservice.product.domain.PressType;
@@ -97,6 +104,72 @@ class OrderServiceTest {
             // then
             verify(productService, never()).getProductSnapshot(anyLong());
             verify(orderRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("placeOrder")
+    class PlaceOrder {
+
+        private final DeliveryInfo deliveryInfo = DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호");
+
+        private Order pendingOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+            return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+        }
+
+        @Test
+        @DisplayName("본인 주문에 배송지를 입력하면 ORDERED로 바뀐다")
+        void placesOrderForOwningBuyer() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.placeOrder(1L, 301L, deliveryInfo);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.ORDERED);
+            assertThat(order.getDeliveryInfo()).isEqualTo(deliveryInfo);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.placeOrder(1L, 301L, deliveryInfo))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("주문의 구매자가 아니면 예외가 발생한다")
+        void throwsWhenNotOrderBuyer() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.placeOrder(1L, 999L, deliveryInfo))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("배송지 주소가 없으면 예외가 발생한다")
+        void throwsWhenBaseAddressMissing() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+            DeliveryInfo blankAddress = DeliveryInfo.of("홍길동", "010-1234-5678", null, null);
+
+            // when & then
+            assertThatThrownBy(() -> orderService.placeOrder(1L, 301L, blankAddress))
+                    .isInstanceOf(OrderException.class);
         }
     }
 }
