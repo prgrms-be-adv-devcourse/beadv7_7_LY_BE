@@ -1,0 +1,65 @@
+package site.memberservice.member.application;
+
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import site.memberservice.global.crypto.hashing.Hasher;
+import site.memberservice.member.application.dto.MemberRegisterCommand;
+import site.memberservice.member.domain.Address;
+import site.memberservice.member.domain.Email;
+import site.memberservice.member.domain.Member;
+import site.memberservice.member.domain.PhoneNumber;
+import site.memberservice.member.domain.repository.MemberRepository;
+import site.memberservice.member.exception.MemberException;
+
+import static java.lang.String.format;
+import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
+
+@RequiredArgsConstructor
+@Service
+public class MemberService {
+
+    private final Hasher hasher;
+    private final MemberRepository memberRepository;
+
+    @Transactional
+    public void register(final MemberRegisterCommand command) {
+        final Email email = new Email(command.email());
+        final PhoneNumber phoneNumber = new PhoneNumber(command.phoneNumber());
+        final Address address = new Address(command.zipcode(), command.baseAddress(), command.detailAddress());
+
+        validatePassword(command.password());
+        validateDuplicateNickName(command.nickName());
+        validateDuplicatePhoneNumber(phoneNumber);
+
+        final String hashedPassword = hasher.hashing(command.password());
+        final Member createdMember = Member.create(
+            email,
+            hashedPassword,
+            command.nickName(),
+            command.name(),
+            phoneNumber,
+            address
+        );
+
+        memberRepository.save(createdMember);
+    }
+
+    private void validatePassword(final String password) {
+        if (!Member.isValidPassword(password)) {
+            throw new MemberException(INVALID_MEMBER_INFO, format("비밀번호는 영문자, 숫자, 특수문자를 포함하여 8 ~ 16 길이의 문자열만 가능합니다. input: %s", password));
+        }
+    }
+
+    private void validateDuplicateNickName(final String nickName) {
+        if (memberRepository.existsByNickname(nickName)) {
+            throw new MemberException(INVALID_MEMBER_INFO, format("이미 존재하는 회원 닉네임입니다. input: %s", nickName));
+        }
+    }
+
+    private void validateDuplicatePhoneNumber(final PhoneNumber phoneNumber) {
+        if (memberRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new MemberException(INVALID_MEMBER_INFO, format("이미 존재하는 회원 전화번호입니다. input: %s", phoneNumber));
+        }
+    }
+}
