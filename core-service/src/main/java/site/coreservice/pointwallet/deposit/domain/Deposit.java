@@ -18,11 +18,6 @@ import site.coreservice.pointwallet.deposit.exception.DepositErrorCode;
 import site.coreservice.pointwallet.deposit.exception.DepositException;
 import site.coreservice.pointwallet.shared.Money;
 
-/**
- * 예치금 충전(결제) 요청 한 건을 표현하는 애그리거트 루트.
- * 애그리거트 경계 = 이 엔티티 + 내부 Money(requestedAmount) 값 객체뿐.
- * 거래내역(포인트원장)·예치금(지갑)은 별개 애그리거트이며, 여기서 id로만 참조된다(객체 참조 금지).
- */
 @Entity
 @Table(
         name = "deposit",
@@ -58,6 +53,12 @@ public class Deposit {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
+    @Column(name = "canceled_at")
+    private LocalDateTime canceledAt;
+
     private Deposit(Long userId, String orderId, Money requestedAmount) {
         this.userId = userId;
         this.orderId = orderId;
@@ -82,6 +83,13 @@ public class Deposit {
     public void fail() {
         validateStatus(DepositStatus.REQUESTED);
         this.status = DepositStatus.FAILED;
+    }
+
+    public void cancel(String reason) {
+        validateStatus(DepositStatus.DONE);
+        this.status = DepositStatus.CANCELED;
+        this.cancelReason = reason;
+        this.canceledAt = LocalDateTime.now();
     }
 
     private void validateStatus(DepositStatus expected) {

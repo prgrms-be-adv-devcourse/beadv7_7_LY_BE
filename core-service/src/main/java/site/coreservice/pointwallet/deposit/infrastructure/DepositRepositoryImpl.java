@@ -1,5 +1,4 @@
 package site.coreservice.pointwallet.deposit.infrastructure;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.coreservice.pointwallet.deposit.domain.Deposit;
@@ -21,5 +20,10 @@ public class DepositRepositoryImpl implements DepositRepository {
     @Override
     public Optional<Deposit> findByOrderId(String orderId) {
         return depositJpaRepository.findByOrderId(orderId);
+    }
+
+    @Override
+    public Optional<Deposit> findById(Long id) {
+        return depositJpaRepository.findById(id);
     }
 }
