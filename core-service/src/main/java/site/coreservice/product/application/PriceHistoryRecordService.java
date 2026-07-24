@@ -12,6 +12,8 @@ import site.coreservice.product.domain.AuctionSnapshotPort;
 import site.coreservice.product.domain.ClosedAuction;
 import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
+import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;
 
 /**
  * 거래확정 이벤트를 받아 시세 기록을 저장한다. 같은 이벤트가 몇 번 오더라도 결과는 한 번 처리한 것과 같다.
@@ -57,10 +59,9 @@ public class PriceHistoryRecordService {
         }
 
         ClosedAuction auction = auctionSnapshotPort.findClosedAuction(auctionId)
-                .orElseThrow(() -> new IllegalStateException("경매를 찾을 수 없습니다 — auctionId: " + auctionId));
+                .orElseThrow(() -> new PriceHistoryAuctionNotFoundException(auctionId));
         if (!auction.isClosed()) {
-            throw new IllegalStateException(
-                    "거래확정 이벤트인데 경매가 마감 상태가 아닙니다 — auctionId: " + auctionId + ", status: " + auction.status());
+            throw new PriceHistoryAuctionNotClosedException(auctionId, auction.status());
         }
 
         PriceHistory priceHistory = PriceHistory.of(auction, confirmedAt);

@@ -30,6 +30,8 @@ import site.coreservice.product.domain.ClosedAuction;
 import site.coreservice.product.domain.MediaCondition;
 import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
+import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class PriceHistoryRecordServiceTest {
@@ -150,7 +152,7 @@ class PriceHistoryRecordServiceTest {
 
         // when-then
         assertThatThrownBy(() -> service.recordConfirmedTrade(1024L, CONFIRMED_AT))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(PriceHistoryAuctionNotFoundException.class);
         verify(priceHistoryRepository, never()).save(any());
     }
 
@@ -164,7 +166,7 @@ class PriceHistoryRecordServiceTest {
 
         // when-then
         assertThatThrownBy(() -> service.recordConfirmedTrade(1024L, CONFIRMED_AT))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(PriceHistoryAuctionNotClosedException.class);
         verify(priceHistoryRepository, never()).save(any());
     }
 }
