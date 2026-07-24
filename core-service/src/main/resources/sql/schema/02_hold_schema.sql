@@ -5,5 +5,5 @@
     amount          DECIMAL(19, 0)  NOT NULL,
     held_at         DATETIME(6)     NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT ukHoldAuctionId UNIQUE (auction_id)
+    CONSTRAINT uk_hold_auction_id UNIQUE (auction_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

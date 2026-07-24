@@ -24,7 +24,7 @@ import site.coreservice.pointwallet.shared.Money;
 @Entity
 @Table(
         name = "wallet",
-        uniqueConstraints = @UniqueConstraint(name = "ukWalletUserId", columnNames = "user_id")
+        uniqueConstraints = @UniqueConstraint(name = "uk_wallet_user_id", columnNames = "user_id")
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -32,7 +32,6 @@ public class Wallet extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
     @Column(name = "user_id", nullable = false, updatable = false)
@@ -53,5 +52,18 @@ public class Wallet extends BaseEntity {
     /** 충전 확정된 금액만큼 잔액을 늘린다. */
     public void charge(Money amount) {
         this.balance = this.balance.add(amount);
+    }
+
+    /** 홀드 등으로 차감하기 전에 잔액이 충분한지 확인한다. 호출 측(Application Service)에서 먼저 검사해서 도메인에 맞는 예외로 변환하는 게 원칙. */
+    public boolean hasEnoughBalance(Money amount) {
+        return this.balance.isGreaterThanOrEqual(amount);
+    }
+
+    /** 입찰 홀드 등으로 잔액을 차감한다. 잔액이 부족하면 스스로 예외를 던진다 — 호출자가 미리 확인할 필요 없음. */
+    public void deduct(Money amount) {
+        if (!hasEnoughBalance(amount)) {
+            throw new InsufficientBalanceException();
+        }
+        this.balance = this.balance.subtract(amount);
     }
 }

@@ -8,7 +8,7 @@
     requested_at    DATETIME(6)     NOT NULL,
     approved_at     DATETIME(6)     NULL,
     PRIMARY KEY (id),
-    CONSTRAINT ukDepositOrderId UNIQUE (order_id)
+    CONSTRAINT uk_deposit_orderId UNIQUE (order_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE wallet (
@@ -18,7 +18,7 @@ CREATE TABLE wallet (
     created_at      DATETIME(6)     NOT NULL,
     updated_at      DATETIME(6)     NULL,
     PRIMARY KEY (id),
-    CONSTRAINT ukWalletUserId UNIQUE (user_id)
+    CONSTRAINT uk_wallet_user_id UNIQUE (user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE point_transaction (

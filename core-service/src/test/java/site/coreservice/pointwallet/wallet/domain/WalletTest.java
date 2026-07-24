@@ -1,6 +1,7 @@
 package site.coreservice.pointwallet.wallet.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -57,6 +58,29 @@ class WalletTest {
 
             // then
             assertThat(wallet.getBalance()).isEqualTo(Money.of(15_000));
+        }
+
+        @Test
+        @DisplayName("잔액이 부족하면 스스로 InsufficientBalanceException을 던지고 잔액은 변하지 않는다")
+        void deduct_잔액부족하면_예외를_던지고_잔액은_그대로다() {
+            Wallet wallet = Wallet.open(USER_ID);
+            wallet.charge(Money.of(5_000));
+
+            assertThatThrownBy(() -> wallet.deduct(Money.of(10_000)))
+                    .isInstanceOf(InsufficientBalanceException.class);
+
+            assertThat(wallet.getBalance()).isEqualTo(Money.of(5_000));
+        }
+
+        @Test
+        @DisplayName("잔액과 정확히 같은 금액은 차감할 수 있다 (경계값)")
+        void deduct_잔액과_정확히_같으면_0으로_차감된다() {
+            Wallet wallet = Wallet.open(USER_ID);
+            wallet.charge(Money.of(10_000));
+
+            wallet.deduct(Money.of(10_000));
+
+            assertThat(wallet.getBalance()).isEqualTo(Money.zero());
         }
     }
 }
