@@ -11,4 +11,6 @@ public interface AuctionRepository {
     Optional<Auction> findById(Long id);
 
     List<Auction> findAllScheduledToStart(LocalDateTime threshold);
+
+    List<Auction> findAllRunningToEnd(LocalDateTime threshold);
 }

@@ -15,5 +15,9 @@ public interface AuctionJpaRepository extends JpaRepository<Auction, Long> {
     List<Auction> findAllByStatusAndStartAtLessThanEqual(@Param("status") AuctionStatus status,
         @Param("threshold") LocalDateTime threshold);
 
+    @Query("SELECT a FROM Auction a WHERE a.status = :status AND a.schedule.period.endAt <= :threshold")
+    List<Auction> findAllByStatusAndEndAtLessThanEqual(@Param("status") AuctionStatus status,
+        @Param("threshold") LocalDateTime threshold);
+
     boolean existsByProductId(Long productId);
 }

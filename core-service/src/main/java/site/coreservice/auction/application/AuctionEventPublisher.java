@@ -18,12 +18,16 @@ public class AuctionEventPublisher {
         this.eventPublisher = eventPublisher;
     }
 
-    // 마감 트랜잭션이 커밋된 뒤(AuctionCloseService 반환 이후) 호출되는 걸 전제로 한다.
+    // Auction의 hasBid()로 낙찰/유찰 판단하여 알맞은 이벤트 발행
+    public void publishAuctionClosed(final Auction auction) {
+        if (auction.hasBid()) {
+            publishWon(auction);
+        }
+    }
+
     public void publishWon(final Auction auction) {
         final HighestBid highestBid = auction.getHighestBid();
-        final List<String> imageUrls = auction.getItemInfo().getImageUrls();
-        final String firstImageUrl =
-            (imageUrls == null || imageUrls.isEmpty()) ? null : imageUrls.get(0);
+        final String firstImageUrl = firstImageUrl(auction);
 
         publishWon(
             auction.getId(),
@@ -48,5 +52,10 @@ public class AuctionEventPublisher {
         eventPublisher.publish(
             new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition,
                 firstImageUrl, winningPrice));
+    }
+
+    private String firstImageUrl(final Auction auction) {
+        final List<String> imageUrls = auction.getItemInfo().getImageUrls();
+        return (imageUrls == null || imageUrls.isEmpty()) ? null : imageUrls.getFirst();
     }
 }
