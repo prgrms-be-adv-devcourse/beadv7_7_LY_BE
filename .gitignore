@@ -210,5 +210,9 @@ gradle-app.setting
 /docs
 .claude/
 CLAUDE.md
+.agents/
+.codex/
+.omx/
+.superpowers/
 
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all
