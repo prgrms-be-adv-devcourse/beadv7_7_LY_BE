@@ -22,6 +22,7 @@ public class MemberService {
     private final Hasher hasher;
     private final MemberRepository memberRepository;
 
+    // TODO : 회원 개인 정보 암호화 및 관리 정책을 반드시 고민해서 적용하기
     @Transactional
     public void register(final MemberRegisterCommand command) {
         final Email email = new Email(command.email());
