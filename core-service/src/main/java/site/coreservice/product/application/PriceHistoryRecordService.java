@@ -1,7 +1,6 @@
 package site.coreservice.product.application;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -47,12 +46,12 @@ public class PriceHistoryRecordService {
     }
 
     public void recordConfirmedTrade(Long auctionId, LocalDateTime confirmedAt) {
-        Optional<PriceHistory> existing = txTemplate.execute(status ->
-                priceHistoryRepository.findByAuctionId(auctionId));
-        if (existing.isPresent()) {
-            if (!existing.get().getConfirmedAt().equals(confirmedAt)) {
+        PriceHistory existing = txTemplate.execute(status ->
+                priceHistoryRepository.findByAuctionId(auctionId).orElse(null));
+        if (existing != null) {
+            if (!existing.getConfirmedAt().equals(confirmedAt)) {
                 log.warn("같은 경매의 거래확정이 다른 확정시각으로 재도착 — auctionId: {}, 기존: {}, 수신: {}",
-                        auctionId, existing.get().getConfirmedAt(), confirmedAt);
+                        auctionId, existing.getConfirmedAt(), confirmedAt);
             }
             log.info("이미 기록된 거래라 건너뜀 — auctionId: {}", auctionId);
             return;
