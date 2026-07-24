@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.MemberProfileDto;
 
 @RequiredArgsConstructor
 @RequestMapping("/internal/v1")
@@ -22,5 +23,12 @@ public class MemberInternalController {
         final AddressDto memberAddress = memberService.getMemberAddress(memberId);
 
         return ResponseEntity.ok(ApiResponse.success(memberAddress));
+    }
+
+    @GetMapping("/members/{memberId}/profile")
+    public ResponseEntity<ApiResponse<MemberProfileDto>> getMemberProfile(@PathVariable final Long memberId) {
+        final MemberProfileDto memberProfile = memberService.getMemberProfile(memberId);
+
+        return ResponseEntity.ok(ApiResponse.success(memberProfile));
     }
 }
