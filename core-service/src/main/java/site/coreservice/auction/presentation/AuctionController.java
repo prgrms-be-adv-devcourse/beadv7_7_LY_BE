@@ -3,6 +3,7 @@ package site.coreservice.auction.presentation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import site.common.response.ApiResponse;
+import site.common.web.MemberId;
 import site.coreservice.auction.application.AuctionService;
 import site.coreservice.auction.presentation.dto.AuctionRequest;
 import site.coreservice.auction.presentation.dto.AuctionResultResponse;
@@ -11,23 +12,22 @@ import site.coreservice.auction.presentation.dto.AuctionResultResponse;
 @RequestMapping("/api/v1/auctions")
 @RequiredArgsConstructor
 public class AuctionController {
-    private static final Long TEMP_MEMBER_ID = 1L; // TODO(#52) : 인증 붙으면 로그인 사용자 정보로 교체
 
     private final AuctionService auctionService;
 
     @PostMapping
-    public ApiResponse<AuctionResultResponse> createAuction(@RequestBody AuctionRequest auctionRequest) {
-        return ApiResponse.success(AuctionResultResponse.from(auctionService.createAuction(auctionRequest.toCreateCommand(), TEMP_MEMBER_ID)));
+    public ApiResponse<AuctionResultResponse> createAuction(@RequestBody AuctionRequest auctionRequest, @MemberId Long sellerId) {
+        return ApiResponse.success(AuctionResultResponse.from(auctionService.createAuction(auctionRequest.toCreateCommand(), sellerId)));
     }
 
     @PatchMapping("/{auctionId}")
-    public ApiResponse<AuctionResultResponse> modifyAuction(@RequestBody AuctionRequest auctionRequest, @PathVariable Long auctionId) {
-        return ApiResponse.success(AuctionResultResponse.from(auctionService.modifyAuction(auctionRequest.toModifyCommand(auctionId), TEMP_MEMBER_ID)));
+    public ApiResponse<AuctionResultResponse> modifyAuction(@RequestBody AuctionRequest auctionRequest, @PathVariable Long auctionId, @MemberId Long sellerId) {
+        return ApiResponse.success(AuctionResultResponse.from(auctionService.modifyAuction(auctionRequest.toModifyCommand(auctionId), sellerId)));
     }
 
     @DeleteMapping("/{auctionId}")
-    public ApiResponse<Void> deleteAuction(@PathVariable Long auctionId) {
-        auctionService.deleteAuction(auctionId, TEMP_MEMBER_ID);
+    public ApiResponse<Void> deleteAuction(@PathVariable Long auctionId, @MemberId Long sellerId) {
+        auctionService.deleteAuction(auctionId, sellerId);
         return ApiResponse.success();
     }
 

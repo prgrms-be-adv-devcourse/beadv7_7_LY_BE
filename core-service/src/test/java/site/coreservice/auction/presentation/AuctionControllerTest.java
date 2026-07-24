@@ -53,7 +53,7 @@ class AuctionControllerTest {
         given(auctionService.createAuction(any(CreateAuctionCommand.class), eq(1L))).willReturn(new AuctionResult(1L, "SCHEDULED"));
 
         // when
-        ApiResponse<AuctionResultResponse> response = auctionController.createAuction(request);
+        ApiResponse<AuctionResultResponse> response = auctionController.createAuction(request, 1L);
 
         // then
         assertThat(response.isSuccess()).isTrue();
@@ -81,7 +81,7 @@ class AuctionControllerTest {
         given(auctionService.modifyAuction(any(ModifyAuctionCommand.class), eq(1L))).willReturn(new AuctionResult(1L, "SCHEDULED"));
 
         // when
-        ApiResponse<AuctionResultResponse> response = auctionController.modifyAuction(request, 1L);
+        ApiResponse<AuctionResultResponse> response = auctionController.modifyAuction(request, 1L, 1L);
 
         // then
         assertThat(response.isSuccess()).isTrue();
@@ -93,7 +93,7 @@ class AuctionControllerTest {
     @DisplayName("경매 삭제 요청을 서비스에 위임한다")
     void testDeleteAuction_delegatesToService() {
         // when
-        ApiResponse<Void> response = auctionController.deleteAuction(1L);
+        ApiResponse<Void> response = auctionController.deleteAuction(1L, 1L);
 
         // then
         assertThat(response.isSuccess()).isTrue();

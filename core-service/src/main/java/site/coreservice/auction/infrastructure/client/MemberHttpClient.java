@@ -22,7 +22,7 @@ public class MemberHttpClient implements MemberPort {
     @Override
     public String getNickname(Long memberId) {
         ApiResponse<NicknameResponse> body = auctionRestClient.get()
-                .uri("/internal/members/{memberId}/nickname", memberId)
+                .uri("/internal/v1/members/{memberId}/nickname", memberId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 

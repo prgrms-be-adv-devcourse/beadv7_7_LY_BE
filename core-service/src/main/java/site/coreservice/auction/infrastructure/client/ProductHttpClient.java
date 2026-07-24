@@ -23,7 +23,7 @@ public class ProductHttpClient implements ProductPort {
     @Override
     public ProductSnapshot getProduct(Long productId) {
         ApiResponse<ProductSnapshot> body = auctionRestClient.get()
-                .uri("/internal/products/{productId}/snapshot", productId)
+                .uri("/internal/v1/products/{productId}/snapshot", productId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
