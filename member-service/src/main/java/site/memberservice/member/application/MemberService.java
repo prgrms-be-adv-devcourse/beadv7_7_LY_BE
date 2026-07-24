@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.memberservice.global.crypto.hashing.Hasher;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
@@ -67,9 +68,17 @@ public class MemberService {
     }
 
     public AddressDto getMemberAddress(final Long memberId) {
-        final Member member = memberRepository.findById(memberId)
-            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
-
+        final Member member = getMember(memberId);
         return AddressDto.from(member.getAddress());
+    }
+
+    private Member getMember(final Long memberId) {
+        return memberRepository.findById(memberId)
+            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
+    }
+
+    public MemberProfileDto getMemberProfile(final Long memberId) {
+        final Member member = getMember(memberId);
+        return MemberProfileDto.from(member);
     }
 }

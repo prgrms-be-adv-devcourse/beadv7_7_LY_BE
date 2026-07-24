@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
@@ -195,6 +196,47 @@ class MemberServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> memberService.getMemberAddress(notFoundMemberId))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
+    }
+
+    @DisplayName("회원 프로필을 조회한다.")
+    @Test
+    void getMemberProfile() {
+        // Given
+        final Member savedMember = memberRepository.save(
+            Member.create(
+                new Email("test@email.com"),
+                "testerPw1234!",
+                "tester",
+                "tester",
+                new PhoneNumber("010-1234-5678"),
+                new Address(
+                    "06671",
+                    "서울특별시 서초구 반포대로 45",
+                    "4층(서초동, 명정빌딩)"
+                )
+            )
+        );
+
+        // When
+        final MemberProfileDto result = memberService.getMemberProfile(savedMember.getId());
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(result.email()).isEqualTo(savedMember.getEmail().getValue());
+            softly.assertThat(result.nickname()).isEqualTo(savedMember.getNickname());
+        });
+    }
+
+    @DisplayName("회원 프로필 조회에 존재하지 않는 회원 id를 입력하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenGetMemberProfileNotFoundMemberId() {
+        // Given
+        final Long notFoundMemberId = -99999L;
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.getMemberProfile(notFoundMemberId))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
     }
