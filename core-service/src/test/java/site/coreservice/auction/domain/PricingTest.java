@@ -33,8 +33,7 @@ class PricingTest {
     void testOf_boundaryValues_succeeds() {
         // given
         Money minStartPrice = Money.of(1_000L);
-        Money minBidUnit = Money.of(10L);
-
+        Money minBidUnit = Money.of(100L);
         // when
         Pricing pricing = Pricing.of(minStartPrice, minBidUnit, Money.of(0L));
 

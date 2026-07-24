@@ -14,9 +14,6 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemInfo {
-    private static final int MIN_DESC_LENGTH = 10;
-    private static final int MAX_DESC_LENGTH = 500;
-    private static final int MAX_IMAGE_COUNT = 5;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "item_condition", nullable = false, length = 20)
@@ -37,12 +34,16 @@ public class ItemInfo {
 
     public static ItemInfo of(ItemCondition condition, String description, List<String> imageUrls) {
         Objects.requireNonNull(condition, "경매 상품 상태는 null일 수 없습니다.");
-        if (description != null && (description.length() < MIN_DESC_LENGTH || description.length() > MAX_DESC_LENGTH)) {
-            throw new IllegalArgumentException("상품 설명은 %d~%d자여야 합니다.".formatted(MIN_DESC_LENGTH, MAX_DESC_LENGTH));
+        if (description != null && (description.length() < AuctionPolicy.MIN_DESC_LENGTH
+            || description.length() > AuctionPolicy.MAX_DESC_LENGTH)) {
+            throw new IllegalArgumentException(
+                "상품 설명은 %d~%d자여야 합니다.".formatted(AuctionPolicy.MIN_DESC_LENGTH,
+                    AuctionPolicy.MAX_DESC_LENGTH));
         }
         List<String> images = (imageUrls == null) ? null : List.copyOf(imageUrls);
-        if (images != null && images.size() > MAX_IMAGE_COUNT) {
-            throw new IllegalArgumentException("이미지는 최대 %d장까지 등록할 수 있습니다.".formatted(MAX_IMAGE_COUNT));
+        if (images != null && images.size() > AuctionPolicy.MAX_IMAGE_COUNT) {
+            throw new IllegalArgumentException(
+                "이미지는 최대 %d장까지 등록할 수 있습니다.".formatted(AuctionPolicy.MAX_IMAGE_COUNT));
         }
         return new ItemInfo(condition, description, images);
     }
@@ -61,11 +62,15 @@ public class ItemInfo {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ItemInfo i)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ItemInfo i)) {
+            return false;
+        }
         return condition == i.condition
-                && Objects.equals(description, i.description)
-                && Objects.equals(imageUrls, i.imageUrls);
+            && Objects.equals(description, i.description)
+            && Objects.equals(imageUrls, i.imageUrls);
     }
 
     @Override

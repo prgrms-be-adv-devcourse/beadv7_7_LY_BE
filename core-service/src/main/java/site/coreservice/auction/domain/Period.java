@@ -13,7 +13,6 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Period {
-    private static final int MIN_DURATION_HOURS = 1;
 
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;
@@ -29,8 +28,10 @@ public class Period {
     public static Period of(LocalDateTime startAt, LocalDateTime endAt) {
         Objects.requireNonNull(startAt, "시작 시각은 null일 수 없습니다.");
         Objects.requireNonNull(endAt, "종료 시각은 null일 수 없습니다.");
-        if (startAt.plusHours(MIN_DURATION_HOURS).isAfter(endAt))
-            throw new IllegalArgumentException("종료 시각은 시작 시각으로부터 최소 %d시간 이후여야 합니다.".formatted(MIN_DURATION_HOURS));
+        if (startAt.plusHours(AuctionPolicy.MIN_DURATION_HOURS).isAfter(endAt)) {
+            throw new IllegalArgumentException(
+                "종료 시각은 시작 시각으로부터 최소 %d시간 이후여야 합니다.".formatted(AuctionPolicy.MIN_DURATION_HOURS));
+        }
         return new Period(startAt, endAt);
     }
 
@@ -46,13 +47,19 @@ public class Period {
         return !at.isBefore(endAt);
     }
 
-    @Override public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Period p)) return false;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Period p)) {
+            return false;
+        }
         return Objects.equals(startAt, p.startAt) && Objects.equals(endAt, p.endAt);
     }
 
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
         return Objects.hash(startAt, endAt);
     }
 }
