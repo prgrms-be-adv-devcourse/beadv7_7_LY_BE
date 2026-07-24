@@ -9,5 +9,4 @@ class MemberServiceApplicationTests {
     @Test
     void contextLoads() {
     }
-
 }
