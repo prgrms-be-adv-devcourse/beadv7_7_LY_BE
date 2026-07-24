@@ -17,10 +17,10 @@ class OrderItemSnapshotTest {
         @DisplayName("모든 필드 값이 같으면 equals는 true를 반환한다")
         void sameValuesAreEqual() {
             // given
-            OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
-            OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+            OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
 
             // when & then
             assertThat(a).isEqualTo(b);
@@ -31,10 +31,10 @@ class OrderItemSnapshotTest {
         @DisplayName("필드 값이 하나라도 다르면 equals는 false를 반환한다")
         void differentValuesAreNotEqual() {
             // given
-            OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
-                    ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
-            OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
-                    ConditionGrade.GOOD, "https://cdn.example.com/listings/5001/photo1.jpg");
+            OrderItemSnapshot a = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            OrderItemSnapshot b = OrderItemSnapshot.of("Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "GOOD", "https://cdn.example.com/listings/5001/photo1.jpg");
 
             // when & then
             assertThat(a).isNotEqualTo(b);

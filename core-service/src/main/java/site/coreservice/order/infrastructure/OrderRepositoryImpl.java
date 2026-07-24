@@ -22,4 +22,9 @@ public class OrderRepositoryImpl implements OrderRepository {
     public Optional<Order> findById(Long id) {
         return orderJpaRepository.findById(id);
     }
+
+    @Override
+    public boolean existsByAuctionId(Long auctionId) {
+        return orderJpaRepository.existsByAuctionId(auctionId);
+    }
 }

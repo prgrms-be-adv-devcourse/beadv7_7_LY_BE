@@ -8,14 +8,15 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import site.coreservice.order.exception.OrderException;
 
 @DisplayName("Order")
 class OrderTest {
 
     private static OrderItemSnapshot defaultItemSnapshot() {
         return OrderItemSnapshot.of(
-                "Abbey Road", "비틀즈", 1969, "UK", "ORIGINAL", "LP",
-                ConditionGrade.VERY_GOOD_PLUS, "https://cdn.example.com/listings/5001/photo1.jpg");
+                "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
     }
 
     private static DeliveryInfo defaultDeliveryInfo() {
@@ -120,7 +121,8 @@ class OrderTest {
 
             // when & then
             assertThatThrownBy(() -> order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now()))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("PENDING 상태의 주문만 확정할 수 있습니다");
         }
 
         @Test
@@ -149,8 +151,8 @@ class OrderTest {
             // when & then
             assertThatThrownBy(() -> order.confirmOrder(
                     defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), deadline.plusSeconds(1)))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessage("주문 확정 기한이 지났습니다.");
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("주문 확정 기한이 지났습니다");
         }
     }
 
