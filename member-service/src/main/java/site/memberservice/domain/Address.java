@@ -5,6 +5,7 @@ import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import site.memberservice.exception.MemberException;
 
 import java.util.Objects;
@@ -13,6 +14,7 @@ import static java.lang.String.format;
 import static site.memberservice.exception.MemberErrorCode.INVALID_MEMBER_INFO;
 
 @Getter
+@ToString
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Embeddable
 public class Address {
