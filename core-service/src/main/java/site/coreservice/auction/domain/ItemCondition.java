@@ -1,6 +1,8 @@
 package site.coreservice.auction.domain;
 
 import lombok.Getter;
+import site.coreservice.auction.exception.AuctionErrorCode;
+import site.coreservice.auction.exception.AuctionException;
 
 @Getter
 public enum ItemCondition {
@@ -15,5 +17,13 @@ public enum ItemCondition {
 
     ItemCondition(String description) {
         this.description = description;
+    }
+
+    public static ItemCondition from(String value) {
+        try {
+            return ItemCondition.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new AuctionException(AuctionErrorCode.ITEM_CONDITION_INVALID);
+        }
     }
 }

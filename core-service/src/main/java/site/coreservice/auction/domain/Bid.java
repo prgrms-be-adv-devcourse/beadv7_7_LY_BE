@@ -18,10 +18,10 @@ public class Bid extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable=false)
+    @Column(nullable = false)
     private Long auctionId;
 
-    @Column(nullable=false)
+    @Column(nullable = false)
     private Long bidderId;
 
     @Embedded
