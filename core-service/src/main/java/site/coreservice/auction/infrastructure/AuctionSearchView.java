@@ -119,4 +119,23 @@ public class AuctionSearchView {
                 auction.getSchedule().getPeriod().getEndAt()
         );
     }
+
+    public void updateFromAuction(Auction auction, ProductSnapshot product) {
+        // 경매 자신의 필드는 항상 갱신
+        this.itemCondition = auction.getItemInfo().getCondition();
+        Money currentPrice = auction.getPricing().getStartPrice().plus(auction.getPricing().getShippingFee());
+        this.highestBidAmount = currentPrice.getValue();
+        this.startAt = auction.getSchedule().getPeriod().getStartAt();
+        this.endAt = auction.getSchedule().getPeriod().getEndAt();
+
+        // product가 있을 때(=productId가 실제로 바뀐 경우)만 상품 표시정보 갱신
+        if (product != null) {
+            this.productId = auction.getProductId();
+            this.title = product.title();
+            this.artistName = product.artistName();
+            this.releaseYear = product.releaseYear();
+            this.genre = product.genre();
+            this.pressType = product.pressType();
+        }
+    }
 }

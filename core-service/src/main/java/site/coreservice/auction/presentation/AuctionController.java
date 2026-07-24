@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import site.common.response.ApiResponse;
 import site.coreservice.auction.application.AuctionService;
-import site.coreservice.auction.presentation.dto.AuctionCreateRequest;
+import site.coreservice.auction.presentation.dto.AuctionRequest;
 import site.coreservice.auction.presentation.dto.AuctionResultResponse;
 
 @RestController
@@ -16,8 +16,13 @@ public class AuctionController {
     private final AuctionService auctionService;
 
     @PostMapping
-    public ApiResponse<AuctionResultResponse> createAuction(@RequestBody AuctionCreateRequest auctionCreateRequest) {
-        return ApiResponse.success(AuctionResultResponse.from(auctionService.createAuction(auctionCreateRequest.toCommand(), TEMP_MEMBER_ID)));
+    public ApiResponse<AuctionResultResponse> createAuction(@RequestBody AuctionRequest auctionRequest) {
+        return ApiResponse.success(AuctionResultResponse.from(auctionService.createAuction(auctionRequest.toCreateCommand(), TEMP_MEMBER_ID)));
+    }
+
+    @PatchMapping("/{auctionId}")
+    public ApiResponse<AuctionResultResponse> modifyAuction(@RequestBody AuctionRequest auctionRequest, @PathVariable Long auctionId) {
+        return ApiResponse.success(AuctionResultResponse.from(auctionService.modifyAuction(auctionRequest.toModifyCommand(auctionId), TEMP_MEMBER_ID)));
     }
 
 }

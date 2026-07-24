@@ -6,7 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import site.common.entity.BaseEntity;
+import site.coreservice.auction.exception.AuctionAccessDeniedException;
+import site.coreservice.auction.exception.AuctionNotEditableException;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Slf4j
@@ -56,16 +59,42 @@ public class Auction extends BaseEntity {
     }
 
     public static Auction register(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule) {
-        validate(sellerId, productId, itemInfo, pricing, schedule);
+        Objects.requireNonNull(sellerId, "판매자 ID는 null일 수 없습니다.");
+        validateContent(productId, itemInfo, pricing, schedule);
         return new Auction(sellerId, productId, itemInfo, pricing, schedule, AuctionStatus.SCHEDULED, null);
     }
 
-    private static void validate(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule) {
-        Objects.requireNonNull(sellerId, "판매자 ID는 null일 수 없습니다.");
+    public void modify(Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, LocalDateTime now) {
+        requireEditable(now);
+        validateContent(productId, itemInfo, pricing, schedule);
+        this.productId = productId;
+        this.itemInfo = itemInfo;
+        this.pricing = pricing;
+        this.schedule = schedule;
+    }
+
+    private static void validateContent(Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule) {
         Objects.requireNonNull(productId, "상품 ID는 null일 수 없습니다.");
         Objects.requireNonNull(itemInfo, "매물 정보는 null일 수 없습니다.");
         Objects.requireNonNull(pricing, "가격 정책은 null일 수 없습니다.");
         Objects.requireNonNull(schedule, "경매 일정은 null일 수 없습니다.");
+    }
+
+    private void requireEditable(LocalDateTime now) {
+        boolean editable = switch (this.status) {
+            case SCHEDULED -> true;
+            case RUNNING -> !this.schedule.getPeriod().isStarted(now);
+            default -> false;
+        };
+        if (!editable) {
+            throw new AuctionNotEditableException();
+        }
+    }
+
+    public void requireOwnedBy(Long sellerId)  {
+        if(!this.sellerId.equals(sellerId)) {
+            throw new AuctionAccessDeniedException();
+        }
     }
 
     public void changeStatus(AuctionStatus next) {
