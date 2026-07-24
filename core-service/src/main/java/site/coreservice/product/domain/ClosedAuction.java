@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 public record ClosedAuction(Long auctionId, Long productId, MediaCondition mediaCondition, Long finalPrice,
         Integer bidCount, LocalDateTime closedAt, String status) {
 
+    /** 여기서 "마감"은 낙찰로 거래가 성립한 상태만 뜻한다 — 경매 도메인의 ENDED_WON. 유찰·취소는 시세 대상이 아니다. */
     public boolean isClosed() {
-        return "CLOSED".equals(status);
+        return "ENDED_WON".equals(status);
     }
 }

@@ -13,7 +13,7 @@ class PriceHistoryTest {
     private static final LocalDateTime CONFIRMED_AT = LocalDateTime.of(2026, 7, 11, 10, 0);
 
     private ClosedAuction closedAuction(Long finalPrice, Integer bidCount) {
-        return new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, finalPrice, bidCount, CLOSED_AT, "CLOSED");
+        return new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, finalPrice, bidCount, CLOSED_AT, "ENDED_WON");
     }
 
     @Test

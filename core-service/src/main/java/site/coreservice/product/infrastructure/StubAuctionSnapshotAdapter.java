@@ -36,9 +36,9 @@ public class StubAuctionSnapshotAdapter implements AuctionSnapshotPort {
             return Optional.empty();
         }
         if (auctionId >= OPEN_FROM && auctionId < RESERVED_END) {
-            return Optional.of(buildAuction(auctionId, "OPEN"));
+            return Optional.of(buildAuction(auctionId, "RUNNING"));
         }
-        return Optional.of(buildAuction(auctionId, "CLOSED"));
+        return Optional.of(buildAuction(auctionId, "ENDED_WON"));
     }
 
     private ClosedAuction buildAuction(Long auctionId, String status) {

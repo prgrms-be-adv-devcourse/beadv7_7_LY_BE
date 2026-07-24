@@ -67,7 +67,7 @@ class PriceHistoryRecordServiceTest {
     }
 
     private ClosedAuction closedAuction() {
-        return new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, 72000L, 7, CLOSED_AT, "CLOSED");
+        return new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, 72000L, 7, CLOSED_AT, "ENDED_WON");
     }
 
     @Test
@@ -160,7 +160,7 @@ class PriceHistoryRecordServiceTest {
     @DisplayName("아직 마감되지 않은 경매면 예외를 던진다")
     void record_미마감_경매_예외() {
         // given
-        ClosedAuction open = new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, 72000L, 7, CLOSED_AT, "OPEN");
+        ClosedAuction open = new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, 72000L, 7, CLOSED_AT, "RUNNING");
         given(priceHistoryRepository.findByAuctionId(1024L)).willReturn(Optional.empty());
         given(auctionSnapshotPort.findClosedAuction(1024L)).willReturn(Optional.of(open));
 
