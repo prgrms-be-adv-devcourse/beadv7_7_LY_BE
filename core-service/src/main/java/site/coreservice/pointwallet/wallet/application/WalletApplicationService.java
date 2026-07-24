@@ -1,5 +1,6 @@
 package site.coreservice.pointwallet.wallet.application;
 
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,5 +49,11 @@ public class WalletApplicationService implements WalletService {
         walletRepository.save(wallet);
 
         return new WalletBalanceResult(wallet.getId(), wallet.getBalance());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> findWalletId(Long userId) {
+        return walletRepository.findByUserId(userId).map(Wallet::getId);
     }
 }
