@@ -1,5 +1,6 @@
 package site.coreservice.product.domain;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -26,5 +27,5 @@ public interface ProductRepository {
     Optional<Product> findById(Long id);
 
     /** 활성 상품의 id만 전부 조회한다. 가짜 경매 응답이 실존 상품을 가리키게 만드는 데 쓴다. */
-    java.util.List<Long> findAllActiveIds();
+    List<Long> findAllActiveIds();
 }
