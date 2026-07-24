@@ -1,9 +1,13 @@
 package site.coreservice.auction.application;
 
 import java.math.BigDecimal;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import site.common.event.EventPublisher;
+import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.auction.domain.HighestBid;
+import site.coreservice.auction.domain.ItemCondition;
 
 @Component
 public class AuctionEventPublisher {
@@ -14,16 +18,35 @@ public class AuctionEventPublisher {
         this.eventPublisher = eventPublisher;
     }
 
+    // 마감 트랜잭션이 커밋된 뒤(AuctionCloseService 반환 이후) 호출되는 걸 전제로 한다.
+    public void publishWon(final Auction auction) {
+        final HighestBid highestBid = auction.getHighestBid();
+        final List<String> imageUrls = auction.getItemInfo().getImageUrls();
+        final String firstImageUrl =
+            (imageUrls == null || imageUrls.isEmpty()) ? null : imageUrls.get(0);
+
+        publishWon(
+            auction.getId(),
+            auction.getProductId(),
+            highestBid.getBidderId(),
+            auction.getSellerId(),
+            auction.getItemInfo().getCondition(),
+            firstImageUrl,
+            highestBid.getAmount().getValue()
+        );
+    }
+
     public void publishWon(
         final Long auctionId,
         final Long productId,
         final Long winnerId,
         final Long sellerId,
-        final String itemCondition,
+        final ItemCondition itemCondition,
         final String firstImageUrl,
         final BigDecimal winningPrice
     ) {
         eventPublisher.publish(
-            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition, firstImageUrl, winningPrice));
+            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition,
+                firstImageUrl, winningPrice));
     }
 }

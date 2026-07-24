@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.coreservice.auction.application.AuctionEventPublisher;
+import site.coreservice.auction.domain.ItemCondition;
 
 import java.math.BigDecimal;
 
@@ -30,7 +31,7 @@ public class AuctionEventTestController {
             request.productId(),
             request.winnerId(),
             request.sellerId(),
-            "MINT",
+            ItemCondition.MINT,
             "mock image url",
             request.winningPrice()
         );
