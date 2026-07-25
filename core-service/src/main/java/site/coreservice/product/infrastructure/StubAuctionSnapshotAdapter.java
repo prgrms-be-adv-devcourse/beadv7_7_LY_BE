@@ -48,7 +48,10 @@ public class StubAuctionSnapshotAdapter implements AuctionSnapshotPort {
         }
         long seed = auctionId;
         Long productId = productIds.get((int) (seed % productIds.size()));
-        MediaCondition condition = MediaCondition.values()[(int) (seed % MediaCondition.values().length)];
+        // 컨디션은 나머지가 아니라 몫에서 파생한다 — 상품 배정(나머지)과 같은 식을 쓰면 상품 수가
+        // 컨디션 수(6)와 맞물릴 때 상품마다 등급이 하나로 고정되어, 컨디션별 시세 화면에 등급이 하나만 나온다.
+        long conditionSeed = seed / productIds.size();
+        MediaCondition condition = MediaCondition.values()[(int) (conditionSeed % MediaCondition.values().length)];
         long finalPrice = 30_000L + (seed * 7919 % 70) * 1_000L;
         int bidCount = (int) (seed * 31 % 15) + 1;
         LocalDateTime closedAt = LocalDate.now().atTime(20, 31).minusDays(seed * 13 % 365 + 1);
