@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;

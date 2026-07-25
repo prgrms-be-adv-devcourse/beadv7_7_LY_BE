@@ -21,7 +21,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;

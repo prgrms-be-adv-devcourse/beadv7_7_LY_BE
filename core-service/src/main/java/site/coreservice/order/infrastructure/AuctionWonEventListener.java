@@ -2,9 +2,8 @@ package site.coreservice.order.infrastructure;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.order.application.AuctionWonEventHandler;
 
 @Component("orderAuctionWonEventListener")

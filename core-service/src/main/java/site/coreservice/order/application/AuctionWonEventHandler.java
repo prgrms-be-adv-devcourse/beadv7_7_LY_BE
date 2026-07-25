@@ -3,7 +3,7 @@ package site.coreservice.order.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.common.event.EventHandler;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 
 @Component("orderAuctionWonEventHandler")
 @RequiredArgsConstructor

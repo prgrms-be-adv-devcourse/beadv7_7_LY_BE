@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import site.common.event.EventPublisher;
 import site.coreservice.auction.domain.Auction;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.auction.domain.HighestBid;
 import site.coreservice.auction.domain.ItemCondition;
 
@@ -50,7 +50,7 @@ public class AuctionEventPublisher {
         final BigDecimal winningPrice
     ) {
         eventPublisher.publish(
-            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition,
+            new AuctionWonEvent(auctionId, productId, winnerId, sellerId, itemCondition.name(),
                 firstImageUrl, winningPrice));
     }
 
