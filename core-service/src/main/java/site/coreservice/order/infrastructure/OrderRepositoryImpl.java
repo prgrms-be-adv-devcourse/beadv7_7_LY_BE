@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderStatus;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,5 +29,10 @@ public class OrderRepositoryImpl implements OrderRepository {
     @Override
     public boolean existsByAuctionId(Long auctionId) {
         return orderJpaRepository.existsByAuctionId(auctionId);
+    }
+
+    @Override
+    public List<Order> findAllByStatusAndOrderDeadlineBefore(OrderStatus status, LocalDateTime threshold) {
+        return orderJpaRepository.findAllByStatusAndOrderDeadlineBefore(status, threshold);
     }
 }

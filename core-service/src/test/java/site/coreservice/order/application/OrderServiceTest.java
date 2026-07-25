@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +23,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.order.domain.CancelReason;
 import site.coreservice.order.domain.DeliveryInfo;
@@ -237,6 +240,109 @@ class OrderServiceTest {
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
                     .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("findExpiredOrderIds")
+    class FindExpiredOrderIds {
+
+        private Order pendingOrder(Long id) {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().minusHours(1), itemSnapshot);
+            ReflectionTestUtils.setField(order, "id", id);
+            return order;
+        }
+
+        @Test
+        @DisplayName("기한이 지난 PENDING 주문들의 id 목록을 반환한다")
+        void returnsExpiredOrderIds() {
+            // given
+            given(orderRepository.findAllByStatusAndOrderDeadlineBefore(eq(OrderStatus.PENDING), any()))
+                    .willReturn(List.of(pendingOrder(1L), pendingOrder(2L)));
+
+            // when
+            List<Long> result = orderService.findExpiredOrderIds();
+
+            // then
+            assertThat(result).containsExactly(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("대상이 없으면 빈 목록을 반환한다")
+        void returnsEmptyWhenNoExpiredOrders() {
+            // given
+            given(orderRepository.findAllByStatusAndOrderDeadlineBefore(eq(OrderStatus.PENDING), any()))
+                    .willReturn(List.of());
+
+            // when
+            List<Long> result = orderService.findExpiredOrderIds();
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("cancelExpiredOrder")
+    class CancelExpiredOrder {
+
+        private Order pendingOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().minusHours(1), itemSnapshot);
+            ReflectionTestUtils.setField(order, "id", 1L);
+            return order;
+        }
+
+        @Test
+        @DisplayName("PENDING 주문을 CONFIRMATION_TIMEOUT 사유로 취소하고 이벤트를 발행한다")
+        void cancelsPendingOrder() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.cancelExpiredOrder(1L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+            assertThat(order.getCancelReason()).isEqualTo(CancelReason.CONFIRMATION_TIMEOUT);
+            verify(orderEventPublisher).publishCancelled(order);
+        }
+
+        @Test
+        @DisplayName("이미 존재하지 않는 주문이면 아무 것도 하지 않는다")
+        void doesNothingWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when
+            orderService.cancelExpiredOrder(1L);
+
+            // then
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        @DisplayName("이미 PENDING이 아닌 주문이면(레이스로 이미 처리됨) 아무 것도 하지 않는다")
+        void doesNothingWhenOrderNoLongerPending() {
+            // given
+            Order order = pendingOrder();
+            order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.cancelExpiredOrder(1L);
+
+            // then
+            assertThat(order.getCancelReason()).isEqualTo(CancelReason.BUYER_DECLINED);
             verify(orderEventPublisher, never()).publishCancelled(any());
         }
     }

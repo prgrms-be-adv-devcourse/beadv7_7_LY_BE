@@ -106,6 +106,7 @@ public class Order extends BaseEntity {
 
 
     public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline, LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.PENDING) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_PENDING);
         }

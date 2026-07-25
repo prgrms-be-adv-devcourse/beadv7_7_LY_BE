@@ -1,5 +1,7 @@
 package site.coreservice.order.domain;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository {
@@ -9,4 +11,6 @@ public interface OrderRepository {
     Optional<Order> findById(Long id);
 
     boolean existsByAuctionId(Long auctionId);
+
+    List<Order> findAllByStatusAndOrderDeadlineBefore(OrderStatus status, LocalDateTime threshold);
 }

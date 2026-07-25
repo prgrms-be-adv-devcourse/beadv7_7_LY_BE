@@ -1,6 +1,7 @@
 package site.coreservice.order.application;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,6 +13,7 @@ import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderStatus;
 import site.coreservice.order.application.port.ProductInfo;
 import site.coreservice.order.application.port.ProductPort;
 import site.coreservice.order.exception.OrderErrorCode;
@@ -91,5 +93,24 @@ public class OrderService {
         }
 
         order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
+        orderEventPublisher.publishCancelled(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findExpiredOrderIds() {
+        return orderRepository.findAllByStatusAndOrderDeadlineBefore(OrderStatus.PENDING, LocalDateTime.now()).stream()
+            .map(Order::getId)
+            .toList();
+    }
+
+    public void cancelExpiredOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PENDING) {
+            return;
+        }
+
+        order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT, LocalDateTime.now());
+        orderEventPublisher.publishCancelled(order);
+        log.info("주문 확정 기한 초과로 자동 취소 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
     }
 }
