@@ -38,6 +38,7 @@ public class PointTransactionApplicationService implements PointTransactionServi
         int safePage = Math.max(page, 0);
         int safeSize = clampSize(size);
         PointTransactionType type = parseType(rawType);
+        validateDateRange(from, to);
 
         return walletService.findWalletId(userId)
                 .map(walletId -> {
@@ -64,5 +65,11 @@ public class PointTransactionApplicationService implements PointTransactionServi
             return DEFAULT_SIZE;
         }
         return Math.min(size, MAX_SIZE);
+    }
+
+    private void validateDateRange(LocalDateTime from, LocalDateTime to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new LedgerException(LedgerErrorCode.INVALID_DATE_RANGE);
+        }
     }
 }
