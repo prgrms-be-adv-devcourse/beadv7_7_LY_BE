@@ -88,12 +88,7 @@ public class Auction extends BaseEntity {
     }
 
     private void validateEditable(LocalDateTime now) {
-        boolean editable = switch (this.status) {
-            case SCHEDULED -> true;
-            case RUNNING -> !this.schedule.getPeriod().isStarted(now);
-            default -> false;
-        };
-        if (!editable) {
+        if (!isEffectiveScheduledAt(now)) {
             throw new AuctionException(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         }
     }
@@ -113,6 +108,52 @@ public class Auction extends BaseEntity {
 
     public boolean hasBid() {
         return highestBid != null;
+    }
+
+    public boolean isHighestBidder(Long memberId) {
+        return hasBid() && highestBid.isBidder(memberId);
+    }
+
+    public AuctionStatus getEffectiveStatusAt(LocalDateTime now) {
+        if(isCanceled() || isEndedWon() || isEndedFailed()) {
+            return this.status;
+        }
+        if (!schedule.isStartedAt(now)) {
+            return AuctionStatus.SCHEDULED;
+        }
+        if (!schedule.isEndedAt(now)) {
+            return AuctionStatus.RUNNING;
+        }
+        return hasBid() ? AuctionStatus.ENDED_WON : AuctionStatus.ENDED_FAILED;
+    }
+
+    // status == RUNNING이어도 시작 스케줄러가 미리 바꿔둔 것일 뿐 실제로는 아직 시작 전인 상태
+    public boolean isEffectiveScheduledAt(LocalDateTime now) {
+        return status == AuctionStatus.SCHEDULED || (status == AuctionStatus.RUNNING && !schedule.isStartedAt(now));
+    }
+
+    // status == RUNNING이면서 실제로 시작 시각과 종료 시각 사이인 경우인 실제 진행 중 상태
+    public boolean isEffectiveRunningAt(LocalDateTime now) {
+        return status == AuctionStatus.RUNNING
+                && schedule.isStartedAt(now)
+                && !schedule.isEndedAt(now);
+    }
+
+    // 종료 시각은 지났지만 종료 스케줄러가 아직 status를 옮겨두지 못한 구간.
+    public boolean isEffectiveClosingAt(LocalDateTime now) {
+        return status == AuctionStatus.RUNNING && schedule.isEndedAt(now);
+    }
+
+    public boolean isEndedWon() {
+        return status == AuctionStatus.ENDED_WON;
+    }
+
+    public boolean isEndedFailed() {
+        return status == AuctionStatus.ENDED_FAILED;
+    }
+
+    public boolean isCanceled() {
+        return status == AuctionStatus.CANCELED;
     }
 
 }

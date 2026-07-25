@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import site.common.response.ApiResponse;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.dto.ProductDetail;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 
 /**
@@ -24,6 +25,16 @@ public class ProductHttpClient implements ProductPort {
     public ProductSnapshot getProduct(Long productId) {
         ApiResponse<ProductSnapshot> body = auctionRestClient.get()
                 .uri("/internal/v1/products/{productId}/snapshot", productId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+
+        return body.getData();
+    }
+
+    @Override
+    public ProductDetail getProductDetail(Long productId) {
+        ApiResponse<ProductDetail> body = auctionRestClient.get()
+                .uri("/internal/v1/products/{productId}/detail", productId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
