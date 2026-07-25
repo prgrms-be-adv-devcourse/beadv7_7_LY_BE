@@ -60,4 +60,36 @@ class OrderRepositoryImplTest {
 
         assertThat(result).isEmpty();
     }
+
+    private Order orderedOrder(Long auctionId, LocalDateTime completionDeadline) {
+        Order order = pendingOrder(auctionId, LocalDateTime.now().plusHours(24));
+        order.confirmOrder(
+                DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                completionDeadline, LocalDateTime.now());
+        return order;
+    }
+
+    @Test
+    @DisplayName("거래 확정 기한이 지난 ORDERED 주문만 조회된다")
+    void findAllByStatusAndCompletionDeadlineBefore_returnsOnlyExpiredOrderedOrders() {
+        LocalDateTime now = LocalDateTime.now();
+        Order expiredOrdered = orderRepository.save(orderedOrder(5001L, now.minusDays(1)));
+        orderRepository.save(orderedOrder(5002L, now.plusDays(1)));
+        orderRepository.save(pendingOrder(5003L, now.minusHours(1)));
+
+        List<Order> result = orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, now);
+
+        assertThat(result).extracting(Order::getId).containsExactly(expiredOrdered.getId());
+    }
+
+    @Test
+    @DisplayName("대상이 없으면 빈 목록을 반환한다")
+    void findAllByStatusAndCompletionDeadlineBefore_returnsEmptyWhenNoneExpired() {
+        LocalDateTime now = LocalDateTime.now();
+        orderRepository.save(orderedOrder(5001L, now.plusDays(1)));
+
+        List<Order> result = orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, now);
+
+        assertThat(result).isEmpty();
+    }
 }

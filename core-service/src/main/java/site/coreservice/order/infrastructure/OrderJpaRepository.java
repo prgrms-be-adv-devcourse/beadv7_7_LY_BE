@@ -11,4 +11,6 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
     boolean existsByAuctionId(Long auctionId);
 
     List<Order> findAllByStatusAndOrderDeadlineBefore(OrderStatus status, LocalDateTime threshold);
+
+    List<Order> findAllByStatusAndCompletionDeadlineBefore(OrderStatus status, LocalDateTime threshold);
 }

@@ -35,4 +35,9 @@ public class OrderRepositoryImpl implements OrderRepository {
     public List<Order> findAllByStatusAndOrderDeadlineBefore(OrderStatus status, LocalDateTime threshold) {
         return orderJpaRepository.findAllByStatusAndOrderDeadlineBefore(status, threshold);
     }
+
+    @Override
+    public List<Order> findAllByStatusAndCompletionDeadlineBefore(OrderStatus status, LocalDateTime threshold) {
+        return orderJpaRepository.findAllByStatusAndCompletionDeadlineBefore(status, threshold);
+    }
 }

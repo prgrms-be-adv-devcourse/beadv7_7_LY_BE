@@ -346,4 +346,180 @@ class OrderServiceTest {
             verify(orderEventPublisher, never()).publishCancelled(any());
         }
     }
+
+    @Nested
+    @DisplayName("completeOrder")
+    class CompleteOrder {
+
+        private Order orderedOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            return order;
+        }
+
+        @Test
+        @DisplayName("본인 주문을 거래 확정하면 COMPLETED로 바뀐다")
+        void completesOrderForOwningBuyer() {
+            // given
+            Order order = orderedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.completeOrder(1L, 301L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            verify(orderEventPublisher).publishCompleted(order);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.completeOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("주문의 구매자가 아니면 예외가 발생한다")
+        void throwsWhenNotOrderBuyer() {
+            // given
+            Order order = orderedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.completeOrder(1L, 999L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("ORDERED 상태가 아니면 예외가 발생한다")
+        void throwsWhenOrderNotOrdered() {
+            // given
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.completeOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("findOrdersToAutoComplete")
+    class FindOrdersToAutoComplete {
+
+        private Order orderedOrder(Long id) {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+            ReflectionTestUtils.setField(order, "id", id);
+            return order;
+        }
+
+        @Test
+        @DisplayName("거래 확정 기한이 지난 ORDERED 주문들의 id 목록을 반환한다")
+        void returnsOrderIdsToAutoComplete() {
+            // given
+            given(orderRepository.findAllByStatusAndCompletionDeadlineBefore(eq(OrderStatus.ORDERED), any()))
+                    .willReturn(List.of(orderedOrder(1L), orderedOrder(2L)));
+
+            // when
+            List<Long> result = orderService.findOrdersToAutoComplete();
+
+            // then
+            assertThat(result).containsExactly(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("대상이 없으면 빈 목록을 반환한다")
+        void returnsEmptyWhenNoTargets() {
+            // given
+            given(orderRepository.findAllByStatusAndCompletionDeadlineBefore(eq(OrderStatus.ORDERED), any()))
+                    .willReturn(List.of());
+
+            // when
+            List<Long> result = orderService.findOrdersToAutoComplete();
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("completeExpiredOrder")
+    class CompleteExpiredOrder {
+
+        private Order orderedOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            ReflectionTestUtils.setField(order, "id", 1L);
+            return order;
+        }
+
+        @Test
+        @DisplayName("ORDERED 주문을 COMPLETED로 자동 완료하고 이벤트를 발행한다")
+        void completesOrderedOrder() {
+            // given
+            Order order = orderedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.completeExpiredOrder(1L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            verify(orderEventPublisher).publishCompleted(order);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 아무 것도 하지 않는다")
+        void doesNothingWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when
+            orderService.completeExpiredOrder(1L);
+
+            // then
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("이미 ORDERED가 아닌 주문이면(레이스로 이미 처리됨) 아무 것도 하지 않는다")
+        void doesNothingWhenOrderNoLongerOrdered() {
+            // given
+            Order order = orderedOrder();
+            order.completeOrder(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.completeExpiredOrder(1L);
+
+            // then
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+    }
 }

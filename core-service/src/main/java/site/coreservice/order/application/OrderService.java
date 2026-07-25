@@ -113,4 +113,34 @@ public class OrderService {
         orderEventPublisher.publishCancelled(order);
         log.info("주문 확정 기한 초과로 자동 취소 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
     }
+
+    public void completeOrder(Long orderId, Long buyerId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        order.completeOrder(LocalDateTime.now());
+        orderEventPublisher.publishCompleted(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findOrdersToAutoComplete() {
+        return orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, LocalDateTime.now()).stream()
+            .map(Order::getId)
+            .toList();
+    }
+
+    public void completeExpiredOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.ORDERED) {
+            return;
+        }
+
+        order.completeOrder(LocalDateTime.now());
+        orderEventPublisher.publishCompleted(order);
+        log.info("거래 확정 기한 초과로 자동 완료 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
+    }
 }

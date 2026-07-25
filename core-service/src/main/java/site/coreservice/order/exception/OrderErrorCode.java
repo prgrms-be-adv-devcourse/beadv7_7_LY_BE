@@ -16,6 +16,7 @@ public enum OrderErrorCode implements ErrorCode {
     ORDER_NOT_PENDING(HttpStatus.CONFLICT, "OERR-2004", "PENDING 상태의 주문만 확정할 수 있습니다"),
     ORDER_DEADLINE_EXPIRED(HttpStatus.CONFLICT, "OERR-2005", "주문 확정 기한이 지났습니다"),
     ORDER_NOT_CANCELLABLE(HttpStatus.CONFLICT, "OERR-2006", "취소할 수 없는 주문 상태입니다"),
+    ORDER_NOT_ORDERED(HttpStatus.CONFLICT, "OERR-2007", "ORDERED 상태의 주문만 거래 확정할 수 있습니다"),
     ;
 
     private final HttpStatus status;

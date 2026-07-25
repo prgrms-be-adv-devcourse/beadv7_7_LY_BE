@@ -29,4 +29,10 @@ public class OrderController {
         orderService.cancelOrder(orderId, buyerId);
         return ApiResponse.success();
     }
+
+    @PostMapping("/{orderId}/complete")
+    public ApiResponse<Void> completeOrder(@MemberId Long buyerId, @PathVariable Long orderId) {
+        orderService.completeOrder(orderId, buyerId);
+        return ApiResponse.success();
+    }
 }

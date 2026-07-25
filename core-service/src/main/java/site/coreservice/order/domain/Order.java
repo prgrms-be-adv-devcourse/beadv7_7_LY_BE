@@ -133,11 +133,12 @@ public class Order extends BaseEntity {
         this.cancelReason = cancelReason;
     }
 
-    public void completeOrder() {
+    public void completeOrder(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.ORDERED) {
-            throw new IllegalStateException("ORDERED 상태에서만 거래를 확정할 수 있습니다. 현재 상태: " + status);
+            throw new OrderException(OrderErrorCode.ORDER_NOT_ORDERED);
         }
         this.status = OrderStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = now;
     }
 }

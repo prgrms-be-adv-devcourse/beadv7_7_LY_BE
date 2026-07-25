@@ -215,11 +215,12 @@ class OrderTest {
             order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when
-            order.completeOrder();
+            LocalDateTime now = LocalDateTime.now();
+            order.completeOrder(now);
 
             // then
             assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
-            assertThat(order.getCompletedAt()).isNotNull();
+            assertThat(order.getCompletedAt()).isEqualTo(now);
         }
 
         @Test
@@ -229,8 +230,9 @@ class OrderTest {
             Order order = pendingOrder();
 
             // when & then
-            assertThatThrownBy(order::completeOrder)
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> order.completeOrder(LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("ORDERED 상태의 주문만 거래 확정할 수 있습니다");
         }
     }
 }
