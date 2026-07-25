@@ -16,7 +16,9 @@ public enum AuctionErrorCode implements ErrorCode {
     AUCTION_SEARCH_VIEW_NOT_FOUND(HttpStatus.BAD_REQUEST, "AERR-5005", "경매 서치 뷰가 존재하지 존재하지 않습니다."),
     BID_NOT_FOUND(HttpStatus.NOT_FOUND, "AERR-5006", "입찰을 찾을 수 없습니다."),
     AUCTION_STATUS_INVALID(HttpStatus.BAD_REQUEST, "AERR-5007", "유효하지 않은 경매 상태입니다."),
-    AUCTION_SORT_INVALID(HttpStatus.BAD_REQUEST, "AERR-5008", "유효하지 않은 정렬 조건입니다.")
+    AUCTION_SORT_INVALID(HttpStatus.BAD_REQUEST, "AERR-5008", "유효하지 않은 정렬 조건입니다."),
+    WATCHED_AUCTION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5101", "장바구니 경매 개수 제한을 초과했습니다."),
+
     ;
 
     private final HttpStatus status;

@@ -45,6 +45,11 @@ public class AuctionService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
+    public boolean exists(Long auctionId) {
+        return auctionRepository.findById(auctionId).isPresent();
+    }
+
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
         String sellerNickname = memberPort.getNickname(sellerId);
