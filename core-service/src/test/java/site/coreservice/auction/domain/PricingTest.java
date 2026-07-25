@@ -50,4 +50,31 @@ class PricingTest {
         assertThatThrownBy(() -> Pricing.of(Money.of(1_000L), null, Money.of(0L))).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Pricing.of(Money.of(1_000L), Money.of(10L), null)).isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    @DisplayName("입찰이 없으면 다음 최소 입찰가는 시작 입찰가(시작가+배송비)와 같다")
+    void testNextMinBidAmount_noBid_equalsStartBidAmount() {
+        // given
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+
+        // when
+        Money nextMinBid = pricing.nextMinBidAmount(null);
+
+        // then
+        assertThat(nextMinBid).isEqualTo(Money.of(13_000L));
+    }
+
+    @Test
+    @DisplayName("입찰이 있으면 다음 최소 입찰가는 최고입찰가에 입찰단위를 더한 값이다")
+    void testNextMinBidAmount_withBid_addsUnitToHighestBid() {
+        // given
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+        HighestBid highestBid = HighestBid.of(Money.of(12_000L), 1L, 1L);
+
+        // when
+        Money nextMinBid = pricing.nextMinBidAmount(highestBid);
+
+        // then
+        assertThat(nextMinBid).isEqualTo(Money.of(12_500L));
+    }
 }

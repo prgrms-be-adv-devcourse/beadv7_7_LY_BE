@@ -7,22 +7,29 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import site.coreservice.auction.application.dto.AuctionDetailResult;
 import site.coreservice.auction.application.dto.AuctionResult;
+import site.coreservice.auction.application.dto.AuctionStatusDetail;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
 import site.coreservice.auction.application.dto.ModifyAuctionCommand;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.dto.ProductDetail;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionRepository;
+import site.coreservice.auction.domain.AuctionSchedule;
 import site.coreservice.auction.domain.AuctionStatus;
+import site.coreservice.auction.domain.Bid;
+import site.coreservice.auction.domain.BidRepository;
+import site.coreservice.auction.domain.HighestBid;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.ItemInfo;
 import site.coreservice.auction.domain.Money;
 import site.coreservice.auction.domain.Period;
 import site.coreservice.auction.domain.Pricing;
-import site.coreservice.auction.domain.AuctionSchedule;
 import site.coreservice.auction.exception.AuctionErrorCode;
 import site.coreservice.auction.exception.AuctionException;
 
@@ -34,6 +41,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +51,9 @@ class AuctionServiceTest {
 
     @Mock
     private AuctionRepository auctionRepository;
+
+    @Mock
+    private BidRepository bidRepository;
 
     @Mock
     private MemberPort memberPort;
@@ -64,8 +75,19 @@ class AuctionServiceTest {
 
     private final ProductSnapshot productSnapshot =
             new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
+    private final ProductDetail productDetail =
+            new ProductDetail(100L, "Abbey Road", "The Beatles", "https://cdn.example.com/cover.jpg", 1969, "Rock", "ORIGINAL", true);
     private final ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, DESCRIPTION, null);
     private final Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+
+    private Auction auctionWith(AuctionStatus status, LocalDateTime startAt, LocalDateTime endAt) {
+        return auctionWith(status, startAt, endAt, null);
+    }
+
+    private Auction auctionWith(AuctionStatus status, LocalDateTime startAt, LocalDateTime endAt, HighestBid highestBid) {
+        AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
+        return Auction.of(1L, 100L, itemInfo, pricing, schedule, status, highestBid);
+    }
 
     private CreateAuctionCommand validCommand(String itemCondition) {
         return new CreateAuctionCommand(
@@ -81,11 +103,6 @@ class AuctionServiceTest {
                 false,
                 null
         );
-    }
-
-    private Auction auctionWith(AuctionStatus status, LocalDateTime startAt, LocalDateTime endAt) {
-        AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
-        return Auction.of(1L, 100L, itemInfo, pricing, schedule, status, null);
     }
 
     private ModifyAuctionCommand modifyCommand(Long auctionId, Long productId, LocalDateTime startAt, LocalDateTime endAt) {
@@ -290,4 +307,214 @@ class AuctionServiceTest {
                 .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         verify(searchViewRepository, never()).deleteById(any());
     }
+
+    @Test
+    @DisplayName("SCHEDULED 상태의 경매 상세를 조회하면 ScheduledDetail을 반환한다")
+    void testGetAuctionDetail_scheduledStatus_returnsScheduledDetail() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.sellerNickname()).isEqualTo("vinyl_king");
+        assertThat(result.itemCondition()).isEqualTo(ItemCondition.MINT.name());
+        assertThat(result.startBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(13_000));
+        assertThat(result.detail()).isInstanceOf(AuctionStatusDetail.ScheduledDetail.class);
+    }
+
+    @Test
+    @DisplayName("RUNNING 상태여도 시작 시각 전이면 ScheduledDetail로 노출된다 (시작 스케줄러가 미리 상태를 바꿔둔 구간)")
+    void testGetAuctionDetail_runningStatus_beforeStartTime_returnsScheduledDetail() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.detail()).isInstanceOf(AuctionStatusDetail.ScheduledDetail.class);
+        verify(bidRepository, never()).findRecentByAuctionId(any(), anyInt());
+        verify(bidRepository, never()).countByAuctionId(any());
+    }
+
+    @Test
+    @DisplayName("입찰이 없는 RUNNING 경매는 다음 최소 입찰가가 시작가와 같다")
+    void testGetAuctionDetail_runningStatus_noBid_nextMinBidEqualsStartPrice() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(bidRepository.countByAuctionId(1L)).willReturn(0L);
+        given(bidRepository.findRecentByAuctionId(1L, 5)).willReturn(List.of());
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, 2L);
+
+        // then
+        AuctionStatusDetail.RunningDetail running = (AuctionStatusDetail.RunningDetail) result.detail();
+        assertThat(running.highestBidAmount()).isNull();
+        assertThat(running.nextMinBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(13_000));
+        assertThat(running.bidCount()).isZero();
+        assertThat(running.myHighest()).isFalse();
+        assertThat(running.bidDetails()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("입찰이 있는 RUNNING 경매는 최고입찰자에게 myHighest가 true다")
+    void testGetAuctionDetail_runningStatus_withBid_viewerIsHighestBidder() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(12_000L), 2L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        Bid bid = Bid.place(1L, 2L, Money.of(12_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(memberPort.getNickname(2L)).willReturn("bidder_2");
+        given(bidRepository.countByAuctionId(1L)).willReturn(1L);
+        given(bidRepository.findRecentByAuctionId(1L, 5)).willReturn(List.of(bid));
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, 2L);
+
+        // then
+        AuctionStatusDetail.RunningDetail running = (AuctionStatusDetail.RunningDetail) result.detail();
+        assertThat(running.highestBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(12_000));
+        assertThat(running.nextMinBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(12_500));
+        assertThat(running.bidCount()).isEqualTo(1);
+        assertThat(running.myHighest()).isTrue();
+        assertThat(running.bidDetails()).hasSize(1);
+        assertThat(running.bidDetails().getFirst().bidderNickname()).isEqualTo("bidder_2");
+    }
+
+    @Test
+    @DisplayName("RUNNING 상태이고 종료 시각이 지났으면 낙찰자가 있어도 ClosingDetail로 노출되고 입찰 정보를 감춘다")
+    void testGetAuctionDetail_runningStatus_afterEndTime_withBid_returnsClosingDetail() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 3L, 20L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END, highestBid);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.detail()).isInstanceOf(AuctionStatusDetail.ClosingDetail.class);
+        verify(bidRepository, never()).findById(any());
+        verify(memberPort, never()).getNickname(3L);
+    }
+
+    @Test
+    @DisplayName("RUNNING 상태이고 종료 시각이 지났고 입찰이 없어도 ClosingDetail로 노출된다")
+    void testGetAuctionDetail_runningStatus_afterEndTime_noBid_returnsClosingDetail() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.detail()).isInstanceOf(AuctionStatusDetail.ClosingDetail.class);
+    }
+
+    @Test
+    @DisplayName("ENDED_WON 상태의 경매 상세는 낙찰 정보를 포함한다")
+    void testGetAuctionDetail_endedWonStatus_includesWinningInfo() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 3L, 20L);
+        Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END, highestBid);
+        Bid winningBid = Bid.place(1L, 3L, Money.of(15_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(memberPort.getNickname(3L)).willReturn("winner_3");
+        given(bidRepository.findById(20L)).willReturn(Optional.of(winningBid));
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        AuctionStatusDetail.EndedWonDetail endedWon = (AuctionStatusDetail.EndedWonDetail) result.detail();
+        assertThat(endedWon.bidDetail().amount()).isEqualByComparingTo(BigDecimal.valueOf(15_000));
+        assertThat(endedWon.bidDetail().bidderNickname()).isEqualTo("winner_3");
+    }
+
+    @Test
+    @DisplayName("낙찰 입찰을 찾을 수 없으면 예외를 던진다")
+    void testGetAuctionDetail_endedWonStatus_bidNotFound_throws() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 3L, 20L);
+        Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END, highestBid);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(bidRepository.findById(20L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.getAuctionDetail(1L, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("ENDED_FAILED 상태의 경매 상세는 EndedFailedDetail을 반환한다")
+    void testGetAuctionDetail_endedFailedStatus_returnsEndedFailedDetail() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.ENDED_FAILED, PAST_START, PAST_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.detail()).isInstanceOf(AuctionStatusDetail.EndedFailedDetail.class);
+    }
+
+    @Test
+    @DisplayName("CANCELED 상태의 경매는 상세 조회 시 조회할 수 없다")
+    void testGetAuctionDetail_canceledStatus_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.CANCELED, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.getAuctionDetail(1L, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+        verify(productPort, never()).getProductDetail(any());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매의 상세를 조회하면 예외를 던진다")
+    void testGetAuctionDetail_auctionNotFound_throws() {
+        // given
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.getAuctionDetail(1L, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+    }
+
+    // getInternalSummary / getOpenAuctionCounts는 InternalAuctionService로 분리되어 InternalAuctionServiceTest에 있습니다.
 }
