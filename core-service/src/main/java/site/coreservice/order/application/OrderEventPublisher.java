@@ -23,6 +23,6 @@ public class OrderEventPublisher {
     public void publishCompleted(final Order order) {
         eventPublisher.publish(
             new OrderCompletedEvent(order.getId(), order.getAuctionId(), order.getBuyerId(),
-                order.getSellerId(), order.getFinalBidPrice()));
+                order.getSellerId(), order.getFinalBidPrice(), order.getCompletedAt()));
     }
 }

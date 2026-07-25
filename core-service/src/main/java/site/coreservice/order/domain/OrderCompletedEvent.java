@@ -1,6 +1,7 @@
 package site.coreservice.order.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import site.common.event.Event;
 
@@ -12,19 +13,22 @@ public class OrderCompletedEvent extends Event {
     private final Long buyerId;
     private final Long sellerId;
     private final BigDecimal finalBidPrice;
+    private final LocalDateTime completedAt;
 
     public OrderCompletedEvent(
         final Long orderId,
         final Long auctionId,
         final Long buyerId,
         final Long sellerId,
-        final BigDecimal finalBidPrice
+        final BigDecimal finalBidPrice,
+        final LocalDateTime completedAt
     ) {
         this.orderId = orderId;
         this.auctionId = auctionId;
         this.buyerId = buyerId;
         this.sellerId = sellerId;
         this.finalBidPrice = finalBidPrice;
+        this.completedAt = completedAt;
     }
 
     @Override
