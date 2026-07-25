@@ -8,7 +8,9 @@ import site.coreservice.auction.domain.AuctionStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -30,6 +32,15 @@ public class AuctionRepositoryImpl implements AuctionRepository {
     public List<Auction> findAllScheduledToStart(LocalDateTime threshold) {
         return jpaRepository.findAllByStatusAndStartAtLessThanEqual(AuctionStatus.SCHEDULED,
             threshold);
+    }
+
+    @Override
+    public Map<Long, Long> countRunningByProductIds(List<Long> productIds) {
+        return jpaRepository.countByProductIdsAndStatus(productIds, AuctionStatus.RUNNING).stream()
+            .collect(Collectors.toMap(
+                AuctionJpaRepository.ProductAuctionCountRow::getProductId,
+                AuctionJpaRepository.ProductAuctionCountRow::getCount
+            ));
     }
 
     @Override
