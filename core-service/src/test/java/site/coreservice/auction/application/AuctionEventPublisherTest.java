@@ -11,7 +11,7 @@ import site.common.event.EventPublisher;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionSchedule;
 import site.coreservice.auction.domain.AuctionStatus;
-import site.coreservice.auction.domain.AuctionWonEvent;
+import site.coreservice.global.event.AuctionWonEvent;
 import site.coreservice.auction.domain.HighestBid;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.ItemInfo;
@@ -49,7 +49,7 @@ class AuctionEventPublisherTest {
         assertThat(event.getProductId()).isEqualTo(auction.getProductId());
         assertThat(event.getWinnerId()).isEqualTo(99L);
         assertThat(event.getSellerId()).isEqualTo(auction.getSellerId());
-        assertThat(event.getItemCondition()).isEqualTo(ItemCondition.MINT);
+        assertThat(event.getItemCondition()).isEqualTo(ItemCondition.MINT.name());
         assertThat(event.getFirstImageUrl()).isEqualTo("1.png");
         assertThat(event.getWinningPrice()).isEqualTo(Money.of(15_000L).getValue());
     }

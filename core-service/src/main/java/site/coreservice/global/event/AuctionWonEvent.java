@@ -1,4 +1,4 @@
-package site.coreservice.auction.domain;
+package site.coreservice.global.event;
 
 import java.math.BigDecimal;
 import lombok.Getter;
@@ -11,7 +11,7 @@ public class AuctionWonEvent extends Event {
     private final Long productId;
     private final Long winnerId;
     private final Long sellerId;
-    private final ItemCondition itemCondition;
+    private final String itemCondition;
     private final String firstImageUrl;
     private final BigDecimal winningPrice;
 
@@ -20,7 +20,7 @@ public class AuctionWonEvent extends Event {
         final Long productId,
         final Long winnerId,
         final Long sellerId,
-        final ItemCondition itemCondition,
+        final String itemCondition,
         final String firstImageUrl,
         final BigDecimal winningPrice
     ) {
@@ -36,6 +36,6 @@ public class AuctionWonEvent extends Event {
     // Kafka 사용 시 토픽으로 사용
     @Override
     public String getEventType() {
-        return "auction.won";
+        return EventType.AUCTION_WON_EVENT.getValue();
     }
 }
