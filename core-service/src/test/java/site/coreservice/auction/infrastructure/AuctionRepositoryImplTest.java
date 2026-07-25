@@ -17,6 +17,7 @@ import site.coreservice.support.RepositoryTest;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,5 +61,32 @@ class AuctionRepositoryImplTest {
         final Optional<Auction> result = auctionRepository.findById(999L);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("productId별 RUNNING 경매 수를 집계하고, 매칭 없는 productId는 결과에서 빠진다")
+    void testCountRunningByProductIds_groupsByProductIdAndExcludesNonRunning() {
+        // given
+        saveAuction(100L, AuctionStatus.RUNNING);
+        saveAuction(100L, AuctionStatus.RUNNING);
+        saveAuction(100L, AuctionStatus.ENDED_WON);
+        saveAuction(200L, AuctionStatus.RUNNING);
+        saveAuction(999L, AuctionStatus.RUNNING);
+
+        // when
+        final Map<Long, Long> result = auctionRepository.countRunningByProductIds(List.of(100L, 200L, 300L));
+
+        // then
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(100L, 2L, 200L, 1L));
+        assertThat(result).doesNotContainKeys(300L, 999L);
+    }
+
+    private void saveAuction(Long productId, AuctionStatus status) {
+        final ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "집계 테스트용 상품 설명입니다.", null);
+        final Pricing pricing = Pricing.of(Money.of(1_000L), Money.of(100L), Money.of(0L));
+        final AuctionSchedule schedule = AuctionSchedule.of(
+                Period.of(LocalDateTime.now(), LocalDateTime.now().plusDays(1)), false, null
+        );
+        auctionRepository.save(Auction.of(1L, productId, itemInfo, pricing, schedule, status, null));
     }
 }
