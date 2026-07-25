@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import lombok.Getter;
 import site.common.event.Event;
 
-// TODO: Auction 엔티티가 확정되면 각 필드를 실제 타입으로 교체 #16
 @Getter
 public class AuctionWonEvent extends Event {
 
@@ -12,7 +11,7 @@ public class AuctionWonEvent extends Event {
     private final Long productId;
     private final Long winnerId;
     private final Long sellerId;
-    private final String itemCondition;
+    private final ItemCondition itemCondition;
     private final String firstImageUrl;
     private final BigDecimal winningPrice;
 
@@ -21,7 +20,7 @@ public class AuctionWonEvent extends Event {
         final Long productId,
         final Long winnerId,
         final Long sellerId,
-        final String itemCondition,
+        final ItemCondition itemCondition,
         final String firstImageUrl,
         final BigDecimal winningPrice
     ) {
