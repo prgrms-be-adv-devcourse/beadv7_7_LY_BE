@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -44,28 +45,36 @@ public class SettlementBatch extends BaseEntity {
     @Column(name = "confirmed_at", nullable = false)
     private LocalDateTime confirmedAt;
 
-    private SettlementBatch(Long sellerId, Money totalAmount, LocalDateTime periodFrom, LocalDateTime periodTo,
-            LocalDateTime confirmedAt) {
-        validate(sellerId, totalAmount, periodFrom, periodTo, confirmedAt);
+    private SettlementBatch(Long sellerId, List<SettlementItem> items, LocalDateTime periodFrom,
+            LocalDateTime periodTo, LocalDateTime confirmedAt) {
+        validate(sellerId, items, periodFrom, periodTo, confirmedAt);
         this.sellerId = sellerId;
-        this.totalAmount = totalAmount;
+        this.totalAmount = items.stream()
+                .map(SettlementItem::getNetAmount)
+                .reduce(Money.zero(), Money::add);
         this.periodFrom = periodFrom;
         this.periodTo = periodTo;
         this.confirmedAt = confirmedAt;
     }
 
-    public static SettlementBatch of(Long sellerId, Money totalAmount, LocalDateTime periodFrom,
+    public static SettlementBatch of(Long sellerId, List<SettlementItem> items, LocalDateTime periodFrom,
             LocalDateTime periodTo, LocalDateTime confirmedAt) {
-        return new SettlementBatch(sellerId, totalAmount, periodFrom, periodTo, confirmedAt);
+        return new SettlementBatch(sellerId, items, periodFrom, periodTo, confirmedAt);
     }
 
-    private static void validate(Long sellerId, Money totalAmount, LocalDateTime periodFrom,
+    private static void validate(Long sellerId, List<SettlementItem> items, LocalDateTime periodFrom,
             LocalDateTime periodTo, LocalDateTime confirmedAt) {
         Objects.requireNonNull(sellerId, "sellerId는 null일 수 없습니다.");
-        Objects.requireNonNull(totalAmount, "totalAmount는 null일 수 없습니다.");
+        Objects.requireNonNull(items, "items는 null일 수 없습니다.");
         Objects.requireNonNull(periodFrom, "periodFrom은 null일 수 없습니다.");
         Objects.requireNonNull(periodTo, "periodTo는 null일 수 없습니다.");
         Objects.requireNonNull(confirmedAt, "confirmedAt은 null일 수 없습니다.");
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("정산 항목이 하나 이상 있어야 합니다.");
+        }
+        if (items.stream().anyMatch(item -> !item.getSellerId().equals(sellerId))) {
+            throw new IllegalArgumentException("모든 정산 항목의 판매자가 sellerId와 일치해야 합니다.");
+        }
         if (!periodFrom.isBefore(periodTo)) {
             throw new IllegalArgumentException("periodFrom은 periodTo보다 이전이어야 합니다.");
         }

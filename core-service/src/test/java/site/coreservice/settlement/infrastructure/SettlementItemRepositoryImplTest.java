@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import site.coreservice.settlement.domain.Money;
 import site.coreservice.settlement.domain.SettlementItem;
 import site.coreservice.settlement.domain.SettlementItemRepository;
+import site.coreservice.settlement.domain.SettlementStatus;
 import site.coreservice.support.RepositoryTest;
 
 @RepositoryTest
@@ -28,8 +30,11 @@ class SettlementItemRepositoryImplTest {
     private static final Long SELLER_ID = 302L;
 
     private SettlementItem settlementItem(Long orderId) {
-        return SettlementItem.of(orderId, SELLER_ID, Money.of(85_000), BigDecimal.valueOf(0.1000),
-                Money.of(8_500), Money.of(76_500), LocalDateTime.now());
+        return SettlementItem.of(orderId, SELLER_ID, Money.of(85_000), BigDecimal.valueOf(0.1000), LocalDateTime.now());
+    }
+
+    private SettlementItem settlementItem(Long orderId, LocalDateTime completedAt) {
+        return SettlementItem.of(orderId, SELLER_ID, Money.of(85_000), BigDecimal.valueOf(0.1000), completedAt);
     }
 
     @Test
@@ -63,5 +68,28 @@ class SettlementItemRepositoryImplTest {
 
         assertThatThrownBy(() -> settlementItemJpaRepository.saveAndFlush(settlementItem(5001L)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void findAllByStatusAndCompletedAtBefore는_PENDING이고_기준_이전인_항목만_반환한다() {
+        LocalDateTime now = LocalDateTime.now();
+        settlementItemJpaRepository.save(settlementItem(5001L, now.minusDays(1)));
+        settlementItemJpaRepository.save(settlementItem(5002L, now.plusDays(1)));
+
+        List<SettlementItem> result = settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
+
+        assertThat(result).extracting(SettlementItem::getOrderId).containsExactly(5001L);
+    }
+
+    @Test
+    void findAllByStatusAndCompletedAtBefore는_PAID_상태는_제외한다() {
+        LocalDateTime now = LocalDateTime.now();
+        SettlementItem paidItem = settlementItemJpaRepository.save(settlementItem(5001L, now.minusDays(1)));
+        paidItem.markPaid(9001L, now);
+        settlementItemJpaRepository.save(paidItem);
+
+        List<SettlementItem> result = settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
+
+        assertThat(result).isEmpty();
     }
 }

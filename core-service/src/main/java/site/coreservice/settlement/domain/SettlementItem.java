@@ -65,31 +65,40 @@ public class SettlementItem extends BaseEntity {
     private Long settlementBatchId;
 
     private SettlementItem(Long orderId, Long sellerId, Money finalBidPrice, BigDecimal commissionRate,
-            Money commissionAmount, Money netAmount, LocalDateTime completedAt) {
-        validate(orderId, sellerId, finalBidPrice, commissionRate, commissionAmount, netAmount, completedAt);
+            LocalDateTime completedAt) {
+        validate(orderId, sellerId, finalBidPrice, commissionRate, completedAt);
         this.orderId = orderId;
         this.sellerId = sellerId;
         this.finalBidPrice = finalBidPrice;
         this.commissionRate = commissionRate;
-        this.commissionAmount = commissionAmount;
-        this.netAmount = netAmount;
+        this.commissionAmount = finalBidPrice.multiply(commissionRate);
+        this.netAmount = finalBidPrice.subtract(this.commissionAmount);
         this.status = SettlementStatus.PENDING;
         this.completedAt = completedAt;
     }
 
     public static SettlementItem of(Long orderId, Long sellerId, Money finalBidPrice, BigDecimal commissionRate,
-            Money commissionAmount, Money netAmount, LocalDateTime completedAt) {
-        return new SettlementItem(orderId, sellerId, finalBidPrice, commissionRate, commissionAmount, netAmount, completedAt);
+            LocalDateTime completedAt) {
+        return new SettlementItem(orderId, sellerId, finalBidPrice, commissionRate, completedAt);
     }
 
     private static void validate(Long orderId, Long sellerId, Money finalBidPrice, BigDecimal commissionRate,
-            Money commissionAmount, Money netAmount, LocalDateTime completedAt) {
+            LocalDateTime completedAt) {
         Objects.requireNonNull(orderId, "orderId는 null일 수 없습니다.");
         Objects.requireNonNull(sellerId, "sellerId는 null일 수 없습니다.");
         Objects.requireNonNull(finalBidPrice, "finalBidPrice는 null일 수 없습니다.");
         Objects.requireNonNull(commissionRate, "commissionRate는 null일 수 없습니다.");
-        Objects.requireNonNull(commissionAmount, "commissionAmount는 null일 수 없습니다.");
-        Objects.requireNonNull(netAmount, "netAmount는 null일 수 없습니다.");
         Objects.requireNonNull(completedAt, "completedAt은 null일 수 없습니다.");
+    }
+
+    public void markPaid(Long settlementBatchId, LocalDateTime paidAt) {
+        Objects.requireNonNull(settlementBatchId, "settlementBatchId는 null일 수 없습니다.");
+        Objects.requireNonNull(paidAt, "paidAt은 null일 수 없습니다.");
+        if (status != SettlementStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 정산 항목만 지급 처리할 수 있습니다.");
+        }
+        this.status = SettlementStatus.PAID;
+        this.settlementBatchId = settlementBatchId;
+        this.paidAt = paidAt;
     }
 }

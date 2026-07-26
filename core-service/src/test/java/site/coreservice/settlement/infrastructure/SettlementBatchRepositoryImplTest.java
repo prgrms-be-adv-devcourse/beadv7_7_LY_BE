@@ -3,8 +3,10 @@ package site.coreservice.settlement.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -12,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import site.coreservice.settlement.domain.Money;
 import site.coreservice.settlement.domain.SettlementBatch;
 import site.coreservice.settlement.domain.SettlementBatchRepository;
+import site.coreservice.settlement.domain.SettlementItem;
 import site.coreservice.support.RepositoryTest;
 
 @RepositoryTest
@@ -31,7 +34,9 @@ class SettlementBatchRepositoryImplTest {
     private final LocalDateTime periodTo = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
 
     private SettlementBatch settlementBatch(Long sellerId, LocalDateTime periodFrom, LocalDateTime periodTo) {
-        return SettlementBatch.of(sellerId, Money.of(100_000), periodFrom, periodTo, LocalDateTime.now());
+        List<SettlementItem> items = List.of(
+                SettlementItem.of(5001L, sellerId, Money.of(100_000), BigDecimal.valueOf(0.1000), LocalDateTime.now()));
+        return SettlementBatch.of(sellerId, items, periodFrom, periodTo, LocalDateTime.now());
     }
 
     @Test

@@ -1,10 +1,13 @@
 package site.coreservice.settlement.infrastructure;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.coreservice.settlement.domain.SettlementItem;
 import site.coreservice.settlement.domain.SettlementItemRepository;
+import site.coreservice.settlement.domain.SettlementStatus;
 
 @Repository
 @RequiredArgsConstructor
@@ -30,5 +33,10 @@ public class SettlementItemRepositoryImpl implements SettlementItemRepository {
     @Override
     public boolean existsByOrderId(Long orderId) {
         return settlementItemJpaRepository.existsByOrderId(orderId);
+    }
+
+    @Override
+    public List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt) {
+        return settlementItemJpaRepository.findAllByStatusAndCompletedAtBefore(status, completedAt);
     }
 }
