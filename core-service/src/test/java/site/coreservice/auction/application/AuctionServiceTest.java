@@ -11,6 +11,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.coreservice.auction.application.dto.AuctionListQuery;
+import site.coreservice.auction.application.dto.AuctionListResult;
 import site.coreservice.auction.application.dto.AuctionResult;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
 import site.coreservice.auction.application.dto.HostedAuctionResult;
@@ -20,6 +22,7 @@ import site.coreservice.auction.application.dto.ParticipatedAuctionResult;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.dto.AuctionListSummary;
 import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
@@ -444,5 +447,31 @@ class AuctionServiceTest {
 
         // then
         assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("경매 목록 조회 시 서치 뷰 조회 결과를 애플리케이션 타입으로 변환해 반환한다")
+    void testGetAuctions_mapsSearchViewResultToApplicationType() {
+        // given
+        AuctionListQuery query = new AuctionListQuery("Rock", "ORIGINAL", "RUNNING", "price_asc");
+        Pageable pageable = PageRequest.of(0, 20);
+        AuctionListSummary summary = new AuctionListSummary(
+                1L, 100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", "1.png",
+                2L, "vinyl_king", AuctionStatus.RUNNING, BigDecimal.valueOf(10_000), 3L,
+                PAST_START, FUTURE_END);
+        given(searchViewRepository.search(query, pageable))
+                .willReturn(new PageImpl<>(List.of(summary), pageable, 1));
+
+        // when
+        PageResult<AuctionListResult> result = auctionService.getAuctions(query, pageable);
+
+        // then
+        assertThat(result.items()).hasSize(1);
+        AuctionListResult item = result.items().get(0);
+        assertThat(item.title()).isEqualTo("Abbey Road");
+        assertThat(item.artistName()).isEqualTo("The Beatles");
+        assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
+        assertThat(item.finalPrice()).isEqualTo(Money.of(10_000L));
+        assertThat(item.bidCount()).isEqualTo(3L);
     }
 }
