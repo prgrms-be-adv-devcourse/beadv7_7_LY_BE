@@ -113,16 +113,16 @@ class AuctionTest {
     }
 
     @Test
-    @DisplayName("SCHEDULED 상태면 시작 시각이 지났어도 수정할 수 있다")
-    void testModify_scheduledStatus_evenAfterStartTime_succeeds() {
+    @DisplayName("SCHEDULED 상태여도 시작 시각이 지났으면 실제로는 RUNNING이라 수정할 수 없다")
+    void testModify_scheduledStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED);
 
-        // when
-        auction.modify(1L, 200L, itemInfo, pricing, schedule, afterStart);
-
-        // then
-        assertThat(auction.getProductId()).isEqualTo(200L);
+        // when & then
+        assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, schedule, afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test

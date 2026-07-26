@@ -12,6 +12,7 @@ import site.coreservice.auction.exception.AuctionErrorCode;
 import site.coreservice.auction.exception.AuctionException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +38,7 @@ public class InternalAuctionService {
                 auction.getItemInfo().getCondition().name(),
                 bidCount, finalPrice,
                 auction.getSchedule().getPeriod().getEndAt(),
-                auction.getStatus().name()
+                auction.getEffectiveStatusAt(LocalDateTime.now()).name()
         );
     }
 

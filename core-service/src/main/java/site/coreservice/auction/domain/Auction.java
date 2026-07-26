@@ -129,7 +129,7 @@ public class Auction extends BaseEntity {
 
     // status == RUNNING이어도 시작 스케줄러가 미리 바꿔둔 것일 뿐 실제로는 아직 시작 전인 상태
     public boolean isEffectiveScheduledAt(LocalDateTime now) {
-        return status == AuctionStatus.SCHEDULED || (status == AuctionStatus.RUNNING && !schedule.isStartedAt(now));
+        return getEffectiveStatusAt(now) == AuctionStatus.SCHEDULED;
     }
 
     // status == RUNNING이면서 실제로 시작 시각과 종료 시각 사이인 경우인 실제 진행 중 상태
