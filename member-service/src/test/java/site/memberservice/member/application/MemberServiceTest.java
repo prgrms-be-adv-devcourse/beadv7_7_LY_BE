@@ -26,7 +26,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 @SpringBootTest
 class MemberServiceTest {
 
-    // TODO : 반복되는 객체 생성은 Fixture 분리 고민
+    // TODO : #60 반복되는 객체 생성은 Fixture 분리 고민
 
     @Autowired private MemberService memberService;
     @Autowired private MemberRepository memberRepository;
