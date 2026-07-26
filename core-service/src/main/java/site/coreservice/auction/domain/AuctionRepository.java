@@ -16,4 +16,6 @@ public interface AuctionRepository {
     Map<Long, Long> countRunningByProductIds(List<Long> productIds);
 
     List<Auction> findAllRunningToEnd(LocalDateTime threshold);
+
+    List<Auction> findAllByIds(List<Long> auctionIds);
 }

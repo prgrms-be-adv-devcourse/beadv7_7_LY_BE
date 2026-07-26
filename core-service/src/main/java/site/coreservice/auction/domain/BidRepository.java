@@ -1,6 +1,8 @@
 package site.coreservice.auction.domain;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 
 public interface BidRepository {
@@ -13,4 +15,6 @@ public interface BidRepository {
     List<Bid> findRecentByAuctionId(Long auctionId, int limit);
 
     long countByAuctionId(Long auctionId);
+
+    Page<Bid> findLatestBidsByBidder(Long bidderId, Pageable pageable);
 }

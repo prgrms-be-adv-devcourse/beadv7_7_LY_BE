@@ -47,4 +47,9 @@ public class AuctionRepositoryImpl implements AuctionRepository {
     public List<Auction> findAllRunningToEnd(LocalDateTime threshold) {
         return jpaRepository.findAllByStatusAndEndAtLessThanEqual(AuctionStatus.RUNNING, threshold);
     }
+
+    @Override
+    public List<Auction> findAllByIds(List<Long> auctionIds) {
+        return jpaRepository.findAllById(auctionIds);
+    }
 }
