@@ -21,6 +21,6 @@ public interface AuctionSearchViewRepository {
 
     List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds);
 
-    Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable);   // 신규 — AuctionSearchView가 아니라 application 타입 반환
+    Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable);
 
 }
