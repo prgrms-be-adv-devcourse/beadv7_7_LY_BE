@@ -1,12 +1,13 @@
 package site.coreservice.auction.presentation;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.coreservice.auction.application.AuctionService;
-import site.coreservice.auction.presentation.dto.AuctionRequest;
-import site.coreservice.auction.presentation.dto.AuctionResultResponse;
+import site.coreservice.auction.presentation.dto.*;
 
 @RestController
 @RequestMapping("/api/v1/auctions")
@@ -29,6 +30,15 @@ public class AuctionController {
     public ApiResponse<Void> deleteAuction(@PathVariable Long auctionId, @MemberId Long sellerId) {
         auctionService.deleteAuction(auctionId, sellerId);
         return ApiResponse.success();
+    }
+
+    @GetMapping("/participated")
+    public ApiResponse<PageResponse<ParticipatedAuctionResponse>> participated(
+            @MemberId Long bidderId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ApiResponse.success(PageResponse.from(auctionService.getParticipatedAuctions(bidderId, pageable), ParticipatedAuctionResponse::from));
     }
 
 }

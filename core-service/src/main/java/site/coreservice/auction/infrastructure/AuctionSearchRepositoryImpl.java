@@ -3,10 +3,13 @@ package site.coreservice.auction.infrastructure;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
+import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.exception.AuctionErrorCode;
 import site.coreservice.auction.exception.AuctionException;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -36,4 +39,10 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         searchViewJpaRepository.deleteById(auctionId);
     }
 
+    @Override
+    public List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds) {
+        return searchViewJpaRepository.findAllById(auctionIds).stream()
+                .map(v -> new AuctionProductSummary(v.getAuctionId(), v.getTitle(), v.getArtistName()))
+                .toList();
+    }
 }

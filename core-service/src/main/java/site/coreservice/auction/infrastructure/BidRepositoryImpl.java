@@ -1,12 +1,18 @@
 package site.coreservice.auction.infrastructure;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import site.coreservice.auction.domain.Bid;
 import site.coreservice.auction.domain.BidOutcome;
 import site.coreservice.auction.domain.BidRepository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -27,4 +33,12 @@ public class BidRepositoryImpl implements BidRepository {
     public Optional<Bid> findActiveBid(Long auctionId) {
         return jpaRepository.findByAuctionIdAndOutcome(auctionId, BidOutcome.ACTIVE);
     }
+
+    @Override
+    public Page<Bid> findLatestBidsByBidder(Long bidderId, Pageable pageable) {
+        List<Bid> content = jpaRepository.findLatestBidsByBidder(bidderId, pageable);
+        long total = jpaRepository.countDistinctAuctionsByBidder(bidderId);
+        return new PageImpl<>(content, pageable, total);
+    }
+
 }
