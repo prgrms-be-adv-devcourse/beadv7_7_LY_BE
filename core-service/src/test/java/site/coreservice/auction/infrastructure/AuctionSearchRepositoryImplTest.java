@@ -198,6 +198,26 @@ class AuctionSearchRepositoryImplTest {
     }
 
     @Test
+    @DisplayName("조회 결과의 각 필드는 서치 뷰의 값과 동일하게 매핑된다")
+    void testSearch_mapsAllFieldsFromSearchView() {
+        // given
+        saveSearchView(1L, "Rock", "ORIGINAL", AuctionStatus.RUNNING, 10_000L, 3, FUTURE_START, FUTURE_START.plusDays(1));
+        AuctionSearchView view = searchViewJpaRepository.findById(1L).orElseThrow();
+
+        // when
+        Page<AuctionListSummary> result = auctionSearchViewRepository.search(
+                new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
+
+        // then
+        assertThat(result.getContent()).containsExactly(new AuctionListSummary(
+                view.getAuctionId(), view.getProductId(), view.getTitle(), view.getArtistName(),
+                view.getReleaseYear(), view.getGenre(), view.getPressType(), view.getThumbnail(),
+                view.getSellerId(), view.getSellerNickname(), view.getStatus(),
+                view.getHighestBidAmount(), view.getBidCount(), view.getStartAt(), view.getEndAt()
+        ));
+    }
+
+    @Test
     @DisplayName("price_asc 정렬 시 가격이 낮은 순으로 반환한다")
     void testSearch_sortsByPriceAscending() {
         // given
@@ -225,6 +245,16 @@ class AuctionSearchRepositoryImplTest {
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L, 1L);
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 sort 값으로 조회하면 예외를 던진다")
+    void testSearch_invalidSort_throws() {
+        assertThatThrownBy(() -> auctionSearchViewRepository.search(
+                new AuctionListQuery(null, null, null, "not_a_sort"), PageRequest.of(0, 20)))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_SORT_INVALID);
     }
 
     @Test
