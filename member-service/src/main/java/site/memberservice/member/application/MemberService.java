@@ -36,7 +36,7 @@ public class MemberService {
         validateDuplicateNickName(command.nickName());
         validateDuplicatePhoneNumber(phoneNumber);
 
-        final String hashedPassword = hasher.hashing(command.password());
+        final String hashedPassword = hasher.hash(command.password());
         final Member createdMember = Member.create(
             email,
             hashedPassword,

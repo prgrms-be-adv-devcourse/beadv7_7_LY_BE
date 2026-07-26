@@ -12,15 +12,15 @@ class Argon2HasherTest {
 
     @DisplayName("평문 비밀번호를 입력하면 Argon2 알고리즘을 사용해 해싱한다.")
     @Test
-    void hashingUseArgon2() {
+    void hashUseArgon2() {
         // Given
         final String rowPassword = "testPw1234!";
 
         // When
-        final String hashedPassword = hasher.hashing(rowPassword);
+        final String hashedPassword = hasher.hash(rowPassword);
 
         // Then
-        assertThat(hasher.matches(rowPassword, hashedPassword)).isTrue();
-        assertThat(hasher.matches("testerPw1234@", hashedPassword)).isFalse();
+        assertThat(hasher.match(rowPassword, hashedPassword)).isTrue();
+        assertThat(hasher.match("testerPw1234@", hashedPassword)).isFalse();
     }
 }

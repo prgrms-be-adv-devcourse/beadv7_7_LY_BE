@@ -2,7 +2,7 @@ package site.memberservice.global.crypto.hashing;
 
 public interface Hasher {
 
-    String hashing(String target);
+    String hash(String target);
 
-    boolean matches(String rawTarget, String hashedTarget);
+    boolean match(String rawTarget, String hashedTarget);
 }

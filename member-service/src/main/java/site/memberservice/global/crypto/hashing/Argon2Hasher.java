@@ -9,12 +9,12 @@ public class Argon2Hasher implements Hasher {
     private final Argon2PasswordEncoder argon2PasswordEncoder = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
 
     @Override
-    public String hashing(final String target) {
+    public String hash(final String target) {
         return argon2PasswordEncoder.encode(target);
     }
 
     @Override
-    public boolean matches(final String rawTarget, final String hashedTarget) {
+    public boolean match(final String rawTarget, final String hashedTarget) {
         return argon2PasswordEncoder.matches(rawTarget, hashedTarget);
     }
 }
