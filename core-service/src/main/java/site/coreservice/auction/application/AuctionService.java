@@ -9,6 +9,7 @@ import site.coreservice.auction.application.dto.*;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.dto.AuctionListSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.domain.*;
@@ -119,6 +120,13 @@ public class AuctionService {
                 .toList();
 
         return PageResult.of(auctions, items);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<AuctionListResult> getAuctions(AuctionListQuery query, Pageable pageable) {
+        Page<AuctionListSummary> result = searchViewRepository.search(query, pageable);
+        List<AuctionListResult> items = result.getContent().stream().map(AuctionListResult::from).toList();
+        return PageResult.of(result, items);
     }
 
 }

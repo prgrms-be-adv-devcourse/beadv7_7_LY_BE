@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.coreservice.auction.application.AuctionService;
+import site.coreservice.auction.application.dto.AuctionListQuery;
 import site.coreservice.auction.presentation.dto.*;
 
 @RestController
@@ -48,6 +49,19 @@ public class AuctionController {
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ApiResponse.success(PageResponse.from(auctionService.getHostedAuctions(sellerId, pageable), HostedAuctionResponse::from));
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<AuctionListResponse>> list(
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String pressType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        AuctionListQuery query = new AuctionListQuery(genre, pressType, status, sort);
+        Pageable pageable = PageRequest.of(page, size);
+        return ApiResponse.success(PageResponse.from(auctionService.getAuctions(query, pageable), AuctionListResponse::from));
     }
 
 }
