@@ -1,6 +1,7 @@
 package site.coreservice.auction.infrastructure.client;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import site.coreservice.auction.application.port.dto.ProductSnapshot;
 @RequiredArgsConstructor
 public class ProductHttpClient implements ProductPort {
 
+    @Qualifier("auctionRestClient")
     private final RestClient auctionRestClient;
 
     @Override

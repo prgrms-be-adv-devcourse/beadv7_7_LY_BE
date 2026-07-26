@@ -1,6 +1,7 @@
 package site.coreservice.auction.infrastructure.client;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import site.coreservice.auction.application.port.MemberPort;
 @RequiredArgsConstructor
 public class MemberHttpClient implements MemberPort {
 
+    @Qualifier("auctionRestClient")
     private final RestClient auctionRestClient;
 
     @Override
