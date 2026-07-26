@@ -41,4 +41,13 @@ public class AuctionController {
         return ApiResponse.success(PageResponse.from(auctionService.getParticipatedAuctions(bidderId, pageable), ParticipatedAuctionResponse::from));
     }
 
+    @GetMapping("/hosted")
+    public ApiResponse<PageResponse<HostedAuctionResponse>> hosted(
+            @MemberId Long sellerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ApiResponse.success(PageResponse.from(auctionService.getHostedAuctions(sellerId, pageable), HostedAuctionResponse::from));
+    }
+
 }

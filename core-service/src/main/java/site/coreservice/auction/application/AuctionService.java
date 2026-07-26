@@ -95,4 +95,30 @@ public class AuctionService {
         return PageResult.of(latestBids, items);
     }
 
+    @Transactional(readOnly = true)
+    public PageResult<HostedAuctionResult> getHostedAuctions(Long sellerId, Pageable pageable) {
+        Page<Auction> auctions = auctionRepository.findBySellerId(sellerId, pageable);
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Long> auctionIds = auctions.getContent().stream().map(Auction::getId).toList();
+        // highestBidAmount/bidCount는 Auction/Bid 원본에서 — SearchView 동기화 리스크를 안 탄다
+        Map<Long, Long> bidCounts = bidRepository.countGroupedByAuctionIds(auctionIds);
+        // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
+        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(auctionIds).stream()
+                .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+
+        // 취소된 경매는 조회 결과에서 제외한다
+        List<HostedAuctionResult> items = auctions.getContent().stream()
+                .filter(auction -> !auction.isCanceled())
+                .map(auction -> {
+                    AuctionProductSummary summary = summaryById.get(auction.getId());
+                    Money highest = auction.hasBid() ? auction.getHighestBid().getAmount() : null;
+                    long bidCount = bidCounts.getOrDefault(auction.getId(), 0L);
+                    return HostedAuctionResult.of(auction, summary, highest, bidCount, auction.getEffectiveStatusAt(now));
+                })
+                .toList();
+
+        return PageResult.of(auctions, items);
+    }
+
 }
