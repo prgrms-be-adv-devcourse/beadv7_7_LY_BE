@@ -2,8 +2,8 @@ package site.memberservice.member.application;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import site.memberservice.global.crypto.hashing.Hasher;
 import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
@@ -22,7 +22,7 @@ import static site.memberservice.member.exception.MemberErrorCode.MEMBER_NOT_FOU
 @Service
 public class MemberService {
 
-    private final Hasher hasher;
+    private final PasswordEncoder passwordEncoder;
     private final MemberRepository memberRepository;
 
     // TODO : 회원 개인 정보 암호화 및 관리 정책을 반드시 고민해서 적용하기
@@ -36,7 +36,7 @@ public class MemberService {
         validateDuplicateNickName(command.nickName());
         validateDuplicatePhoneNumber(phoneNumber);
 
-        final String hashedPassword = hasher.hash(command.password());
+        final String hashedPassword = passwordEncoder.encode(command.password());
         final Member createdMember = Member.create(
             email,
             hashedPassword,
