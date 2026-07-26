@@ -50,4 +50,11 @@ public class BidRepositoryImpl implements BidRepository {
         return new PageImpl<>(content, pageable, total);
     }
 
+    @Override
+    public Map<Long, Long> countGroupedByAuctionIds(List<Long> auctionIds) {
+        if (auctionIds.isEmpty()) return Map.of();
+        return jpaRepository.countGroupedByAuctionIds(auctionIds).stream()
+                .collect(Collectors.toMap(BidJpaRepository.AuctionBidCount::getAuctionId,
+                        BidJpaRepository.AuctionBidCount::getCnt));
+    }
 }

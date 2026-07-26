@@ -31,4 +31,11 @@ public interface BidJpaRepository extends JpaRepository<Bid,Long> {
     @Query("SELECT COUNT(DISTINCT b.auctionId) FROM Bid b WHERE b.bidderId = :bidderId")
     long countDistinctAuctionsByBidder(@Param("bidderId") Long bidderId);
 
+    @Query("SELECT b.auctionId AS auctionId, COUNT(b) AS cnt FROM Bid b WHERE b.auctionId IN :auctionIds GROUP BY b.auctionId")
+    List<AuctionBidCount> countGroupedByAuctionIds(@Param("auctionIds") List<Long> auctionIds);
+
+    interface AuctionBidCount {
+        Long getAuctionId();
+        Long getCnt();
+    }
 }
