@@ -51,7 +51,7 @@ class MemberServiceTest {
 
         // Then
         final PhoneNumber phoneNumber = new PhoneNumber(request.phoneNumber());
-        assertThat(memberRepository.existsByPhoneNumber(phoneNumber));
+        assertThat(memberRepository.existsByPhoneNumber(phoneNumber)).isTrue();
     }
 
     @DisplayName("회원 가입 요청에 유효하지 않은 비밀번호를 입력하면 예외가 발생한다.")
