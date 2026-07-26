@@ -1,5 +1,6 @@
 package site.coreservice.product.domain;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -13,4 +14,6 @@ public interface ArtistRepository {
     Optional<Artist> findByNormalizedName(String normalizedName);
 
     Optional<Artist> findById(Long id);
+
+    List<Artist> findAllByIds(List<Long> ids);
 }

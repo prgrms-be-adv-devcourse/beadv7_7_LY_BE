@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -133,6 +134,53 @@ class ProductServiceTest {
 
         // when & then
         assertThatThrownBy(() -> productService.getActiveProductDetail(55L))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("배치 조회는 여러 상품과 아티스트를 합성해 반환한다")
+    void getProductSnapshots_여러_상품과_아티스트를_합성해_반환() {
+        // given
+        Product anotherProduct = Product.of("PCS 7089", 3L, "Let It Be", "UK", 1970,
+                PressType.ORIGINAL, "LP", "Apple Records", "Rock", null, "1970년 영국 오리지널 프레싱");
+        ReflectionTestUtils.setField(anotherProduct, "id", 56L);
+
+        given(productRepository.findAllByIds(List.of(55L, 56L))).willReturn(List.of(product, anotherProduct));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+
+        // when
+        List<ProductSnapshotResult> results = productService.getProductSnapshots(List.of(55L, 56L));
+
+        // then
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(ProductSnapshotResult::productId).containsExactlyInAnyOrder(55L, 56L);
+        assertThat(results).allMatch(r -> r.artistName().equals("The Beatles"));
+    }
+
+    @Test
+    @DisplayName("배치 조회는 요청한 id 중 일부가 없으면 존재하는 상품만 반환한다")
+    void getProductSnapshots_없는_상품이_있으면_존재하는_것만_반환() {
+        // given
+        given(productRepository.findAllByIds(List.of(55L, 99L))).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+
+        // when
+        List<ProductSnapshotResult> results = productService.getProductSnapshots(List.of(55L, 99L));
+
+        // then
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().productId()).isEqualTo(55L);
+    }
+
+    @Test
+    @DisplayName("배치 조회는 상품이 참조하는 아티스트가 없으면 정합성 예외를 던진다")
+    void getProductSnapshots_아티스트_부재면_정합성_예외() {
+        // given
+        given(productRepository.findAllByIds(List.of(55L))).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of());
+
+        // when & then
+        assertThatThrownBy(() -> productService.getProductSnapshots(List.of(55L)))
                 .isInstanceOf(IllegalStateException.class);
     }
 }
