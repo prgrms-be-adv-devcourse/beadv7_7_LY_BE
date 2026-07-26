@@ -1,16 +1,19 @@
 package site.coreservice.order.application;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.coreservice.global.event.AuctionWonEvent;
+import site.coreservice.order.domain.CancelReason;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderStatus;
 import site.coreservice.order.application.port.ProductInfo;
 import site.coreservice.order.application.port.ProductPort;
 import site.coreservice.order.exception.OrderErrorCode;
@@ -27,6 +30,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductPort productPort;
+    private final OrderEventPublisher orderEventPublisher;
 
     public void createOrder(AuctionWonEvent event) {
         if (orderRepository.existsByAuctionId(event.getAuctionId())) {
@@ -78,5 +82,65 @@ public class OrderService {
 
         LocalDateTime now = LocalDateTime.now();
         order.confirmOrder(deliveryInfo, now.plusDays(COMPLETION_PERIOD_DAYS), now);
+    }
+
+    public void cancelOrder(Long orderId, Long buyerId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
+        orderEventPublisher.publishCancelled(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findExpiredOrderIds() {
+        return orderRepository.findAllByStatusAndOrderDeadlineBefore(OrderStatus.PENDING, LocalDateTime.now()).stream()
+            .map(Order::getId)
+            .toList();
+    }
+
+    public void cancelExpiredOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PENDING) {
+            return;
+        }
+
+        order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT, LocalDateTime.now());
+        orderEventPublisher.publishCancelled(order);
+        log.info("주문 확정 기한 초과로 자동 취소 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
+    }
+
+    public void completeOrder(Long orderId, Long buyerId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        order.completeOrder(LocalDateTime.now());
+        orderEventPublisher.publishCompleted(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findOrdersToAutoComplete() {
+        return orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, LocalDateTime.now()).stream()
+            .map(Order::getId)
+            .toList();
+    }
+
+    public void completeExpiredOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.ORDERED) {
+            return;
+        }
+
+        order.completeOrder(LocalDateTime.now());
+        orderEventPublisher.publishCompleted(order);
+        log.info("거래 확정 기한 초과로 자동 완료 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
     }
 }

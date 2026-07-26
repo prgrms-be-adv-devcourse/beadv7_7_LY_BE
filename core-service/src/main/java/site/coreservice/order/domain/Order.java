@@ -106,6 +106,7 @@ public class Order extends BaseEntity {
 
 
     public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline, LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.PENDING) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_PENDING);
         }
@@ -121,20 +122,23 @@ public class Order extends BaseEntity {
         this.deliveryInfo = deliveryInfo;
     }
 
-    public void cancelOrder(CancelReason cancelReason) {
+    public void cancelOrder(CancelReason cancelReason, LocalDateTime now) {
+        Objects.requireNonNull(cancelReason, "cancelReason은 null일 수 없습니다.");
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태에서만 취소할 수 있습니다. 현재 상태: " + status);
+            throw new OrderException(OrderErrorCode.ORDER_NOT_CANCELLABLE);
         }
         this.status = OrderStatus.CANCELLED;
-        this.cancelledAt = LocalDateTime.now();
+        this.cancelledAt = now;
         this.cancelReason = cancelReason;
     }
 
-    public void completeOrder() {
+    public void completeOrder(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.ORDERED) {
-            throw new IllegalStateException("ORDERED 상태에서만 거래를 확정할 수 있습니다. 현재 상태: " + status);
+            throw new OrderException(OrderErrorCode.ORDER_NOT_ORDERED);
         }
         this.status = OrderStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = now;
     }
 }
