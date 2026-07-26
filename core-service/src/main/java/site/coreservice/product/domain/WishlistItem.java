@@ -6,12 +6,18 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
 
 @Entity
-@Table(name = "wishlist_items")
+@Table(name = "wishlist_items",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_wishlist_item_product_member",
+        columnNames = {"product_id", "member_id"}
+    )
+)
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 public class WishlistItem extends BaseEntity {
@@ -20,10 +26,10 @@ public class WishlistItem extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column
+    @Column(name = "member_id", nullable = false)
     private Long memberId;
 
-    @Column
+    @Column(name = "product_id", nullable = false)
     private Long productId;
 
     public WishlistItem(Long memberId, Long productId) {
