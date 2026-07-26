@@ -10,9 +10,6 @@ import site.coreservice.pointwallet.ledger.domain.PointTransactionType;
 public record PointTransactionResult(Long transactionId, String type, BigDecimal amount,
                                      Long relatedId, LocalDateTime occurredAt) {
 
-    private static final Set<PointTransactionType> DEBIT_TYPES =
-            EnumSet.of(PointTransactionType.HOLD, PointTransactionType.DEPOSIT_CANCEL);
-
     public static PointTransactionResult from(PointTransaction transaction) {
         BigDecimal rawAmount = transaction.getAmount().getValue();
         BigDecimal signedAmount = DEBIT_TYPES.contains(transaction.getType()) ? rawAmount.negate() : rawAmount;
@@ -25,4 +22,7 @@ public record PointTransactionResult(Long transactionId, String type, BigDecimal
                 transaction.getOccurredAt()
         );
     }
+
+    private static final Set<PointTransactionType> DEBIT_TYPES =
+            EnumSet.of(PointTransactionType.HOLD, PointTransactionType.DEPOSIT_CANCEL, PointTransactionType.WITHDRAW);
 }

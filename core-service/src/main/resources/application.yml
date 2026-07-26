@@ -29,3 +29,6 @@ toss:
   payments:
     client-key: ${TOSS_CLIENT_KEY}
     secret-key: ${TOSS_SECRET_KEY}
+member:
+  service:
+    base-url: ${MEMBER_SERVICE_BASE_URL:http://localhost:8081}
