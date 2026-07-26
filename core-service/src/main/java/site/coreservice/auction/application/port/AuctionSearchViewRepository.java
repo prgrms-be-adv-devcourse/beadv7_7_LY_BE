@@ -1,5 +1,9 @@
 package site.coreservice.auction.application.port;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import site.coreservice.auction.application.dto.AuctionListQuery;
+import site.coreservice.auction.application.port.dto.AuctionListSummary;
 import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
@@ -16,4 +20,7 @@ public interface AuctionSearchViewRepository {
     void deleteById(Long auctionId);
 
     List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds);
+
+    Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable);   // 신규 — AuctionSearchView가 아니라 application 타입 반환
+
 }
