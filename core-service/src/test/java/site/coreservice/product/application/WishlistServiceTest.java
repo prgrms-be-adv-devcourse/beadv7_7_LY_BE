@@ -32,8 +32,9 @@ class WishlistServiceTest {
 
     @Test
     void findPage은_각_아이템에_해당_상품_정보를_채워_반환한다() {
-        final WishlistItem wishlistItem = new WishlistItem(1L, 100L);
-        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(List.of(wishlistItem));
+        final WishlistItem wishlistItem = WishlistItem.of(1L, 100L);
+        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(
+            List.of(wishlistItem));
 
         final ProductSnapshotResult snapshot = new ProductSnapshotResult(
             100L, "제목", "아티스트", "http://image", "장르", PressType.ORIGINAL, 2020, true, null);
@@ -55,8 +56,9 @@ class WishlistServiceTest {
 
     @Test
     void findAll은_참조하는_상품이_없으면_건너뛰고_에러를_발생시키지_않는다() {
-        final WishlistItem wishlistItem = new WishlistItem(1L, 999L);
-        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(List.of(wishlistItem));
+        final WishlistItem wishlistItem = WishlistItem.of(1L, 999L);
+        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(
+            List.of(wishlistItem));
         when(productService.getProductSnapshots(List.of(999L))).thenReturn(List.of());
 
         final WishlistService service = new WishlistService(wishlistItemRepository,
@@ -68,8 +70,9 @@ class WishlistServiceTest {
 
     @Test
     void findAll은_참조하는_상품이_비활성이면_건너뛰고_에러를_발생시키지_않는다() {
-        final WishlistItem wishlistItem = new WishlistItem(1L, 100L);
-        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(List.of(wishlistItem));
+        final WishlistItem wishlistItem = WishlistItem.of(1L, 100L);
+        when(wishlistItemRepository.findAllByMemberId(1L, null, 11)).thenReturn(
+            List.of(wishlistItem));
 
         final ProductSnapshotResult snapshot = new ProductSnapshotResult(
             100L, "제목", "아티스트", "http://image", "장르", PressType.ORIGINAL, 2020, false, null);
@@ -84,9 +87,9 @@ class WishlistServiceTest {
 
     @Test
     void findPage는_size보다_많이_조회되면_hasNext와_nextCursor를_설정한다() {
-        final WishlistItem first = new WishlistItem(1L, 100L);
-        final WishlistItem second = new WishlistItem(1L, 101L);
-        final WishlistItem third = new WishlistItem(1L, 102L);
+        final WishlistItem first = WishlistItem.of(1L, 100L);
+        final WishlistItem second = WishlistItem.of(1L, 101L);
+        final WishlistItem third = WishlistItem.of(1L, 102L);
         ReflectionTestUtils.setField(first, "id", 30L);
         ReflectionTestUtils.setField(second, "id", 20L);
         ReflectionTestUtils.setField(third, "id", 10L);
@@ -122,7 +125,7 @@ class WishlistServiceTest {
 
     @Test
     void add는_상품이_active일때_저장한다() {
-        final WishlistItem saved = new WishlistItem(1L, 100L);
+        final WishlistItem saved = WishlistItem.of(1L, 100L);
         final ProductSnapshotResult snapshot = new ProductSnapshotResult(
             100L, "제목", "아티스트", "http://image", "장르", PressType.ORIGINAL, 2020, true, null);
         when(productService.getProductSnapshot(100L)).thenReturn(snapshot);

@@ -42,7 +42,7 @@ public class WishlistService {
         if (!product.active()) {
             throw new ProductNotFoundException();
         }
-        return wishlistItemRepository.save(new WishlistItem(memberId, productId));
+        return wishlistItemRepository.save(WishlistItem.of(memberId, productId));
     }
 
     @Transactional

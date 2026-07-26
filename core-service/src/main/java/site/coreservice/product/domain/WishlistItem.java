@@ -32,9 +32,13 @@ public class WishlistItem extends BaseEntity {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
-    public WishlistItem(Long memberId, Long productId) {
+    private WishlistItem(Long memberId, Long productId) {
         this.memberId = memberId;
         this.productId = productId;
+    }
+
+    public static WishlistItem of(Long memberId, Long productId) {
+        return new WishlistItem(memberId, productId);
     }
 
 }
