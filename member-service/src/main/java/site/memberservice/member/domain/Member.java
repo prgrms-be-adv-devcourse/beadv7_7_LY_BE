@@ -49,6 +49,7 @@ public class Member extends BaseEntity {
     @Embedded
     private Email email;
 
+    @ToString.Exclude
     @Column(name = "password", length = 255, nullable = false)
     private String password;
 
