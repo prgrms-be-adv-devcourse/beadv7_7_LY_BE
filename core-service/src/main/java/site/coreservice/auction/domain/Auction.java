@@ -115,4 +115,29 @@ public class Auction extends BaseEntity {
         return highestBid != null;
     }
 
+    public AuctionStatus getEffectiveStatusAt(LocalDateTime now) {
+        if(isCanceled() || isEndedWon() || isEndedFailed()) {
+            return this.status;
+        }
+        if (!schedule.isStartedAt(now)) {
+            return AuctionStatus.SCHEDULED;
+        }
+        if (!schedule.isEndedAt(now)) {
+            return AuctionStatus.RUNNING;
+        }
+        return hasBid() ? AuctionStatus.ENDED_WON : AuctionStatus.ENDED_FAILED;
+    }
+
+    public boolean isEndedWon() {
+        return status == AuctionStatus.ENDED_WON;
+    }
+
+    public boolean isEndedFailed() {
+        return status == AuctionStatus.ENDED_FAILED;
+    }
+
+    public boolean isCanceled() {
+        return status == AuctionStatus.CANCELED;
+    }
+
 }
