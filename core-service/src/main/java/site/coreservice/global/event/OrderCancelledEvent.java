@@ -1,4 +1,4 @@
-package site.coreservice.order.domain;
+package site.coreservice.global.event;
 
 import lombok.Getter;
 import site.common.event.Event;
@@ -22,6 +22,6 @@ public class OrderCancelledEvent extends Event {
 
     @Override
     public String getEventType() {
-        return "order.cancelled";
+        return EventType.ORDER_CANCELLED_EVENT.getValue();
     }
 }

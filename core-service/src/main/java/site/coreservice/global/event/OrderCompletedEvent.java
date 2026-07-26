@@ -1,4 +1,4 @@
-package site.coreservice.order.domain;
+package site.coreservice.global.event;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +33,6 @@ public class OrderCompletedEvent extends Event {
 
     @Override
     public String getEventType() {
-        return "order.completed";
+        return EventType.ORDER_COMPLETED_EVENT.getValue();
     }
 }

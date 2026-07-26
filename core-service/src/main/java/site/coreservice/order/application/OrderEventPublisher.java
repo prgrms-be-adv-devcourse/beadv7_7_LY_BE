@@ -2,9 +2,9 @@ package site.coreservice.order.application;
 
 import org.springframework.stereotype.Component;
 import site.common.event.EventPublisher;
+import site.coreservice.global.event.OrderCancelledEvent;
+import site.coreservice.global.event.OrderCompletedEvent;
 import site.coreservice.order.domain.Order;
-import site.coreservice.order.domain.OrderCancelledEvent;
-import site.coreservice.order.domain.OrderCompletedEvent;
 
 @Component
 public class OrderEventPublisher {
