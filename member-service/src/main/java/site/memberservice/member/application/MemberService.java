@@ -51,7 +51,7 @@ public class MemberService {
 
     private void validatePassword(final String password) {
         if (!Member.isValidPassword(password)) {
-            throw new MemberException(INVALID_MEMBER_INFO, format("비밀번호는 영문자, 숫자, 특수문자를 포함하여 8 ~ 16 길이의 문자열만 가능합니다. input: %s", password));
+            throw new MemberException(INVALID_MEMBER_INFO, "비밀번호는 영문자, 숫자, 특수문자를 포함하여 8 ~ 16 길이의 문자열만 가능합니다.");
         }
     }
 

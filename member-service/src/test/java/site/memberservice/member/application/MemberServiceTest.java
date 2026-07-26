@@ -79,7 +79,7 @@ class MemberServiceTest {
         // When & Then
         assertThatThrownBy(() -> memberService.register(request))
             .isInstanceOf(MemberException.class)
-            .hasMessage(format("비밀번호는 영문자, 숫자, 특수문자를 포함하여 8 ~ 16 길이의 문자열만 가능합니다. input: %s", password));
+            .hasMessage("비밀번호는 영문자, 숫자, 특수문자를 포함하여 8 ~ 16 길이의 문자열만 가능합니다.");
     }
     
     @DisplayName("이미 사용중인 회원 닉네임을 입력하면 예외가 발생한다.")
