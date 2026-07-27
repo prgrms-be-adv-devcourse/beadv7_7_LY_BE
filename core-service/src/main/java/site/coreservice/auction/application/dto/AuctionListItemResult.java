@@ -6,7 +6,7 @@ import site.coreservice.auction.domain.Money;
 
 import java.time.LocalDateTime;
 
-public record AuctionListResult(
+public record AuctionListItemResult(
         Long auctionId,
         Long productId,
         String title,
@@ -24,8 +24,8 @@ public record AuctionListResult(
         LocalDateTime endAt
 
 ) {
-    public static AuctionListResult from(AuctionListSummary summary) {
-        return new AuctionListResult(
+    public static AuctionListItemResult from(AuctionListSummary summary) {
+        return new AuctionListItemResult(
                 summary.auctionId(),
                 summary.productId(),
                 summary.title(),

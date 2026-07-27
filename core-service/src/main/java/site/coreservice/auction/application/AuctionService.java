@@ -159,9 +159,9 @@ public class AuctionService {
     }
 
     @Transactional(readOnly = true)
-    public PageResult<AuctionListResult> getAuctions(AuctionListQuery query, Pageable pageable) {
+    public PageResult<AuctionListItemResult> getAuctions(AuctionListQuery query, Pageable pageable) {
         Page<AuctionListSummary> result = searchViewRepository.search(query, pageable);
-        List<AuctionListResult> items = result.getContent().stream().map(AuctionListResult::from).toList();
+        List<AuctionListItemResult> items = result.getContent().stream().map(AuctionListItemResult::from).toList();
         return PageResult.of(result, items);
     }
 

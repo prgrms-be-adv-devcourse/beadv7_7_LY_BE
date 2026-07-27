@@ -13,7 +13,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import site.coreservice.auction.application.dto.AuctionListQuery;
-import site.coreservice.auction.application.dto.AuctionListResult;
+import site.coreservice.auction.application.dto.AuctionListItemResult;
 import site.coreservice.auction.application.dto.AuctionResult;
 import site.coreservice.auction.application.dto.AuctionStatusDetail;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
@@ -678,11 +678,11 @@ class AuctionServiceTest {
                 .willReturn(new PageImpl<>(List.of(summary), pageable, 1));
 
         // when
-        PageResult<AuctionListResult> result = auctionService.getAuctions(query, pageable);
+        PageResult<AuctionListItemResult> result = auctionService.getAuctions(query, pageable);
 
         // then
         assertThat(result.items()).hasSize(1);
-        AuctionListResult item = result.items().get(0);
+        AuctionListItemResult item = result.items().get(0);
         assertThat(item.title()).isEqualTo("Abbey Road");
         assertThat(item.artistName()).isEqualTo("The Beatles");
         assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);

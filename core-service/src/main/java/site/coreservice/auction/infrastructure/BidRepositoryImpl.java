@@ -11,7 +11,9 @@ import site.coreservice.auction.domain.BidOutcome;
 import site.coreservice.auction.domain.BidRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
