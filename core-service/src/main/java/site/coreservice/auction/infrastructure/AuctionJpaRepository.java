@@ -1,5 +1,6 @@
 package site.coreservice.auction.infrastructure;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +31,10 @@ public interface AuctionJpaRepository extends JpaRepository<Auction, Long> {
         Long getProductId();
         Long getCount();
     }
+
+    @Query("SELECT a FROM Auction a WHERE a.sellerId = :sellerId ORDER BY a.createdAt DESC")
+    List<Auction> findBySellerId(@Param("sellerId") Long sellerId, Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM Auction a WHERE a.sellerId = :sellerId")
+    long countBySellerId(@Param("sellerId") Long sellerId);
 }

@@ -9,14 +9,24 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.coreservice.auction.application.dto.AuctionDetailResult;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import site.coreservice.auction.application.dto.AuctionListQuery;
+import site.coreservice.auction.application.dto.AuctionListItemResult;
 import site.coreservice.auction.application.dto.AuctionResult;
 import site.coreservice.auction.application.dto.AuctionStatusDetail;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
+import site.coreservice.auction.application.dto.HostedAuctionResult;
 import site.coreservice.auction.application.dto.ModifyAuctionCommand;
+import site.coreservice.auction.application.dto.PageResult;
+import site.coreservice.auction.application.dto.ParticipatedAuctionResult;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
 import site.coreservice.auction.application.port.dto.ProductDetail;
+import site.coreservice.auction.application.port.dto.AuctionListSummary;
+import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionRepository;
@@ -25,6 +35,7 @@ import site.coreservice.auction.domain.AuctionStatus;
 import site.coreservice.auction.domain.Bid;
 import site.coreservice.auction.domain.BidRepository;
 import site.coreservice.auction.domain.HighestBid;
+import site.coreservice.auction.domain.BidOutcome;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.ItemInfo;
 import site.coreservice.auction.domain.Money;
@@ -36,6 +47,7 @@ import site.coreservice.auction.exception.AuctionException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -516,4 +528,165 @@ class AuctionServiceTest {
     }
 
     // getInternalSummary / getOpenAuctionCounts는 InternalAuctionService로 분리되어 InternalAuctionServiceTest에 있습니다.
+
+    @Test
+    @DisplayName("판매 이력 조회 시 상품 요약, 입찰 정보, 실효 상태를 담아 반환한다")
+    void testGetHostedAuctions_returnsSummaryAndBidInfoAndEffectiveStatus() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END,
+                HighestBid.of(Money.of(5_000L), 2L, 10L));
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        Pageable pageable = PageRequest.of(0, 20);
+        given(auctionRepository.findBySellerId(1L, pageable))
+                .willReturn(new PageImpl<>(List.of(auction), pageable, 1));
+        given(bidRepository.countGroupedByAuctionIds(List.of(1L))).willReturn(Map.of(1L, 3L));
+        given(searchViewRepository.findAllSummaryByIds(List.of(1L)))
+                .willReturn(List.of(new AuctionProductSummary(1L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<HostedAuctionResult> result = auctionService.getHostedAuctions(1L, pageable);
+
+        // then
+        assertThat(result.items()).hasSize(1);
+        HostedAuctionResult item = result.items().get(0);
+        assertThat(item.title()).isEqualTo("Abbey Road");
+        assertThat(item.artistName()).isEqualTo("The Beatles");
+        assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
+        assertThat(item.highestBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(5_000L));
+        assertThat(item.bidCount()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("판매 이력 조회 시 취소된 경매는 결과에서 제외한다")
+    void testGetHostedAuctions_excludesCanceledAuctions() {
+        // given
+        Auction canceledAuction = auctionWith(AuctionStatus.CANCELED, PAST_START, PAST_END);
+        ReflectionTestUtils.setField(canceledAuction, "id", 2L);
+        Pageable pageable = PageRequest.of(0, 20);
+        given(auctionRepository.findBySellerId(1L, pageable))
+                .willReturn(new PageImpl<>(List.of(canceledAuction), pageable, 1));
+        given(bidRepository.countGroupedByAuctionIds(List.of(2L))).willReturn(Map.of());
+        given(searchViewRepository.findAllSummaryByIds(List.of(2L))).willReturn(List.of());
+
+        // when
+        PageResult<HostedAuctionResult> result = auctionService.getHostedAuctions(1L, pageable);
+
+        // then
+        assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("판매 이력 조회 시 입찰이 없는 경매는 최고 입찰가가 null이다")
+    void testGetHostedAuctions_noBid_highestBidAmountIsNull() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 3L);
+        Pageable pageable = PageRequest.of(0, 20);
+        given(auctionRepository.findBySellerId(1L, pageable))
+                .willReturn(new PageImpl<>(List.of(auction), pageable, 1));
+        given(bidRepository.countGroupedByAuctionIds(List.of(3L))).willReturn(Map.of());
+        given(searchViewRepository.findAllSummaryByIds(List.of(3L)))
+                .willReturn(List.of(new AuctionProductSummary(3L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<HostedAuctionResult> result = auctionService.getHostedAuctions(1L, pageable);
+
+        // then
+        HostedAuctionResult item = result.items().get(0);
+        assertThat(item.highestBidAmount()).isNull();
+        assertThat(item.bidCount()).isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("판매 이력 조회 시 종료 시각이 지났지만 배치가 아직 반영 전이면 실효 상태로 보정해 반환한다")
+    void testGetHostedAuctions_reflectsEffectiveStatusOverStaleRawStatus() {
+        // given: status는 여전히 RUNNING이지만 종료 시각은 이미 지난 경매 (종료 스케줄러 미반영 상태)
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
+        ReflectionTestUtils.setField(auction, "id", 4L);
+        Pageable pageable = PageRequest.of(0, 20);
+        given(auctionRepository.findBySellerId(1L, pageable))
+                .willReturn(new PageImpl<>(List.of(auction), pageable, 1));
+        given(bidRepository.countGroupedByAuctionIds(List.of(4L))).willReturn(Map.of());
+        given(searchViewRepository.findAllSummaryByIds(List.of(4L)))
+                .willReturn(List.of(new AuctionProductSummary(4L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<HostedAuctionResult> result = auctionService.getHostedAuctions(1L, pageable);
+
+        // then
+        assertThat(result.items().get(0).status()).isEqualTo(AuctionStatus.ENDED_FAILED);
+    }
+
+    @Test
+    @DisplayName("참여 이력 조회 시 상품 요약, 내 입찰 정보, 실효 상태를 담아 반환한다")
+    void testGetParticipatedAuctions_returnsSummaryAndMyBidInfoAndEffectiveStatus() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        Bid bid = Bid.place(1L, 5L, Money.of(6_000L), LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, 20);
+        given(bidRepository.findLatestBidsByBidder(5L, pageable))
+                .willReturn(new PageImpl<>(List.of(bid), pageable, 1));
+        given(auctionRepository.findAllByIds(List.of(1L))).willReturn(List.of(auction));
+        given(searchViewRepository.findAllSummaryByIds(List.of(1L)))
+                .willReturn(List.of(new AuctionProductSummary(1L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<ParticipatedAuctionResult> result = auctionService.getParticipatedAuctions(5L, pageable);
+
+        // then
+        assertThat(result.items()).hasSize(1);
+        ParticipatedAuctionResult item = result.items().get(0);
+        assertThat(item.title()).isEqualTo("Abbey Road");
+        assertThat(item.artistName()).isEqualTo("The Beatles");
+        assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
+        assertThat(item.myBidAmount()).isEqualTo(Money.of(6_000L));
+        assertThat(item.myOutcome()).isEqualTo(BidOutcome.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("참여 이력 조회 시 취소된 경매에 대한 입찰은 결과에서 제외한다")
+    void testGetParticipatedAuctions_excludesBidsOnCanceledAuctions() {
+        // given
+        Auction canceledAuction = auctionWith(AuctionStatus.CANCELED, PAST_START, PAST_END);
+        ReflectionTestUtils.setField(canceledAuction, "id", 2L);
+        Bid bid = Bid.place(2L, 5L, Money.of(6_000L), LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, 20);
+        given(bidRepository.findLatestBidsByBidder(5L, pageable))
+                .willReturn(new PageImpl<>(List.of(bid), pageable, 1));
+        given(auctionRepository.findAllByIds(List.of(2L))).willReturn(List.of(canceledAuction));
+        given(searchViewRepository.findAllSummaryByIds(List.of(2L))).willReturn(List.of());
+
+        // when
+        PageResult<ParticipatedAuctionResult> result = auctionService.getParticipatedAuctions(5L, pageable);
+
+        // then
+        assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("경매 목록 조회 시 서치 뷰 조회 결과를 애플리케이션 타입으로 변환해 반환한다")
+    void testGetAuctions_mapsSearchViewResultToApplicationType() {
+        // given
+        AuctionListQuery query = new AuctionListQuery("Rock", "ORIGINAL", "RUNNING", "price_asc");
+        Pageable pageable = PageRequest.of(0, 20);
+        AuctionListSummary summary = new AuctionListSummary(
+                1L, 100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", "1.png",
+                2L, "vinyl_king", AuctionStatus.RUNNING, BigDecimal.valueOf(10_000), 3L,
+                PAST_START, FUTURE_END);
+        given(searchViewRepository.search(query, pageable))
+                .willReturn(new PageImpl<>(List.of(summary), pageable, 1));
+
+        // when
+        PageResult<AuctionListItemResult> result = auctionService.getAuctions(query, pageable);
+
+        // then
+        assertThat(result.items()).hasSize(1);
+        AuctionListItemResult item = result.items().get(0);
+        assertThat(item.title()).isEqualTo("Abbey Road");
+        assertThat(item.artistName()).isEqualTo("The Beatles");
+        assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
+        assertThat(item.finalPrice()).isEqualTo(Money.of(10_000L));
+        assertThat(item.bidCount()).isEqualTo(3L);
+    }
 }

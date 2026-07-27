@@ -1,6 +1,9 @@
 package site.coreservice.auction.infrastructure;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionRepository;
@@ -46,5 +49,17 @@ public class AuctionRepositoryImpl implements AuctionRepository {
     @Override
     public List<Auction> findAllRunningToEnd(LocalDateTime threshold) {
         return jpaRepository.findAllByStatusAndEndAtLessThanEqual(AuctionStatus.RUNNING, threshold);
+    }
+
+    @Override
+    public List<Auction> findAllByIds(List<Long> auctionIds) {
+        return jpaRepository.findAllById(auctionIds);
+    }
+
+    @Override
+    public Page<Auction> findBySellerId(Long sellerId, Pageable pageable) {
+        List<Auction> content = jpaRepository.findBySellerId(sellerId, pageable);
+        long total = jpaRepository.countBySellerId(sellerId);
+        return new PageImpl<>(content, pageable, total);
     }
 }
