@@ -48,6 +48,9 @@ public class CommissionPolicy extends BaseEntity {
     private static void validate(BigDecimal commissionRate, LocalDateTime effectiveFrom, LocalDateTime effectiveTo) {
         Objects.requireNonNull(commissionRate, "commissionRate는 null일 수 없습니다.");
         Objects.requireNonNull(effectiveFrom, "effectiveFrom은 null일 수 없습니다.");
+        if (commissionRate.compareTo(BigDecimal.ZERO) < 0 || commissionRate.compareTo(BigDecimal.ONE) >= 0) {
+            throw new IllegalArgumentException("commissionRate는 0 이상 1 미만이어야 합니다.");
+        }
         if (effectiveTo != null && !effectiveFrom.isBefore(effectiveTo)) {
             throw new IllegalArgumentException("effectiveFrom은 effectiveTo보다 이전이어야 합니다.");
         }

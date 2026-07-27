@@ -45,6 +45,49 @@ class CommissionPolicyTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("effectiveFrom은 effectiveTo보다 이전이어야 합니다.");
         }
+
+        @Test
+        @DisplayName("commissionRate가 0이면 생성할 수 있다")
+        void createWithZeroRate() {
+            // given & when
+            CommissionPolicy policy = CommissionPolicy.of(BigDecimal.ZERO, LocalDateTime.now(), null);
+
+            // then
+            assertThat(policy.getCommissionRate()).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("commissionRate가 음수면 예외가 발생한다")
+        void negativeRate_throwsException() {
+            // given
+            BigDecimal negativeRate = BigDecimal.valueOf(-0.1);
+
+            // when & then
+            assertThatThrownBy(() -> CommissionPolicy.of(negativeRate, LocalDateTime.now(), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
+        }
+
+        @Test
+        @DisplayName("commissionRate가 1이면 예외가 발생한다")
+        void rateEqualToOne_throwsException() {
+            // given & when & then
+            assertThatThrownBy(() -> CommissionPolicy.of(BigDecimal.ONE, LocalDateTime.now(), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
+        }
+
+        @Test
+        @DisplayName("commissionRate가 1을 초과하면 예외가 발생한다")
+        void rateGreaterThanOne_throwsException() {
+            // given
+            BigDecimal overRate = BigDecimal.valueOf(1.5);
+
+            // when & then
+            assertThatThrownBy(() -> CommissionPolicy.of(overRate, LocalDateTime.now(), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
+        }
     }
 
     @Nested
