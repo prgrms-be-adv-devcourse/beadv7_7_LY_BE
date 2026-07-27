@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AuctionService {
+
     private static final int RECENT_BID_LIMIT = 5;
 
     private final AuctionRepository auctionRepository;
@@ -38,10 +39,13 @@ public class AuctionService {
         String sellerNickname = memberPort.getNickname(sellerId);
         ProductSnapshot productSnapshot = productPort.getProduct(command.productId());
         Auction auction = Auction.register(
-                sellerId, command.productId(),
-                ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(), command.itemImages()),
-                Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()), Money.from(command.shippingFee())),
-                AuctionSchedule.of(Period.of(command.startAt(), command.endAt()), command.extensionEnabled(), command.extensionTime())
+            sellerId, command.productId(),
+            ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(),
+                command.itemImages()),
+            Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()),
+                Money.from(command.shippingFee())),
+            AuctionSchedule.of(Period.of(command.startAt(), command.endAt()),
+                command.extensionEnabled(), command.extensionTime())
         );
         auctionRepository.save(auction);
         searchViewRepository.save(auction, productSnapshot, sellerNickname);
@@ -51,83 +55,102 @@ public class AuctionService {
 
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
-        Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        Auction auction = auctionRepository.findById(command.auctionId())
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
         auction.modify(sellerId, command.productId(),
-                ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(), command.itemImages()),
-                Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()), Money.from(command.shippingFee())),
-                AuctionSchedule.of(Period.of(command.startAt(), command.endAt()), command.extensionEnabled(), command.extensionTime()),
-                LocalDateTime.now()
+            ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(),
+                command.itemImages()),
+            Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()),
+                Money.from(command.shippingFee())),
+            AuctionSchedule.of(Period.of(command.startAt(), command.endAt()),
+                command.extensionEnabled(), command.extensionTime()),
+            LocalDateTime.now()
         );
 
-        ProductSnapshot product = productChanged ? productPort.getProduct(command.productId()) : null;
+        ProductSnapshot product =
+            productChanged ? productPort.getProduct(command.productId()) : null;
         searchViewRepository.updateFromAuction(auction, product);
         return AuctionResult.from(auction);
     }
 
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
-        Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        Auction auction = auctionRepository.findById(auctionId)
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
     }
 
     @Transactional(readOnly = true)
     public AuctionDetailResult getAuctionDetail(Long auctionId, Long viewerId) {
-        Auction auction = auctionRepository.findById(auctionId).filter(a -> !a.isCanceled()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        Auction auction = auctionRepository.findById(auctionId).filter(a -> !a.isCanceled())
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
 
         ProductDetail product = productPort.getProductDetail(auction.getProductId());
         String sellerNickname = memberPort.getNickname(auction.getSellerId());
         LocalDateTime now = LocalDateTime.now();
 
         AuctionStatusDetail auctionStatusDetail = auction.isEffectiveClosingAt(now)
-                ? new AuctionStatusDetail.ClosingDetail()
-                : switch (auction.getEffectiveStatusAt(now)) {
-            case SCHEDULED -> new AuctionStatusDetail.ScheduledDetail();
-            case RUNNING -> getRunningDetail(auction, viewerId);
-            case ENDED_WON -> getEndedWonDetail(auction.getHighestBid().getBidId());
-            case ENDED_FAILED -> new AuctionStatusDetail.EndedFailedDetail();
-            case CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
-        };
+            ? new AuctionStatusDetail.ClosingDetail()
+            : switch (auction.getEffectiveStatusAt(now)) {
+                case SCHEDULED -> new AuctionStatusDetail.ScheduledDetail();
+                case RUNNING -> getRunningDetail(auction, viewerId);
+                case ENDED_WON -> getEndedWonDetail(auction.getHighestBid().getBidId());
+                case ENDED_FAILED -> new AuctionStatusDetail.EndedFailedDetail();
+                case CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
+            };
 
         return AuctionDetailResult.of(auction, product, sellerNickname, auctionStatusDetail);
     }
 
     private AuctionStatusDetail.RunningDetail getRunningDetail(Auction auction, Long viewerId) {
-        List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(), RECENT_BID_LIMIT);
+        List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(),
+            RECENT_BID_LIMIT);
         HighestBid highestBid = auction.getHighestBid();
-        return new AuctionStatusDetail.RunningDetail(highestBid == null ? null : highestBid.getAmount().getValue(), auction.getPricing().nextMinBidAmount(highestBid).getValue(), bidRepository.countByAuctionId(auction.getId()), recentBids.stream().map(bid -> BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId()))).toList(), auction.isHighestBidder(viewerId));
+        return new AuctionStatusDetail.RunningDetail(
+            highestBid == null ? null : highestBid.getAmount().getValue(),
+            auction.getPricing().nextMinBidAmount(highestBid).getValue(),
+            bidRepository.countByAuctionId(auction.getId()), recentBids.stream()
+            .map(bid -> BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())))
+            .toList(), auction.isHighestBidder(viewerId));
     }
 
     private AuctionStatusDetail.EndedWonDetail getEndedWonDetail(Long bidId) {
-        Bid bid = bidRepository.findById(bidId).orElseThrow(() -> new AuctionException(AuctionErrorCode.BID_NOT_FOUND));
-        return new AuctionStatusDetail.EndedWonDetail(BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())));
+        Bid bid = bidRepository.findById(bidId)
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.BID_NOT_FOUND));
+        return new AuctionStatusDetail.EndedWonDetail(
+            BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())));
     }
 
 
     @Transactional(readOnly = true)
-    public PageResult<ParticipatedAuctionResult> getParticipatedAuctions(Long bidderId, Pageable pageable) {
+    public PageResult<ParticipatedAuctionResult> getParticipatedAuctions(Long bidderId,
+        Pageable pageable) {
         Page<Bid> latestBids = bidRepository.findLatestBidsByBidder(bidderId, pageable);
         LocalDateTime now = LocalDateTime.now();
 
         List<Long> auctionIds = latestBids.getContent().stream().map(Bid::getAuctionId).toList();
-        Map<Long, Auction> auctionsById = auctionRepository.findAllByIds(auctionIds).stream().collect(Collectors.toMap(Auction::getId, a -> a));
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(auctionIds).stream()
-                .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, Auction> auctionsById = auctionRepository.findAllByIds(auctionIds).stream()
+            .collect(Collectors.toMap(Auction::getId, a -> a));
+        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
+                auctionIds).stream()
+            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<ParticipatedAuctionResult> items = latestBids.getContent().stream()
-                .filter(bid -> {
-                    Auction auction = auctionsById.get(bid.getAuctionId());
-                    return auction != null && !auction.isCanceled();
-                })
-                .map(bid -> {
-                    Auction auction = auctionsById.get(bid.getAuctionId());
-                    AuctionProductSummary summary = summaryById.get(bid.getAuctionId());
-                    return ParticipatedAuctionResult.of(auction, bid, summary, auction.getEffectiveStatusAt(now));
-                })
-                .toList();
+            .filter(bid -> {
+                Auction auction = auctionsById.get(bid.getAuctionId());
+                return auction != null && !auction.isCanceled();
+            })
+            .map(bid -> {
+                Auction auction = auctionsById.get(bid.getAuctionId());
+                AuctionProductSummary summary = summaryById.get(bid.getAuctionId());
+                return ParticipatedAuctionResult.of(auction, bid, summary,
+                    auction.getEffectiveStatusAt(now));
+            })
+            .toList();
 
         return PageResult.of(latestBids, items);
     }
@@ -141,27 +164,31 @@ public class AuctionService {
         // highestBidAmount/bidCount는 Auction/Bid 원본에서 — SearchView 동기화 리스크를 안 탄다
         Map<Long, Long> bidCounts = bidRepository.countGroupedByAuctionIds(auctionIds);
         // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(auctionIds).stream()
-                .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
+                auctionIds).stream()
+            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<HostedAuctionResult> items = auctions.getContent().stream()
-                .filter(auction -> !auction.isCanceled())
-                .map(auction -> {
-                    AuctionProductSummary summary = summaryById.get(auction.getId());
-                    Money highest = auction.hasBid() ? auction.getHighestBid().getAmount() : null;
-                    long bidCount = bidCounts.getOrDefault(auction.getId(), 0L);
-                    return HostedAuctionResult.of(auction, summary, highest, bidCount, auction.getEffectiveStatusAt(now));
-                })
-                .toList();
+            .filter(auction -> !auction.isCanceled())
+            .map(auction -> {
+                AuctionProductSummary summary = summaryById.get(auction.getId());
+                Money highest = auction.hasBid() ? auction.getHighestBid().getAmount() : null;
+                long bidCount = bidCounts.getOrDefault(auction.getId(), 0L);
+                return HostedAuctionResult.of(auction, summary, highest, bidCount,
+                    auction.getEffectiveStatusAt(now));
+            })
+            .toList();
 
         return PageResult.of(auctions, items);
     }
 
     @Transactional(readOnly = true)
-    public PageResult<AuctionListItemResult> getAuctions(AuctionListQuery query, Pageable pageable) {
+    public PageResult<AuctionListItemResult> getAuctions(AuctionListQuery query,
+        Pageable pageable) {
         Page<AuctionListSummary> result = searchViewRepository.search(query, pageable);
-        List<AuctionListItemResult> items = result.getContent().stream().map(AuctionListItemResult::from).toList();
+        List<AuctionListItemResult> items = result.getContent().stream()
+            .map(AuctionListItemResult::from).toList();
         return PageResult.of(result, items);
     }
 

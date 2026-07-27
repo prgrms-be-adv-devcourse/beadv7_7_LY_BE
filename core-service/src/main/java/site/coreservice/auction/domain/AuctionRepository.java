@@ -14,13 +14,13 @@ public interface AuctionRepository {
 
     Optional<Auction> findById(Long id);
 
+    List<Auction> findAllByIds(List<Long> ids);
+
     List<Auction> findAllScheduledToStart(LocalDateTime threshold);
 
     Map<Long, Long> countRunningByProductIds(List<Long> productIds);
 
     List<Auction> findAllRunningToEnd(LocalDateTime threshold);
-
-    List<Auction> findAllByIds(List<Long> auctionIds);
 
     Page<Auction> findBySellerId(Long sellerId, Pageable pageable);
 }
