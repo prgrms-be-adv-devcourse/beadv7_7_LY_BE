@@ -40,6 +40,7 @@ public class SettlementBatchService {
         List<SettlementItem> items = settlementItemRepository
             .findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus.PENDING, periodTo, sellerId);
         if (items.isEmpty()) {
+            log.info("정산 대상 PENDING 항목이 없어 배치 생성을 건너뜁니다. sellerId={}", sellerId);
             return;
         }
 

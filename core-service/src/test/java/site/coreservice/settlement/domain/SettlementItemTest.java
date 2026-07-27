@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import site.coreservice.settlement.exception.SettlementException;
 
 @DisplayName("SettlementItem")
 class SettlementItemTest {
@@ -111,7 +112,7 @@ class SettlementItemTest {
 
             // when & then
             assertThatThrownBy(() -> item.markPaid(9002L, LocalDateTime.now()))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("PENDING 상태의 정산 항목만 지급 처리할 수 있습니다.");
         }
     }
