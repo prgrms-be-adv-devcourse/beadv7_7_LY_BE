@@ -1,4 +1,4 @@
-name: lp-auction-local-mysql
+name: lp-auction-local
 
 services:
   mysql:
@@ -11,12 +11,21 @@ services:
       MYSQL_DATABASE: lp_auction
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./volumes/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./volumes/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot" ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "81:80"
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - ./volumes/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   mysql-data:
