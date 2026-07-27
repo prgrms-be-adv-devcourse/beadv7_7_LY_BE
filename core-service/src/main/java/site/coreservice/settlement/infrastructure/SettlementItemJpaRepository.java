@@ -20,4 +20,17 @@ public interface SettlementItemJpaRepository extends JpaRepository<SettlementIte
     List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt);
 
     List<SettlementItem> findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus status, LocalDateTime completedAt, Long sellerId);
+
+    @Query("""
+            select s from SettlementItem s
+            where s.sellerId = :sellerId
+              and (:status is null or s.status = :status)
+              and (:from is null or s.completedAt >= :from)
+              and (:to is null or s.completedAt <= :to)
+            order by s.completedAt desc, s.id desc
+            """)
+    Page<SettlementItem> searchBySellerId(@Param("sellerId") Long sellerId,
+                                          @Param("status") SettlementStatus status,
+                                          @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+                                          Pageable pageable);
 }

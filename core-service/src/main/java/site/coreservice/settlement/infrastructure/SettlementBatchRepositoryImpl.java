@@ -1,6 +1,7 @@
 package site.coreservice.settlement.infrastructure;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -26,5 +27,10 @@ public class SettlementBatchRepositoryImpl implements SettlementBatchRepository 
     @Override
     public boolean existsBySellerIdAndPeriodFromAndPeriodTo(Long sellerId, LocalDateTime periodFrom, LocalDateTime periodTo) {
         return settlementBatchJpaRepository.existsBySellerIdAndPeriodFromAndPeriodTo(sellerId, periodFrom, periodTo);
+    }
+
+    @Override
+    public List<SettlementBatch> findAllBySellerId(Long sellerId) {
+        return settlementBatchJpaRepository.findAllBySellerIdOrderByConfirmedAtDesc(sellerId);
     }
 }

@@ -47,4 +47,12 @@ public class SettlementItemRepositoryImpl implements SettlementItemRepository {
     public List<SettlementItem> findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus status, LocalDateTime completedAt, Long sellerId) {
         return settlementItemJpaRepository.findAllByStatusAndCompletedAtBeforeAndSellerId(status, completedAt, sellerId);
     }
+
+    @Override
+    public SettlementItemSearchPage search(Long sellerId, SettlementStatus status,
+                                            LocalDateTime from, LocalDateTime to, int page, int size) {
+        Page<SettlementItem> result = settlementItemJpaRepository.searchBySellerId(
+                sellerId, status, from, to, PageRequest.of(page, size));
+        return new SettlementItemSearchPage(result.getContent(), result.getTotalElements());
+    }
 }
