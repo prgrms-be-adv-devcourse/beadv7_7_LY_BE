@@ -53,11 +53,13 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
 
     @Override
     public Long validateToken(final AuthToken token) {
+        final String tokenValue = parseTokenValue(token);
+
         try {
             final Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
-                .parseSignedClaims(token.getValue())
+                .parseSignedClaims(tokenValue)
                 .getPayload();
             return Long.parseLong(claims.getSubject());
         } catch (final ExpiredJwtException e) {
@@ -66,5 +68,13 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
         } catch (final JwtException e) {
             throw new AuthException(INVALID_AUTH_TOKEN, "유효하지 않은 인증 토큰입니다.", e);
         }
+    }
+
+    private String parseTokenValue(final AuthToken token) {
+        if (token.getValue().startsWith("Bearer ")) {
+            return token.getValue().substring(7);
+        }
+
+        return token.getValue();
     }
 }
