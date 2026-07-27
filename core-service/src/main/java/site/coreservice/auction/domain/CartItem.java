@@ -41,5 +41,4 @@ public class CartItem extends BaseEntity {
     public static CartItem of(Long memberId, Long auctionId) {
         return new CartItem(memberId, auctionId);
     }
-
 }

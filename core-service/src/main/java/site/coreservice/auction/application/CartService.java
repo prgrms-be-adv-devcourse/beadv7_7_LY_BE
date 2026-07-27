@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CartItemService {
+public class CartService {
 
     private static final int MAX_WATCHED_AUCTIONS = 30;
 
@@ -32,7 +32,7 @@ public class CartItemService {
     // 2. RUNNING: 마감 가까운 순, SCHEDULED: 시작 가까운 순, ENDED_WON/ENDED_FAILED/CANCELED: 최근 종료 순
     private static final Comparator<CartItemResult> AUCTION_ORDER = Comparator
         .<CartItemResult, AuctionStatus>comparing(CartItemResult::status,
-            Comparator.comparingInt(CartItemService::priorityOf))
+            Comparator.comparingInt(CartService::priorityOf))
         .thenComparing((a, b) -> switch (a.status()) {
             case RUNNING -> a.endAt().compareTo(b.endAt());
             case SCHEDULED -> a.startAt().compareTo(b.startAt());
@@ -57,7 +57,7 @@ public class CartItemService {
     }
 
     @Transactional
-    public void add(final Long memberId, final Long auctionId) {
+    public void addItem(final Long memberId, final Long auctionId) {
         if (cartItemRepository.existsByMemberIdAndAuctionId(memberId, auctionId)) {
             log.warn("watched-auctions: 이미 등록된 경매입니다. memberId={}, auctionId={}", memberId,
                 auctionId);
@@ -68,7 +68,7 @@ public class CartItemService {
     }
 
     @Transactional
-    public void remove(final Long memberId, final Long auctionId) {
+    public void removeItem(final Long memberId, final Long auctionId) {
         cartItemRepository.deleteByMemberIdAndAuctionId(memberId, auctionId);
     }
 

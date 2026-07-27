@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
-import site.coreservice.auction.application.CartItemService;
+import site.coreservice.auction.application.CartService;
 import site.coreservice.auction.presentation.dto.WatchedAuctionGroupResponse;
 
 import java.util.List;
@@ -17,16 +17,16 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/members/me/watched-auctions")
 @RequiredArgsConstructor
-public class CartItemController {
+public class CartController {
 
-    private final CartItemService cartItemService;
+    private final CartService cartService;
 
     @PutMapping("/{auctionId}")
     public ApiResponse<Void> watch(
         @MemberId final Long memberId,
         @PathVariable final Long auctionId
     ) {
-        cartItemService.add(memberId, auctionId);
+        cartService.addItem(memberId, auctionId);
         return ApiResponse.success();
     }
 
@@ -35,7 +35,7 @@ public class CartItemController {
         @MemberId final Long memberId,
         @PathVariable final Long auctionId
     ) {
-        cartItemService.remove(memberId, auctionId);
+        cartService.removeItem(memberId, auctionId);
         return ApiResponse.success();
     }
 
@@ -43,7 +43,7 @@ public class CartItemController {
     public ApiResponse<List<WatchedAuctionGroupResponse>> findAll(
         @MemberId final Long memberId
     ) {
-        final List<WatchedAuctionGroupResponse> responses = cartItemService.findAll(memberId)
+        final List<WatchedAuctionGroupResponse> responses = cartService.findAll(memberId)
             .stream()
             .map(WatchedAuctionGroupResponse::from)
             .toList();

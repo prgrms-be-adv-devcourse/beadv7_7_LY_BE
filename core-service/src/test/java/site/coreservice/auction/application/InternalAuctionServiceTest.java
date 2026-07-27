@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.coreservice.auction.application.dto.InternalAuctionSnapshotResult;
 import site.coreservice.auction.application.dto.InternalAuctionCountResult;
 import site.coreservice.auction.application.dto.InternalAuctionSummaryResult;
 import site.coreservice.auction.domain.Auction;
@@ -61,7 +62,8 @@ class InternalAuctionServiceTest {
         return auctionWith(status, startAt, endAt, null);
     }
 
-    private Auction auctionWith(AuctionStatus status, LocalDateTime startAt, LocalDateTime endAt, HighestBid highestBid) {
+    private Auction auctionWith(AuctionStatus status, LocalDateTime startAt, LocalDateTime endAt,
+        HighestBid highestBid) {
         AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
         return Auction.of(1L, 100L, itemInfo, pricing, schedule, status, highestBid);
     }
@@ -115,9 +117,9 @@ class InternalAuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> internalAuctionService.getInternalSummary(1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
     }
 
     @Test
@@ -129,25 +131,93 @@ class InternalAuctionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> internalAuctionService.getInternalSummary(1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
         verify(bidRepository, never()).countByAuctionId(any());
+    }
+
+    @Test
+    @DisplayName("getSnapshots()는 취소된 경매도 그대로 포함한다")
+    void testGetSnapshots_includesCanceledAuctions() {
+        // given
+        Auction running = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(running, "id", 1L);
+        Auction canceled = auctionWith(AuctionStatus.CANCELED, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(canceled, "id", 2L);
+        given(auctionRepository.findAllByIds(List.of(1L, 2L))).willReturn(
+            List.of(running, canceled));
+
+        // when
+        List<InternalAuctionSnapshotResult> result = internalAuctionService.getSnapshots(
+            List.of(1L, 2L));
+
+        // then
+        assertThat(result).extracting(InternalAuctionSnapshotResult::id)
+            .containsExactlyInAnyOrder(1L, 2L);
+        assertThat(result).extracting(InternalAuctionSnapshotResult::status)
+            .containsExactlyInAnyOrder(AuctionStatus.RUNNING, AuctionStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("경매가 존재하면 getSnapshot은 CANCELED여도 그대로 반환한다")
+    void testGetSnapshot_auctionPresent_returnsSnapshotEvenIfCanceled() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.CANCELED, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+
+        // when
+        InternalAuctionSnapshotResult result = internalAuctionService.getSnapshot(1L);
+
+        // then
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.status()).isEqualTo(AuctionStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("getSnapshot은 persisted status가 아니라 실시간 보정된 상태를 반환한다")
+    void testGetSnapshot_returnsEffectiveStatus_notPersistedStatus() {
+        // given: 시작 스케줄러가 조기에 RUNNING으로 바꿔놨지만 실제 시작 시각은 아직 안 지났다
+        Auction auction = auctionWith(AuctionStatus.RUNNING, FUTURE_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+
+        // when
+        InternalAuctionSnapshotResult result = internalAuctionService.getSnapshot(1L);
+
+        // then
+        assertThat(result.status()).isEqualTo(AuctionStatus.SCHEDULED);
+    }
+
+    @Test
+    @DisplayName("경매가 없으면 getSnapshot은 예외를 던진다")
+    void testGetSnapshot_auctionAbsent_throws() {
+        // given
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> internalAuctionService.getSnapshot(1L))
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
     }
 
     @Test
     @DisplayName("진행 중인 경매가 없는 productId는 0건으로 채워진다")
     void testGetOpenAuctionCounts_fillsZeroForProductsWithoutRunningAuction() {
         // given
-        given(auctionRepository.countRunningByProductIds(List.of(55L, 56L))).willReturn(Map.of(55L, 3L));
+        given(auctionRepository.countRunningByProductIds(List.of(55L, 56L))).willReturn(
+            Map.of(55L, 3L));
 
         // when
-        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(List.of(55L, 56L));
+        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(
+            List.of(55L, 56L));
 
         // then
         assertThat(result).containsExactly(
-                new InternalAuctionCountResult(55L, 3L),
-                new InternalAuctionCountResult(56L, 0L)
+            new InternalAuctionCountResult(55L, 3L),
+            new InternalAuctionCountResult(56L, 0L)
         );
     }
 
@@ -158,7 +228,8 @@ class InternalAuctionServiceTest {
         given(auctionRepository.countRunningByProductIds(List.of(55L))).willReturn(Map.of(55L, 2L));
 
         // when
-        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(List.of(55L, 55L));
+        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(
+            List.of(55L, 55L));
 
         // then
         assertThat(result).containsExactly(new InternalAuctionCountResult(55L, 2L));
@@ -172,7 +243,8 @@ class InternalAuctionServiceTest {
         given(auctionRepository.countRunningByProductIds(List.of())).willReturn(Map.of());
 
         // when
-        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(List.of());
+        List<InternalAuctionCountResult> result = internalAuctionService.getOpenAuctionCounts(
+            List.of());
 
         // then
         assertThat(result).isEmpty();

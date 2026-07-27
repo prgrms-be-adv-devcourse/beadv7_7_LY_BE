@@ -19,7 +19,7 @@ public enum AuctionErrorCode implements ErrorCode {
     AUCTION_SORT_INVALID(HttpStatus.BAD_REQUEST, "AERR-5008", "유효하지 않은 정렬 조건입니다."),
     WATCHED_AUCTION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5101", "장바구니 경매 개수 제한을 초과했습니다."),
     WATCHED_AUCTION_STATUS_INVALID(HttpStatus.BAD_REQUEST, "AERR-5102",
-        "종료되었거나 취소된 경매는 관심 등록할 수 없습니다."),
+        "종료되었거나 취소된 경매는 장바구니에 등록할 수 없습니다."),
 
     ;
 
