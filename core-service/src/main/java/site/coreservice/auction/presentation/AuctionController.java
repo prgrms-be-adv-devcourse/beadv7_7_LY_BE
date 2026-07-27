@@ -9,6 +9,10 @@ import site.common.web.MemberId;
 import site.coreservice.auction.application.AuctionService;
 import site.coreservice.auction.application.dto.AuctionListQuery;
 import site.coreservice.auction.presentation.dto.*;
+import site.coreservice.auction.presentation.dto.AuctionRequest;
+import site.coreservice.auction.presentation.dto.AuctionResultResponse;
+import site.coreservice.auction.presentation.dto.PlaceBidRequest;
+import site.coreservice.auction.presentation.dto.PlaceBidResponse;
 
 @RestController
 @RequestMapping("/api/v1/auctions")
@@ -69,6 +73,11 @@ public class AuctionController {
         AuctionListQuery query = new AuctionListQuery(genre, pressType, status, sort);
         Pageable pageable = PageRequest.of(page, size);
         return ApiResponse.success(PageResponse.from(auctionService.getAuctions(query, pageable), AuctionListItemResponse::from));
+    }
+
+    @PostMapping("/{auctionId}/bids")
+    public ApiResponse<PlaceBidResponse> placeBid(@PathVariable Long auctionId, @MemberId Long bidderId, @RequestBody PlaceBidRequest request) {
+        return ApiResponse.success(PlaceBidResponse.from(auctionService.placeBid(request.toCommand(auctionId, bidderId))));
     }
 
 }

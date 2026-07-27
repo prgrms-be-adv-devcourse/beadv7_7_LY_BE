@@ -47,6 +47,14 @@ public class Period {
         return !at.isBefore(endAt);
     }
 
+    public boolean isNearEnd(LocalDateTime now, int minutes) {
+        return now.isAfter(endAt.minusMinutes(minutes)) && !isEnded(now);
+    }
+
+    public Period extendEnd(int minutes) {
+        return Period.of(startAt, endAt.plusMinutes(minutes));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

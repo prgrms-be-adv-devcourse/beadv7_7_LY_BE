@@ -56,6 +56,16 @@ public class AuctionSchedule {
         return period.isStarted(at);
     }
 
+    public AuctionSchedule extendIfNeeded(LocalDateTime now) {
+        if (!extensionEnabled || extensionTime == null) {
+            return this;
+        }
+        if (!period.isNearEnd(now, extensionTime)) {
+            return this;
+        }
+        return new AuctionSchedule(period.extendEnd(extensionTime), extensionEnabled, extensionTime);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
