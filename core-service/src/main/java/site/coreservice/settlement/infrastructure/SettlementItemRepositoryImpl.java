@@ -4,9 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import site.coreservice.settlement.domain.SettlementItem;
 import site.coreservice.settlement.domain.SettlementItemRepository;
+import site.coreservice.settlement.domain.SettlementItemSearchPage;
 import site.coreservice.settlement.domain.SettlementStatus;
 
 @Repository
@@ -38,5 +41,10 @@ public class SettlementItemRepositoryImpl implements SettlementItemRepository {
     @Override
     public List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt) {
         return settlementItemJpaRepository.findAllByStatusAndCompletedAtBefore(status, completedAt);
+    }
+
+    @Override
+    public List<SettlementItem> findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus status, LocalDateTime completedAt, Long sellerId) {
+        return settlementItemJpaRepository.findAllByStatusAndCompletedAtBeforeAndSellerId(status, completedAt, sellerId);
     }
 }
