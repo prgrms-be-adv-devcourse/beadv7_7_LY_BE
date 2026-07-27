@@ -40,7 +40,7 @@ import site.coreservice.product.domain.PriceHistoryRepository;
  */
 @SpringBootTest(properties = "product.fake-trade.enabled=false")
 @ActiveProfiles("local")
-class TradeConfirmedIntegrationTest {
+class PriceHistoryIntegrationTest {
 
     private static final Long PRODUCT_ID = 1L;
 
