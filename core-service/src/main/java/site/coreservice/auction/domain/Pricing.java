@@ -48,6 +48,14 @@ public class Pricing {
         return new Pricing(startPrice, bidUnit, shippingFee);
     }
 
+    public Money startBidAmount() {
+        return startPrice.plus(shippingFee);
+    }
+
+    public Money nextMinBidAmount(HighestBid highestBid) {
+        return (highestBid == null) ? startBidAmount() : highestBid.getAmount().plus(bidUnit);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

@@ -3,23 +3,26 @@ package site.coreservice.auction.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.auction.application.dto.AuctionResult;
-import site.coreservice.auction.application.dto.CreateAuctionCommand;
-import site.coreservice.auction.application.dto.ModifyAuctionCommand;
+import site.coreservice.auction.application.dto.*;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.dto.ProductDetail;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.*;
 import site.coreservice.auction.exception.AuctionErrorCode;
 import site.coreservice.auction.exception.AuctionException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AuctionService {
+    private static final int RECENT_BID_LIMIT = 5;
+
     private final AuctionRepository auctionRepository;
+    private final BidRepository bidRepository;
     private final MemberPort memberPort;
     private final ProductPort productPort;
     private final AuctionSearchViewRepository searchViewRepository;
@@ -63,4 +66,37 @@ public class AuctionService {
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
     }
+
+    @Transactional(readOnly = true)
+    public AuctionDetailResult getAuctionDetail(Long auctionId, Long viewerId) {
+        Auction auction = auctionRepository.findById(auctionId).filter(a -> !a.isCanceled()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+        ProductDetail product = productPort.getProductDetail(auction.getProductId());
+        String sellerNickname = memberPort.getNickname(auction.getSellerId());
+        LocalDateTime now = LocalDateTime.now();
+
+        AuctionStatusDetail auctionStatusDetail = auction.isEffectiveClosingAt(now)
+                ? new AuctionStatusDetail.ClosingDetail()
+                : switch (auction.getEffectiveStatusAt(now)) {
+            case SCHEDULED -> new AuctionStatusDetail.ScheduledDetail();
+            case RUNNING -> getRunningDetail(auction, viewerId);
+            case ENDED_WON -> getEndedWonDetail(auction.getHighestBid().getBidId());
+            case ENDED_FAILED -> new AuctionStatusDetail.EndedFailedDetail();
+            case CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
+        };
+
+        return AuctionDetailResult.of(auction, product, sellerNickname, auctionStatusDetail);
+    }
+
+    private AuctionStatusDetail.RunningDetail getRunningDetail(Auction auction, Long viewerId) {
+        List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(), RECENT_BID_LIMIT);
+        HighestBid highestBid = auction.getHighestBid();
+        return new AuctionStatusDetail.RunningDetail(highestBid == null ? null : highestBid.getAmount().getValue(), auction.getPricing().nextMinBidAmount(highestBid).getValue(), bidRepository.countByAuctionId(auction.getId()), recentBids.stream().map(bid -> BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId()))).toList(), auction.isHighestBidder(viewerId));
+    }
+
+    private AuctionStatusDetail.EndedWonDetail getEndedWonDetail(Long bidId) {
+        Bid bid = bidRepository.findById(bidId).orElseThrow(() -> new AuctionException(AuctionErrorCode.BID_NOT_FOUND));
+        return new AuctionStatusDetail.EndedWonDetail(BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())));
+    }
+
 }

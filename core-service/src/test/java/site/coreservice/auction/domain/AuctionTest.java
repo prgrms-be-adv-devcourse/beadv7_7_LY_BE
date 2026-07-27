@@ -20,9 +20,14 @@ class AuctionTest {
     );
     private final LocalDateTime beforeStart = schedule.getPeriod().getStartAt().minusMinutes(1);
     private final LocalDateTime afterStart = schedule.getPeriod().getStartAt().plusMinutes(1);
+    private final LocalDateTime afterEnd = schedule.getPeriod().getEndAt().plusMinutes(1);
 
     private Auction auctionWith(AuctionStatus status) {
-        return Auction.of(1L, 100L, itemInfo, pricing, schedule, status, null);
+        return auctionWith(status, null);
+    }
+
+    private Auction auctionWith(AuctionStatus status, HighestBid highestBid) {
+        return Auction.of(1L, 100L, itemInfo, pricing, schedule, status, highestBid);
     }
 
     @Test
@@ -108,16 +113,16 @@ class AuctionTest {
     }
 
     @Test
-    @DisplayName("SCHEDULED 상태면 시작 시각이 지났어도 수정할 수 있다")
-    void testModify_scheduledStatus_evenAfterStartTime_succeeds() {
+    @DisplayName("SCHEDULED 상태여도 시작 시각이 지났으면 실제로는 RUNNING이라 수정할 수 없다")
+    void testModify_scheduledStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED);
 
-        // when
-        auction.modify(1L, 200L, itemInfo, pricing, schedule, afterStart);
-
-        // then
-        assertThat(auction.getProductId()).isEqualTo(200L);
+        // when & then
+        assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, schedule, afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -258,5 +263,72 @@ class AuctionTest {
                 .isInstanceOf(AuctionException.class)
                 .extracting(e -> ((AuctionException) e).getErrorCode())
                 .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
+    }
+
+    @Test
+    @DisplayName("CANCELED, ENDED_WON, ENDED_FAILED은 시각과 무관하게 실제 상태도 그대로 유지된다")
+    void testGetEffectiveStatusAt_terminalStatuses_ignoreTime() {
+        assertThat(auctionWith(AuctionStatus.CANCELED).getEffectiveStatusAt(beforeStart)).isEqualTo(AuctionStatus.CANCELED);
+        assertThat(auctionWith(AuctionStatus.ENDED_WON).getEffectiveStatusAt(beforeStart)).isEqualTo(AuctionStatus.ENDED_WON);
+        assertThat(auctionWith(AuctionStatus.ENDED_FAILED).getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_FAILED);
+    }
+
+    @Test
+    @DisplayName("RUNNING이어도 시작 시각 전이면 실제 상태는 SCHEDULED다 (시작 스케줄러가 미리 바꿔둔 경우)")
+    void testGetEffectiveStatusAt_runningStatus_beforeStart_isScheduled() {
+        assertThat(auctionWith(AuctionStatus.RUNNING).getEffectiveStatusAt(beforeStart)).isEqualTo(AuctionStatus.SCHEDULED);
+    }
+
+    @Test
+    @DisplayName("RUNNING이고 시작~종료 사이면 실제 상태도 RUNNING이다")
+    void testGetEffectiveStatusAt_runningStatus_inProgress_isRunning() {
+        assertThat(auctionWith(AuctionStatus.RUNNING).getEffectiveStatusAt(afterStart)).isEqualTo(AuctionStatus.RUNNING);
+    }
+
+    @Test
+    @DisplayName("RUNNING이고 종료 시각이 지났으면 입찰 여부로 ENDED_WON/ENDED_FAILED를 판정한다")
+    void testGetEffectiveStatusAt_runningStatus_afterEnd_resolvesByBid() {
+        HighestBid highestBid = HighestBid.of(Money.of(1_500L), 2L, 10L);
+
+        assertThat(auctionWith(AuctionStatus.RUNNING, highestBid).getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_WON);
+        assertThat(auctionWith(AuctionStatus.RUNNING).getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_FAILED);
+    }
+
+    @Test
+    @DisplayName("isEffectiveScheduledAt은 SCHEDULED이거나 RUNNING+시작 전일 때만 true다")
+    void testIsEffectiveScheduledAt() {
+        assertThat(auctionWith(AuctionStatus.SCHEDULED).isEffectiveScheduledAt(beforeStart)).isTrue();
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveScheduledAt(beforeStart)).isTrue();
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveScheduledAt(afterStart)).isFalse();
+        assertThat(auctionWith(AuctionStatus.ENDED_WON).isEffectiveScheduledAt(beforeStart)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isEffectiveRunningAt은 RUNNING이면서 실제 시작~종료 사이일 때만 true다")
+    void testIsEffectiveRunningAt() {
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveRunningAt(beforeStart)).isFalse();
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveRunningAt(afterStart)).isTrue();
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveRunningAt(afterEnd)).isFalse();
+        assertThat(auctionWith(AuctionStatus.SCHEDULED).isEffectiveRunningAt(afterStart)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isEffectiveClosingAt은 RUNNING이면서 종료 시각이 지났을 때만 true다")
+    void testIsEffectiveClosingAt() {
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveClosingAt(afterEnd)).isTrue();
+        assertThat(auctionWith(AuctionStatus.RUNNING).isEffectiveClosingAt(afterStart)).isFalse();
+        assertThat(auctionWith(AuctionStatus.ENDED_WON).isEffectiveClosingAt(afterEnd)).isFalse();
+    }
+
+    @Test
+    @DisplayName("[알려진 한계] status가 아직 SCHEDULED인 채로 종료 시각까지 지나면 isEffectiveClosingAt은 이를 감지하지 못한다")
+    void testIsEffectiveClosingAt_knownLimitation_whenStatusStillScheduled() {
+        // 시작 스케줄러조차 돌지 못한 극단적 지연 상황을 가정한다.
+        // getEffectiveStatusAt은 시간 기반으로 ENDED_FAILED를 정확히 계산하지만,
+        // isEffectiveClosingAt은 status == RUNNING만 확인하므로 이 케이스는 CLOSING으로 잡아내지 못한다.
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED);
+
+        assertThat(auction.getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_FAILED);
+        assertThat(auction.isEffectiveClosingAt(afterEnd)).isFalse();
     }
 }

@@ -8,9 +8,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.common.response.ApiResponse;
 import site.coreservice.auction.application.AuctionService;
+import site.coreservice.auction.application.dto.AuctionDetailResult;
 import site.coreservice.auction.application.dto.AuctionResult;
+import site.coreservice.auction.application.dto.AuctionStatusDetail;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
 import site.coreservice.auction.application.dto.ModifyAuctionCommand;
+import site.coreservice.auction.application.port.dto.ProductDetail;
+import site.coreservice.auction.presentation.dto.AuctionDetailResponse;
 import site.coreservice.auction.presentation.dto.AuctionRequest;
 import site.coreservice.auction.presentation.dto.AuctionResultResponse;
 
@@ -98,5 +102,50 @@ class AuctionControllerTest {
         // then
         assertThat(response.isSuccess()).isTrue();
         verify(auctionService).deleteAuction(1L, 1L);
+    }
+
+    private AuctionDetailResult detailResult() {
+        ProductDetail product = new ProductDetail(100L, "Abbey Road", "The Beatles",
+                "https://cdn.example.com/cover.jpg", 1969, "Rock", "ORIGINAL", true);
+        return new AuctionDetailResult(
+                1L,
+                "MINT", "충분히 긴 상품 설명입니다.", List.of("1.png"),
+                BigDecimal.valueOf(13_000), BigDecimal.valueOf(500),
+                LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0),
+                false, null,
+                product, 1L, "vinyl_king",
+                new AuctionStatusDetail.ScheduledDetail()
+        );
+    }
+
+    @Test
+    @DisplayName("경매 상세 조회 요청을 서비스에 위임하고 결과를 감싸 반환한다")
+    void testGetAuctionDetail_delegatesToServiceAndWrapsResult() {
+        // given
+        given(auctionService.getAuctionDetail(1L, 2L)).willReturn(detailResult());
+
+        // when
+        ApiResponse<AuctionDetailResponse> response = auctionController.getAuctionDetail(1L, 2L);
+
+        // then
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getData().auctionId()).isEqualTo(1L);
+        assertThat(response.getData().status()).isEqualTo("SCHEDULED");
+        assertThat(response.getData().product().title()).isEqualTo("Abbey Road");
+        assertThat(response.getData().seller().nickname()).isEqualTo("vinyl_king");
+    }
+
+    @Test
+    @DisplayName("X-Member-Id 헤더 없이도 경매 상세를 조회할 수 있다")
+    void testGetAuctionDetail_withoutViewer_succeeds() {
+        // given
+        given(auctionService.getAuctionDetail(1L, null)).willReturn(detailResult());
+
+        // when
+        ApiResponse<AuctionDetailResponse> response = auctionController.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(response.isSuccess()).isTrue();
+        verify(auctionService).getAuctionDetail(1L, null);
     }
 }

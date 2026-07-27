@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.coreservice.auction.application.AuctionService;
+import site.coreservice.auction.presentation.dto.AuctionDetailResponse;
 import site.coreservice.auction.presentation.dto.AuctionRequest;
 import site.coreservice.auction.presentation.dto.AuctionResultResponse;
 
@@ -29,6 +30,13 @@ public class AuctionController {
     public ApiResponse<Void> deleteAuction(@PathVariable Long auctionId, @MemberId Long sellerId) {
         auctionService.deleteAuction(auctionId, sellerId);
         return ApiResponse.success();
+    }
+
+    @GetMapping("/{auctionId}")
+    public ApiResponse<AuctionDetailResponse> getAuctionDetail(
+            @PathVariable Long auctionId,
+            @RequestHeader(value = MemberId.HEADER_NAME, required = false) Long viewerId) {
+        return ApiResponse.success(AuctionDetailResponse.from(auctionService.getAuctionDetail(auctionId, viewerId)));
     }
 
 }

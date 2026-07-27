@@ -20,4 +20,14 @@ public interface AuctionJpaRepository extends JpaRepository<Auction, Long> {
         @Param("threshold") LocalDateTime threshold);
 
     boolean existsByProductId(Long productId);
+
+    @Query("SELECT a.productId AS productId, COUNT(a) AS count FROM Auction a " +
+        "WHERE a.productId IN :productIds AND a.status = :status GROUP BY a.productId")
+    List<ProductAuctionCountRow> countByProductIdsAndStatus(@Param("productIds") List<Long> productIds,
+        @Param("status") AuctionStatus status);
+
+    interface ProductAuctionCountRow {
+        Long getProductId();
+        Long getCount();
+    }
 }
