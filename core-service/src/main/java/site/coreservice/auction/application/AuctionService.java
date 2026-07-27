@@ -6,7 +6,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.coreservice.auction.application.dto.AuctionResult;
-import site.coreservice.auction.application.dto.AuctionSummaryResult;
 import site.coreservice.auction.application.dto.CreateAuctionCommand;
 import site.coreservice.auction.application.dto.ModifyAuctionCommand;
 import site.coreservice.auction.application.dto.*;
@@ -37,18 +36,6 @@ public class AuctionService {
     private final MemberPort memberPort;
     private final ProductPort productPort;
     private final AuctionSearchViewRepository searchViewRepository;
-
-    @Transactional(readOnly = true)
-    public List<AuctionSummaryResult> getSummaries(List<Long> auctionIds) {
-        return auctionRepository.findAllByIds(auctionIds).stream()
-            .map(AuctionSummaryResult::from)
-            .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public boolean exists(Long auctionId) {
-        return auctionRepository.findById(auctionId).isPresent();
-    }
 
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {

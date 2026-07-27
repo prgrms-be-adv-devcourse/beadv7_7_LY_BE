@@ -22,7 +22,5 @@ public interface AuctionRepository {
 
     List<Auction> findAllRunningToEnd(LocalDateTime threshold);
 
-    List<Auction> findAllByIds(List<Long> auctionIds);
-
     Page<Auction> findBySellerId(Long sellerId, Pageable pageable);
 }

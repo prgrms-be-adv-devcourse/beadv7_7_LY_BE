@@ -15,7 +15,7 @@ public record CartItemResult(
     LocalDateTime endAt
 ) {
 
-    public static CartItemResult of(CartItem cartItem, AuctionSummaryResult auction) {
+    public static CartItemResult of(CartItem cartItem, InternalAuctionSnapshotResult auction) {
         return new CartItemResult(
             cartItem.getId(),
             cartItem.getAuctionId(),

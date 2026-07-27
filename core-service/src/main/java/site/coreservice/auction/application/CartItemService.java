@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.auction.application.dto.AuctionSummaryResult;
+import site.coreservice.auction.application.dto.InternalAuctionSnapshotResult;
 import site.coreservice.auction.application.dto.CartItemGroupResult;
 import site.coreservice.auction.application.dto.CartItemResult;
 import site.coreservice.auction.domain.AuctionStatus;
@@ -40,7 +40,7 @@ public class CartItemService {
         });
 
     private final CartItemRepository cartItemRepository;
-    private final AuctionService auctionService;
+    private final InternalAuctionService internalAuctionService;
 
     @Transactional(readOnly = true)
     public List<CartItemGroupResult> findAll(final Long memberId) {
@@ -50,7 +50,7 @@ public class CartItemService {
             return List.of();
         }
 
-        final Map<Long, AuctionSummaryResult> auctionsById = fetchAuctionsById(cartItems);
+        final Map<Long, InternalAuctionSnapshotResult> auctionsById = fetchAuctionsById(cartItems);
         final List<CartItemResult> sorted = toSortedResults(memberId, cartItems,
             auctionsById);
         return groupByStatus(sorted);
@@ -72,15 +72,16 @@ public class CartItemService {
         cartItemRepository.deleteByMemberIdAndAuctionId(memberId, auctionId);
     }
 
-    private Map<Long, AuctionSummaryResult> fetchAuctionsById(final List<CartItem> cartItems) {
+    private Map<Long, InternalAuctionSnapshotResult> fetchAuctionsById(
+        final List<CartItem> cartItems) {
         final List<Long> auctionIds = cartItems.stream().map(CartItem::getAuctionId).toList();
-        return auctionService.getSummaries(auctionIds).stream()
-            .collect(Collectors.toMap(AuctionSummaryResult::id, Function.identity()));
+        return internalAuctionService.getSnapshots(auctionIds).stream()
+            .collect(Collectors.toMap(InternalAuctionSnapshotResult::id, Function.identity()));
     }
 
     private List<CartItemResult> toSortedResults(final Long memberId,
         final List<CartItem> cartItems,
-        final Map<Long, AuctionSummaryResult> auctionsById) {
+        final Map<Long, InternalAuctionSnapshotResult> auctionsById) {
         return cartItems.stream()
             .filter(cartItem -> hasAuction(memberId, cartItem, auctionsById))
             .map(cartItem -> CartItemResult.of(cartItem, auctionsById.get(cartItem.getAuctionId())))
@@ -90,7 +91,7 @@ public class CartItemService {
 
     // 경매는 Soft Delete라 일반적으로는 발생할 수 없는 상황이지만, 방어적으로 건너뛰고 로그를 남긴다.
     private boolean hasAuction(final Long memberId, final CartItem cartItem,
-        final Map<Long, AuctionSummaryResult> auctionsById) {
+        final Map<Long, InternalAuctionSnapshotResult> auctionsById) {
         boolean found = auctionsById.containsKey(cartItem.getAuctionId());
         if (!found) {
             log.warn("watched-auctions: 참조하는 경매를 찾을 수 없어 건너뜁니다. memberId={}, auctionId={}",
@@ -110,8 +111,10 @@ public class CartItemService {
     }
 
     private void validateCanAdd(final Long memberId, final Long auctionId) {
-        if (!auctionService.exists(auctionId)) {
-            throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
+        final InternalAuctionSnapshotResult auction = internalAuctionService.getSnapshot(auctionId);
+        if (auction.status() != AuctionStatus.SCHEDULED
+            && auction.status() != AuctionStatus.RUNNING) {
+            throw new AuctionException(AuctionErrorCode.WATCHED_AUCTION_STATUS_INVALID);
         }
         if (cartItemRepository.countByMemberId(memberId) >= MAX_WATCHED_AUCTIONS) {
             throw new AuctionException(AuctionErrorCode.WATCHED_AUCTION_LIMIT_EXCEEDED);

@@ -6,8 +6,8 @@ import site.coreservice.auction.domain.AuctionStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-// 다른 애그리거트(CartItem 등)가 경매 정보 일부만 필요할 때 쓰는 요약 DTO. AuctionResult와 별개로 유지한다.
-public record AuctionSummaryResult(
+// 다른 애그리거트(CartItem 등)가 경매 정보 일부만 필요할 때 쓰는 요약 DTO
+public record InternalAuctionSnapshotResult(
     Long id,
     AuctionStatus status,
     BigDecimal currentPrice,
@@ -15,14 +15,14 @@ public record AuctionSummaryResult(
     LocalDateTime endAt
 ) {
 
-    public static AuctionSummaryResult from(Auction auction) {
+    public static InternalAuctionSnapshotResult from(Auction auction) {
         BigDecimal currentPrice = auction.hasBid()
             ? auction.getHighestBid().getAmount().getValue()
-            : auction.getPricing().getStartPrice().getValue();
+            : auction.getPricing().startBidAmount().getValue();
 
-        return new AuctionSummaryResult(
+        return new InternalAuctionSnapshotResult(
             auction.getId(),
-            auction.getStatus(),
+            auction.getEffectiveStatusAt(LocalDateTime.now()),
             currentPrice,
             auction.getSchedule().getPeriod().getStartAt(),
             auction.getSchedule().getPeriod().getEndAt()

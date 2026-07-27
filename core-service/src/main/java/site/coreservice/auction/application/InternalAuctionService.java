@@ -3,6 +3,7 @@ package site.coreservice.auction.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.coreservice.auction.application.dto.InternalAuctionSnapshotResult;
 import site.coreservice.auction.application.dto.InternalAuctionCountResult;
 import site.coreservice.auction.application.dto.InternalAuctionSummaryResult;
 import site.coreservice.auction.domain.Auction;
@@ -28,27 +29,45 @@ public class InternalAuctionService {
     @Transactional(readOnly = true)
     public InternalAuctionSummaryResult getInternalSummary(Long auctionId) {
         Auction auction = auctionRepository.findById(auctionId)
-                .filter(a -> !a.isCanceled())
-                .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+            .filter(a -> !a.isCanceled())
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         long bidCount = bidRepository.countByAuctionId(auctionId);
-        BigDecimal finalPrice = auction.hasBid() ? auction.getHighestBid().getAmount().getValue() : null;
+        BigDecimal finalPrice =
+            auction.hasBid() ? auction.getHighestBid().getAmount().getValue() : null;
 
         return new InternalAuctionSummaryResult(
-                auction.getId(), auction.getProductId(),
-                auction.getItemInfo().getCondition().name(),
-                bidCount, finalPrice,
-                auction.getSchedule().getPeriod().getEndAt(),
-                auction.getEffectiveStatusAt(LocalDateTime.now()).name()
+            auction.getId(), auction.getProductId(),
+            auction.getItemInfo().getCondition().name(),
+            bidCount, finalPrice,
+            auction.getSchedule().getPeriod().getEndAt(),
+            auction.getEffectiveStatusAt(LocalDateTime.now()).name()
         );
+    }
+
+    // getInternalSummary와 달리 CANCELED도 그대로 포함
+    @Transactional(readOnly = true)
+    public InternalAuctionSnapshotResult getSnapshot(Long auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+            .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        return InternalAuctionSnapshotResult.from(auction);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InternalAuctionSnapshotResult> getSnapshots(List<Long> auctionIds) {
+        return auctionRepository.findAllByIds(auctionIds).stream()
+            .map(InternalAuctionSnapshotResult::from)
+            .toList();
     }
 
     @Transactional(readOnly = true)
     public List<InternalAuctionCountResult> getOpenAuctionCounts(List<Long> productIds) {
         List<Long> distinctProductIds = productIds.stream().distinct().toList();
-        Map<Long, Long> countsByProductId = auctionRepository.countRunningByProductIds(distinctProductIds);
+        Map<Long, Long> countsByProductId = auctionRepository.countRunningByProductIds(
+            distinctProductIds);
 
         return distinctProductIds.stream()
-                .map(productId -> new InternalAuctionCountResult(productId, countsByProductId.getOrDefault(productId, 0L)))
-                .toList();
+            .map(productId -> new InternalAuctionCountResult(productId,
+                countsByProductId.getOrDefault(productId, 0L)))
+            .toList();
     }
 }
