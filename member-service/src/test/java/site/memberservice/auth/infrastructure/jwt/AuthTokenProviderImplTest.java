@@ -17,13 +17,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuthTokenProviderImplTest {
 
     private static final String TEST_SECRET_KEY = "testSecretKeyForJwtTokenProviderImplTest123456789";
+    private static final long TOKEN_VALID_TIME = 1000L * 60 * 60;   // 1시간
 
     private AuthTokenProviderImpl authTokenProvider;
     private SecretKey secretKey;
 
     @BeforeEach
     void setUp() {
-        this.authTokenProvider = new AuthTokenProviderImpl(TEST_SECRET_KEY);
+        this.authTokenProvider = new AuthTokenProviderImpl(TEST_SECRET_KEY, TOKEN_VALID_TIME);
         this.secretKey = Keys.hmacShaKeyFor(TEST_SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
