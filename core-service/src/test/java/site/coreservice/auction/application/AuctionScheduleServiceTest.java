@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AuctionCloseServiceTest {
+class AuctionScheduleServiceTest {
 
     @Mock
     private AuctionRepository auctionRepository;
@@ -34,7 +34,7 @@ class AuctionCloseServiceTest {
         final Auction auction = registerRunningAuction(HighestBid.of(Money.of(15_000L), 99L, 1L));
         when(auctionRepository.findById(auction.getId())).thenReturn(Optional.of(auction));
 
-        final AuctionCloseService service = new AuctionCloseService(auctionRepository);
+        final AuctionScheduleService service = new AuctionScheduleService(auctionRepository);
         final Auction result = service.closeAuction(auction.getId());
 
         assertThat(result).isSameAs(auction);
@@ -47,7 +47,7 @@ class AuctionCloseServiceTest {
         final Auction auction = registerRunningAuction(null);
         when(auctionRepository.findById(auction.getId())).thenReturn(Optional.of(auction));
 
-        final AuctionCloseService service = new AuctionCloseService(auctionRepository);
+        final AuctionScheduleService service = new AuctionScheduleService(auctionRepository);
         final Auction result = service.closeAuction(auction.getId());
 
         assertThat(result).isSameAs(auction);
@@ -59,7 +59,7 @@ class AuctionCloseServiceTest {
     void closeAuction은_존재하지_않으면_예외를_던진다() {
         when(auctionRepository.findById(999L)).thenReturn(Optional.empty());
 
-        final AuctionCloseService service = new AuctionCloseService(auctionRepository);
+        final AuctionScheduleService service = new AuctionScheduleService(auctionRepository);
 
         assertThatThrownBy(() -> service.closeAuction(999L)).isInstanceOf(
             IllegalStateException.class);

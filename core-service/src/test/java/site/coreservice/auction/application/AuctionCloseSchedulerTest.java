@@ -33,7 +33,7 @@ class AuctionCloseSchedulerTest {
     private AuctionRepository auctionRepository;
 
     @Mock
-    private AuctionCloseService auctionCloseService;
+    private AuctionScheduleService auctionScheduleService;
 
     @Mock
     private AuctionEventPublisher auctionEventPublisher;
@@ -43,16 +43,16 @@ class AuctionCloseSchedulerTest {
         final Auction a = runningAuction(1L);
         final Auction b = runningAuction(2L);
         when(auctionRepository.findAllRunningToEnd(any())).thenReturn(List.of(a, b));
-        when(auctionCloseService.closeAuction(1L)).thenReturn(a);
-        when(auctionCloseService.closeAuction(2L)).thenReturn(b);
+        when(auctionScheduleService.closeAuction(1L)).thenReturn(a);
+        when(auctionScheduleService.closeAuction(2L)).thenReturn(b);
 
         final AuctionCloseScheduler scheduler =
-            new AuctionCloseScheduler(auctionRepository, auctionCloseService,
+            new AuctionCloseScheduler(auctionRepository, auctionScheduleService,
                 auctionEventPublisher);
         scheduler.closeEndedAuctions();
 
-        verify(auctionCloseService).closeAuction(1L);
-        verify(auctionCloseService).closeAuction(2L);
+        verify(auctionScheduleService).closeAuction(1L);
+        verify(auctionScheduleService).closeAuction(2L);
         verify(auctionEventPublisher).publishAuctionClosed(a);
         verify(auctionEventPublisher).publishAuctionClosed(b);
     }
@@ -62,16 +62,16 @@ class AuctionCloseSchedulerTest {
         final Auction a = runningAuction(1L);
         final Auction b = runningAuction(2L);
         when(auctionRepository.findAllRunningToEnd(any())).thenReturn(List.of(a, b));
-        doThrow(new RuntimeException("boom")).when(auctionCloseService).closeAuction(1L);
-        when(auctionCloseService.closeAuction(2L)).thenReturn(b);
+        doThrow(new RuntimeException("boom")).when(auctionScheduleService).closeAuction(1L);
+        when(auctionScheduleService.closeAuction(2L)).thenReturn(b);
 
         final AuctionCloseScheduler scheduler =
-            new AuctionCloseScheduler(auctionRepository, auctionCloseService,
+            new AuctionCloseScheduler(auctionRepository, auctionScheduleService,
                 auctionEventPublisher);
         scheduler.closeEndedAuctions();
 
-        verify(auctionCloseService).closeAuction(1L);
-        verify(auctionCloseService).closeAuction(2L);
+        verify(auctionScheduleService).closeAuction(1L);
+        verify(auctionScheduleService).closeAuction(2L);
         verify(auctionEventPublisher).publishAuctionClosed(b);
     }
 
@@ -81,7 +81,7 @@ class AuctionCloseSchedulerTest {
 
         final LocalDateTime before = LocalDateTime.now();
         final AuctionCloseScheduler scheduler =
-            new AuctionCloseScheduler(auctionRepository, auctionCloseService,
+            new AuctionCloseScheduler(auctionRepository, auctionScheduleService,
                 auctionEventPublisher);
         scheduler.closeEndedAuctions();
 

@@ -13,12 +13,12 @@ import site.coreservice.auction.domain.AuctionStatus;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuctionCloseService {
+public class AuctionScheduleService {
 
     private final AuctionRepository auctionRepository;
 
     @Transactional
-    public Auction closeAuction(final Long auctionId) {
+    protected Auction closeAuction(final Long auctionId) {
         final Auction auction = auctionRepository.findById(auctionId)
             .orElseThrow(() -> new IllegalStateException("경매를 찾을 수 없습니다: " + auctionId));
 
