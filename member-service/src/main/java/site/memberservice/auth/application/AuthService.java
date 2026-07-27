@@ -11,7 +11,7 @@ import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.Member;
 
-import static java.lang.String.*;
+import static java.lang.String.format;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 
 @RequiredArgsConstructor
