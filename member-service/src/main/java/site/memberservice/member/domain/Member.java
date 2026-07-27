@@ -65,7 +65,7 @@ public class Member extends BaseEntity {
     @Embedded
     private Address address;
 
-    private Member(
+    public Member(
         final Long id,
         final Email email,
         final String password,
