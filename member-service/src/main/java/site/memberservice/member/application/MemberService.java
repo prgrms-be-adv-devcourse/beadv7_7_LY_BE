@@ -14,6 +14,8 @@ import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.exception.MemberException;
 
+import java.util.Optional;
+
 import static java.lang.String.format;
 import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
 import static site.memberservice.member.exception.MemberErrorCode.MEMBER_NOT_FOUND;
@@ -75,6 +77,10 @@ public class MemberService {
     private Member getMember(final Long memberId) {
         return memberRepository.findById(memberId)
             .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
+    }
+
+    public Optional<Member> findMember(final Email email) {
+        return memberRepository.findByEmail(email);
     }
 
     public MemberProfileDto getMemberProfile(final Long memberId) {
