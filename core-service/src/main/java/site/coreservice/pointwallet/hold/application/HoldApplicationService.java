@@ -70,4 +70,22 @@ public class HoldApplicationService implements HoldService {
         holdRepository.delete(previousHold);
         return previousHold.getId();
     }
+
+    @Override
+    @Transactional
+    public void release(Long auctionId) {
+        Hold hold = holdRepository.findByAuctionId(auctionId)
+                .orElseThrow(() -> new HoldException(HoldErrorCode.HOLD_NOT_FOUND));
+        releasePreviousHold(hold); // 기존 private 메서드 그대로 재사용 (지갑 환원 + RELEASE 원장 기록 + delete)
+    }
+
+    @Override
+    @Transactional
+    public void consume(Long auctionId) {
+        Hold hold = holdRepository.findByAuctionId(auctionId)
+                .orElseThrow(() -> new HoldException(HoldErrorCode.HOLD_NOT_FOUND));
+        // 지갑은 건드리지 않는다 - hold() 시점에 이미 deduct()로 영구히 빠져나간 돈이라
+        // 완료 시점엔 추가 잔액 이동이 없다. 그때 기록된 HOLD 원장 항목이 그대로 영구 기록으로 남는다.
+        holdRepository.delete(hold);
+    }
 }

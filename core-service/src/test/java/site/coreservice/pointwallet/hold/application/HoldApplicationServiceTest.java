@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import site.coreservice.pointwallet.hold.domain.Hold;
 import site.coreservice.pointwallet.hold.domain.HoldRepository;
 import site.coreservice.pointwallet.hold.exception.HoldErrorCode;
@@ -192,6 +193,85 @@ class HoldApplicationServiceTest {
             verify(walletService, never()).deduct(anyLong(), any());
             verify(holdRepository, never()).save(any(Hold.class));
             verify(holdRepository, never()).delete(any(Hold.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("홀드 해제 (release) - 주문 취소 대응")
+    class Release {
+
+        @Test
+        @DisplayName("활성 홀드가 있으면 지갑에 환원하고 RELEASE 원장 기록 후 삭제한다")
+        void release_정상흐름() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            ReflectionTestUtils.setField(hold, "id", 1L);
+            when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.of(hold));
+            when(walletService.credit(BIDDER_ID, AMOUNT))
+                    .thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+
+            // when
+            sut.release(AUCTION_ID);
+
+            // then
+            verify(walletService).credit(BIDDER_ID, AMOUNT);
+            verify(pointTransactionService).record(
+                    WALLET_ID, PointTransactionType.RELEASE, AMOUNT, AMOUNT, 1L
+            );
+            verify(holdRepository).delete(hold);
+        }
+
+        @Test
+        @DisplayName("해제할 홀드가 없으면 HOLD_NOT_FOUND를 던진다")
+        void release_홀드없으면_예외() {
+            // given
+            when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.release(AUCTION_ID))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_NOT_FOUND);
+
+            verify(walletService, never()).credit(any(), any());
+            verify(holdRepository, never()).delete(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("홀드 소멸 (consume) - 주문 완료 대응")
+    class Consume {
+
+        @Test
+        @DisplayName("활성 홀드가 있으면 지갑은 건드리지 않고 삭제만 한다")
+        void consume_정상흐름() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.of(hold));
+
+            // when
+            sut.consume(AUCTION_ID);
+
+            // then
+            verify(holdRepository).delete(hold);
+            verify(walletService, never()).credit(any(), any());
+            verify(walletService, never()).deduct(any(), any());
+            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("소멸시킬 홀드가 없으면 HOLD_NOT_FOUND를 던진다")
+        void consume_홀드없으면_예외() {
+            // given
+            when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.consume(AUCTION_ID))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_NOT_FOUND);
+
+            verify(holdRepository, never()).delete(any());
         }
     }
 }
