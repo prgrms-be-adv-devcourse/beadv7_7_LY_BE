@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,5 +27,10 @@ public class ArtistRepositoryImpl implements ArtistRepository {
     @Override
     public Optional<Artist> findById(Long id) {
         return artistJpaRepository.findById(id);
+    }
+
+    @Override
+    public List<Artist> findAllByIds(List<Long> ids) {
+        return artistJpaRepository.findAllById(ids);
     }
 }

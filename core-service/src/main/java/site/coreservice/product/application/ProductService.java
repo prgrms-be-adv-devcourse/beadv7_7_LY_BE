@@ -11,6 +11,11 @@ import site.coreservice.product.domain.Product;
 import site.coreservice.product.exception.ProductNotFoundException;
 import site.coreservice.product.domain.ProductRepository;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 /**
  * 상품 조회 서비스. getProductSnapshot은 경매(07)·주문(06)팀이 쓰는 내부 조회로,
  * 같은 core-service 안에서는 이 서비스를 직접 호출하는 것이 정식 경로다 (internal HTTP API는 이를 감싼 통로일 뿐).
@@ -38,8 +43,30 @@ public class ProductService {
         return ProductSnapshotResult.of(product, getArtist(product.getArtistId()));
     }
 
+    /** getProductSnapshot의 배치 버전. */
+    public List<ProductSnapshotResult> getProductSnapshots(List<Long> productIds) {
+        List<Product> products = productRepository.findAllByIds(productIds);
+        Map<Long, Artist> artistsById = getArtists(products);
+        return products.stream()
+                .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
+                .toList();
+    }
+
     private Artist getArtist(Long artistId) {
         return artistRepository.findById(artistId)
                 .orElseThrow(() -> new IllegalStateException("상품이 참조하는 아티스트가 없습니다. artistId=" + artistId));
+    }
+
+    private Map<Long, Artist> getArtists(List<Product> products) {
+        List<Long> artistIds = products.stream().map(Product::getArtistId).distinct().toList();
+        Map<Long, Artist> artistsById = artistRepository.findAllByIds(artistIds).stream()
+                .collect(Collectors.toMap(Artist::getId, Function.identity()));
+        for (Product product : products) {
+            if (!artistsById.containsKey(product.getArtistId())) {
+                throw new IllegalStateException(
+                        "상품이 참조하는 아티스트가 없습니다. artistId=" + product.getArtistId());
+            }
+        }
+        return artistsById;
     }
 }
