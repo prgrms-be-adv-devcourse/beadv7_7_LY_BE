@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import site.memberservice.auth.application.dto.LoginCommand;
 import site.memberservice.auth.application.dto.LoginResult;
+import site.memberservice.auth.domain.AuthToken;
 import site.memberservice.auth.domain.AuthTokenProvider;
 import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
@@ -36,5 +37,10 @@ public class AuthService {
     // TODO : #80 로그아웃은 파이널에서 Refresh 토큰 정책 결정 + Access Token 관리 정책이 고도화되면 함께 구현 예정
     public void logout() {
 
+    }
+
+    public Long validateAuthToken(final String token) {
+        final AuthToken authToken = new AuthToken(token);
+        return authTokenProvider.validateToken(authToken);
     }
 }
