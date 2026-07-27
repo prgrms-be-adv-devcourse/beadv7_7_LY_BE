@@ -45,10 +45,11 @@ public class OrderController {
         return ApiResponse.success(OrderDetailResponse.from(orderService.getOrderDetail(orderId, memberId)));
     }
 
+    /** perspective가 없으면 프레임워크 예외가 500으로 발생. 추후 GlobalExceptionHandler에서 처리 */
     @GetMapping
     public ApiResponse<OrderPageResponse> getOrders(
             @MemberId Long memberId,
-            @RequestParam String perspective,
+            @RequestParam(required = false) String perspective,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size

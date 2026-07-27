@@ -22,7 +22,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
             select o from Order o
             where o.buyerId = :buyerId
               and (:status is null or o.status = :status)
-            order by o.createdAt desc
+            order by o.createdAt desc, o.id desc
             """)
     Page<Order> searchByBuyerId(@Param("buyerId") Long buyerId, @Param("status") OrderStatus status, Pageable pageable);
 
@@ -30,7 +30,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
             select o from Order o
             where o.sellerId = :sellerId
               and (:status is null or o.status = :status)
-            order by o.createdAt desc
+            order by o.createdAt desc, o.id desc
             """)
     Page<Order> searchBySellerId(@Param("sellerId") Long sellerId, @Param("status") OrderStatus status, Pageable pageable);
 }

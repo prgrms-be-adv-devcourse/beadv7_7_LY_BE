@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import site.coreservice.order.application.dto.DeliveryAddressResult;
 import site.coreservice.order.application.dto.OrderDetailResult;
-import site.coreservice.order.application.dto.ProductSnapshotResult;
+import site.coreservice.order.application.dto.OrderItemSnapshotResult;
 
 public record OrderDetailResponse(
         Long orderId,
@@ -43,6 +43,7 @@ public record OrderDetailResponse(
     }
 
     public record Product(
+            Long productId,
             String artistName,
             String albumTitle,
             Integer releaseYear,
@@ -51,8 +52,9 @@ public record OrderDetailResponse(
             String coverImage
     ) {
 
-        public static Product from(ProductSnapshotResult result) {
+        public static Product from(OrderItemSnapshotResult result) {
             return new Product(
+                    result.productId(),
                     result.artistName(),
                     result.albumTitle(),
                     result.releaseYear(),

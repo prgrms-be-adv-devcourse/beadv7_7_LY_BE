@@ -25,7 +25,7 @@ import site.coreservice.order.application.dto.DeliveryAddressResult;
 import site.coreservice.order.application.dto.OrderDetailResult;
 import site.coreservice.order.application.dto.OrderSearchResult;
 import site.coreservice.order.application.dto.OrderSummaryResult;
-import site.coreservice.order.application.dto.ProductSnapshotResult;
+import site.coreservice.order.application.dto.OrderItemSnapshotResult;
 import site.coreservice.order.exception.OrderErrorCode;
 import site.coreservice.order.exception.OrderException;
 import site.coreservice.order.presentation.dto.OrderPlaceRequest;
@@ -157,8 +157,8 @@ class OrderControllerTest {
     @DisplayName("GET /api/v1/orders/{orderId}")
     class GetOrder {
 
-        private final ProductSnapshotResult product = new ProductSnapshotResult(
-                "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
+        private final OrderItemSnapshotResult product = new OrderItemSnapshotResult(
+                1201L, "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
                 "https://cdn.example.com/listings/5001/photo1.jpg");
 
         private final DeliveryAddressResult deliveryAddress =
@@ -179,6 +179,7 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.orderId").value(1))
                     .andExpect(jsonPath("$.data.status").value("ORDERED"))
+                    .andExpect(jsonPath("$.data.product.productId").value(1201))
                     .andExpect(jsonPath("$.data.product.albumTitle").value("Abbey Road"))
                     .andExpect(jsonPath("$.data.deliveryAddress.recipientName").value("홍길동"));
         }
@@ -217,8 +218,8 @@ class OrderControllerTest {
         @Test
         @DisplayName("성공하면 200과 주문 목록 페이지를 반환한다")
         void getOrders_success() throws Exception {
-            ProductSnapshotResult product = new ProductSnapshotResult(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
+            OrderItemSnapshotResult product = new OrderItemSnapshotResult(
+                    1201L, "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
                     "https://cdn.example.com/listings/5001/photo1.jpg");
             OrderSummaryResult summary = new OrderSummaryResult(
                     1L, 5001L, "ORDERED", BigDecimal.valueOf(85_000),
@@ -233,6 +234,7 @@ class OrderControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.content[0].orderId").value(1))
+                    .andExpect(jsonPath("$.data.content[0].product.productId").value(1201))
                     .andExpect(jsonPath("$.data.totalElements").value(1))
                     .andExpect(jsonPath("$.data.last").value(true));
         }

@@ -11,7 +11,7 @@ public record OrderSummaryResult(
         BigDecimal finalBidPrice,
         LocalDateTime confirmationDeadline,
         LocalDateTime completionDeadline,
-        ProductSnapshotResult product
+        OrderItemSnapshotResult product
 ) {
 
     public static OrderSummaryResult from(Order order) {
@@ -22,7 +22,7 @@ public record OrderSummaryResult(
                 order.getFinalBidPrice(),
                 order.getOrderDeadline(),
                 order.getCompletionDeadline(),
-                ProductSnapshotResult.from(order.getItemSnapshot())
+                OrderItemSnapshotResult.from(order.getProductId(), order.getItemSnapshot())
         );
     }
 }

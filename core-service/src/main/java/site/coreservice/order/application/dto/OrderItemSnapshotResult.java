@@ -2,7 +2,8 @@ package site.coreservice.order.application.dto;
 
 import site.coreservice.order.domain.OrderItemSnapshot;
 
-public record ProductSnapshotResult(
+public record OrderItemSnapshotResult(
+        Long productId,
         String albumTitle,
         String artistName,
         Integer releaseYear,
@@ -11,8 +12,9 @@ public record ProductSnapshotResult(
         String coverImage
 ) {
 
-    public static ProductSnapshotResult from(OrderItemSnapshot snapshot) {
-        return new ProductSnapshotResult(
+    public static OrderItemSnapshotResult from(Long productId, OrderItemSnapshot snapshot) {
+        return new OrderItemSnapshotResult(
+                productId,
                 snapshot.getAlbumTitle(),
                 snapshot.getArtistName(),
                 snapshot.getReleaseYear(),

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import site.coreservice.order.application.dto.OrderSearchResult;
 import site.coreservice.order.application.dto.OrderSummaryResult;
-import site.coreservice.order.application.dto.ProductSnapshotResult;
+import site.coreservice.order.application.dto.OrderItemSnapshotResult;
 
 public record OrderPageResponse(
         List<Item> content,
@@ -54,14 +54,16 @@ public record OrderPageResponse(
     }
 
     public record Product(
+            Long productId,
             String albumTitle,
             String artistName,
             String conditionGrade,
             String coverImage
     ) {
 
-        public static Product from(ProductSnapshotResult result) {
+        public static Product from(OrderItemSnapshotResult result) {
             return new Product(
+                    result.productId(),
                     result.albumTitle(),
                     result.artistName(),
                     result.conditionGrade(),
