@@ -4,11 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionPolicy;
 import site.coreservice.auction.domain.AuctionRepository;
-import site.coreservice.auction.domain.AuctionStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,17 +25,19 @@ public class AuctionStartScheduler {
     private static final long EARLY_START_MINUTES = AuctionPolicy.TIME_UNIT_MINUTES / 2L;
 
     private final AuctionRepository auctionRepository;
+    private final AuctionScheduleService auctionScheduleService;
 
     @Scheduled(fixedDelay = POLL_INTERVAL_MILLIS)
-    @Transactional
     public void startScheduledAuctions() {
         final List<Auction> auctions = auctionRepository.findAllScheduledToStart(
             LocalDateTime.now().plusMinutes(EARLY_START_MINUTES));
 
         for (final Auction auction : auctions) {
-            auction.changeStatus(AuctionStatus.RUNNING);
-            auctionRepository.save(auction);
-            log.info("경매 시작 처리: auctionId={}", auction.getId());
+            try {
+                auctionScheduleService.startAuction(auction.getId());
+            } catch (final Exception e) {
+                log.error("경매 시작 처리 실패: auctionId={}", auction.getId(), e);
+            }
         }
     }
 }
