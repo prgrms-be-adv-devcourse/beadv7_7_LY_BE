@@ -74,4 +74,45 @@ class AuctionScheduleTest {
         assertThat(schedule.isEndedAt(period.getEndAt())).isTrue();
         assertThat(schedule.isEndedAt(period.getEndAt().minusSeconds(1))).isFalse();
     }
+
+    @Test
+    @DisplayName("연장이 비활성화되어 있으면 마감 임박이어도 연장하지 않는다")
+    void testExtendIfNeeded_extensionDisabled_returnsSameSchedule() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(period, false, null);
+
+        // when
+        AuctionSchedule result = schedule.extendIfNeeded(period.getEndAt().minusMinutes(1));
+
+        // then
+        assertThat(result).isEqualTo(schedule);
+        assertThat(result.getPeriod().getEndAt()).isEqualTo(period.getEndAt());
+    }
+
+    @Test
+    @DisplayName("연장이 활성화되어 있어도 마감 임박이 아니면 연장하지 않는다")
+    void testExtendIfNeeded_notNearEnd_returnsSameSchedule() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(period, true, 10);
+
+        // when
+        AuctionSchedule result = schedule.extendIfNeeded(period.getEndAt().minusMinutes(30));
+
+        // then
+        assertThat(result.getPeriod().getEndAt()).isEqualTo(period.getEndAt());
+    }
+
+    @Test
+    @DisplayName("연장이 활성화되어 있고 마감 임박이면 연장 시간만큼 종료 시각을 뒤로 민다")
+    void testExtendIfNeeded_nearEnd_extendsEndAt() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(period, true, 10);
+
+        // when
+        AuctionSchedule result = schedule.extendIfNeeded(period.getEndAt().minusMinutes(1));
+
+        // then
+        assertThat(result.getPeriod().getEndAt()).isEqualTo(period.getEndAt().plusMinutes(10));
+        assertThat(result.getPeriod().getStartAt()).isEqualTo(period.getStartAt());
+    }
 }

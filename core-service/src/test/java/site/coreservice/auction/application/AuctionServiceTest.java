@@ -21,13 +21,17 @@ import site.coreservice.auction.application.dto.HostedAuctionResult;
 import site.coreservice.auction.application.dto.ModifyAuctionCommand;
 import site.coreservice.auction.application.dto.PageResult;
 import site.coreservice.auction.application.dto.ParticipatedAuctionResult;
+import site.coreservice.auction.application.dto.PlaceBidCommand;
+import site.coreservice.auction.application.dto.PlaceBidResult;
 import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.application.port.MemberPort;
 import site.coreservice.auction.application.port.ProductPort;
+import site.coreservice.auction.application.port.WalletPort;
 import site.coreservice.auction.application.port.dto.ProductDetail;
 import site.coreservice.auction.application.port.dto.AuctionListSummary;
 import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
+import site.coreservice.auction.application.port.dto.WalletHoldInfo;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionRepository;
 import site.coreservice.auction.domain.AuctionSchedule;
@@ -55,6 +59,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -75,6 +80,9 @@ class AuctionServiceTest {
 
     @Mock
     private AuctionSearchViewRepository searchViewRepository;
+
+    @Mock
+    private WalletPort walletPort;
 
     @InjectMocks
     private AuctionService auctionService;
@@ -688,5 +696,151 @@ class AuctionServiceTest {
         assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
         assertThat(item.finalPrice()).isEqualTo(Money.of(10_000L));
         assertThat(item.bidCount()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("입찰에 성공하면 예치금을 홀드하고 Bid를 저장하고 최고입찰을 갱신한다")
+    void testPlaceBid_success_holdsWalletAndSavesBidAndUpdatesHighestBid() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(1L, 2L, Money.of(13_000L)))
+                .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
+        given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
+            Bid bid = invocation.getArgument(0);
+            ReflectionTestUtils.setField(bid, "id", 50L);
+            return bid;
+        });
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.empty());
+        given(bidRepository.countByAuctionId(1L)).willReturn(1L);
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when
+        PlaceBidResult result = auctionService.placeBid(command);
+
+        // then
+        assertThat(result.bidId()).isEqualTo(50L);
+        assertThat(result.auctionId()).isEqualTo(1L);
+        assertThat(result.bidAmount()).isEqualTo(Money.of(13_000L));
+        assertThat(result.outcome()).isEqualTo(BidOutcome.ACTIVE);
+        assertThat(result.extended()).isFalse();
+        assertThat(auction.getHighestBid().isBidder(2L)).isTrue();
+
+        verify(walletPort).hold(1L, 2L, Money.of(13_000L));
+        verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getSchedule().getPeriod().getEndAt());
+    }
+
+    @Test
+    @DisplayName("기존 활성 입찰이 있으면 새 입찰 저장 후 기존 입찰을 OUTBID로 전환한다")
+    void testPlaceBid_existingActiveBid_marksPreviousBidOutbid() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(13_000L), 5L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(any(), any(), any()))
+                .willReturn(new WalletHoldInfo(100L, 10L, BigDecimal.valueOf(87_000)));
+
+        Bid previousBid = Bid.place(1L, 5L, Money.of(13_000L), PAST_START.plusMinutes(1));
+        ReflectionTestUtils.setField(previousBid, "id", 10L);
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(previousBid));
+        given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
+            Bid bid = invocation.getArgument(0);
+            ReflectionTestUtils.setField(bid, "id", 20L);
+            return bid;
+        });
+        given(bidRepository.countByAuctionId(1L)).willReturn(2L);
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_500));
+
+        // when
+        auctionService.placeBid(command);
+
+        // then
+        assertThat(previousBid.getOutcome()).isEqualTo(BidOutcome.OUTBID);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매에 입찰하면 예외를 던지고 예치금 홀드를 호출하지 않는다")
+    void testPlaceBid_auctionNotFound_throws() {
+        // given
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+        verify(walletPort, never()).hold(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("최소 입찰가 미만이면 예치금 홀드를 호출하지 않고 예외를 던진다")
+    void testPlaceBid_belowMinimum_throwsWithoutHoldingWallet() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(1_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
+        verify(walletPort, never()).hold(any(), any(), any());
+        verify(bidRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("예치금 홀드가 실패하면 입찰을 저장하지 않고 예외를 그대로 전파한다")
+    void testPlaceBid_walletHoldFails_propagatesAndDoesNotSaveBid() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(any(), any(), any()))
+                .willThrow(new AuctionException(AuctionErrorCode.WALLET_HOLD_FAILED));
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.WALLET_HOLD_FAILED);
+        verify(bidRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("예치금 홀드 이후 단계에서 예외가 나도 삼키지 않고 그대로 전파한다")
+    void testPlaceBid_failureAfterHold_propagatesException() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(any(), any(), any()))
+                .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
+        given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
+            Bid bid = invocation.getArgument(0);
+            ReflectionTestUtils.setField(bid, "id", 50L);
+            return bid;
+        });
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.empty());
+        given(bidRepository.countByAuctionId(1L)).willReturn(1L);
+        willThrow(new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND))
+                .given(searchViewRepository).updateOnBid(any(), any(), anyInt(), any());
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND);
     }
 }
