@@ -8,6 +8,8 @@ import site.coreservice.auction.application.port.dto.AuctionProductSummary;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AuctionSearchViewRepository {
@@ -22,5 +24,7 @@ public interface AuctionSearchViewRepository {
     List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds);
 
     Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable);
+
+    void updateOnBid(Long auctionId, BigDecimal highestBidAmount, int bidCount, LocalDateTime endAt);
 
 }

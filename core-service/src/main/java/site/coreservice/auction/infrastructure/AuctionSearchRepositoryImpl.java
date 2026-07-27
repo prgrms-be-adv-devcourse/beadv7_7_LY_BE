@@ -14,6 +14,8 @@ import site.coreservice.auction.domain.AuctionStatus;
 import site.coreservice.auction.exception.AuctionErrorCode;
 import site.coreservice.auction.exception.AuctionException;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -46,9 +48,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
 
     @Override
     public List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds) {
-        return searchViewJpaRepository.findAllById(auctionIds).stream()
-                .map(v -> new AuctionProductSummary(v.getAuctionId(), v.getTitle(), v.getArtistName()))
-                .toList();
+        return searchViewJpaRepository.findAllById(auctionIds).stream().map(v -> new AuctionProductSummary(v.getAuctionId(), v.getTitle(), v.getArtistName())).toList();
     }
 
     @Override
@@ -57,9 +57,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), resolveSort(sortType));
         AuctionStatus status = query.status() == null ? null : AuctionStatus.from(query.status());
 
-        List<AuctionListSummary> content = searchViewJpaRepository.search(query.genre(), query.pressType(), status, sortedPageable)
-                .stream()
-                .map(this::toSummary)   // infra 엔티티(AuctionSearchView) → application 타입 변환은 여기서 끝낸다
+        List<AuctionListSummary> content = searchViewJpaRepository.search(query.genre(), query.pressType(), status, sortedPageable).stream().map(this::toSummary)   // infra 엔티티(AuctionSearchView) → application 타입 변환은 여기서 끝낸다
                 .toList();
         long total = searchViewJpaRepository.countSearch(query.genre(), query.pressType(), status);
 
@@ -67,11 +65,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     }
 
     private AuctionListSummary toSummary(AuctionSearchView v) {
-        return new AuctionListSummary(
-                v.getAuctionId(), v.getProductId(), v.getTitle(), v.getArtistName(),
-                v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
-                v.getSellerId(), v.getSellerNickname(), v.getStatus(),
-                v.getHighestBidAmount(), v.getBidCount(), v.getStartAt(), v.getEndAt());
+        return new AuctionListSummary(v.getAuctionId(), v.getProductId(), v.getTitle(), v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(), v.getSellerId(), v.getSellerNickname(), v.getStatus(), v.getHighestBidAmount(), v.getBidCount(), v.getStartAt(), v.getEndAt());
     }
 
     private Sort resolveSort(AuctionSortType sortType) {
@@ -81,6 +75,12 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
             case MOST_BIDS -> Sort.by(Sort.Direction.DESC, "bidCount");
             case ENDING_SOON -> Sort.by(Sort.Direction.ASC, "endAt");   // 마감임박순 기본값
         };
+    }
+
+    @Override
+    public void updateOnBid(Long auctionId, BigDecimal highestBidAmount, int bidCount, LocalDateTime endAt) {
+        AuctionSearchView view = searchViewJpaRepository.findById(auctionId).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND));
+        view.updateOnBid(highestBidAmount, bidCount, endAt);
     }
 
 }
