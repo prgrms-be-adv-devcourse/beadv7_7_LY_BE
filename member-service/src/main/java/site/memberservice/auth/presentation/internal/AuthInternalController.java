@@ -18,7 +18,7 @@ public class AuthInternalController {
     private final AuthService authService;
 
     @GetMapping("/validate-token")
-    public ResponseEntity<ApiResponse<Void>> validateAuthToken(@RequestHeader(HttpHeaders.AUTHORIZATION) final String authToken) {
+    public ResponseEntity<ApiResponse<Void>> validateAuthToken(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authToken) {
         final Long authenticatedMemberId = authService.validateAuthToken(authToken);
 
         return ResponseEntity.ok()
