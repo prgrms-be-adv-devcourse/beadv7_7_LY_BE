@@ -13,6 +13,7 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 public enum AuthErrorCode implements ErrorCode {
 
     INVALID_AUTH_TOKEN(UNAUTHORIZED, "AERR-0001", "유효하지 않은 인증 토큰입니다."),
+    EXPIRED_AUTH_TOKEN(UNAUTHORIZED, "AERR-0002", "이미 만료된 인증 토큰입니다."),
     ;
 
     private final HttpStatus status;

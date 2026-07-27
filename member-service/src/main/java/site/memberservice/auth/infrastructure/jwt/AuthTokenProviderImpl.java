@@ -1,15 +1,22 @@
 package site.memberservice.auth.infrastructure.jwt;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import site.memberservice.auth.domain.AuthToken;
 import site.memberservice.auth.domain.AuthTokenProvider;
+import site.memberservice.auth.exception.AuthException;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+
+import static java.lang.String.format;
+import static site.memberservice.auth.exception.AuthErrorCode.EXPIRED_AUTH_TOKEN;
+import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN;
 
 @Component
 public class AuthTokenProviderImpl implements AuthTokenProvider {
@@ -42,5 +49,22 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
             .compact();
 
         return new AuthToken(jwtValue);
+    }
+
+    @Override
+    public Long validateToken(final AuthToken token) {
+        try {
+            final Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token.getValue())
+                .getPayload();
+            return Long.parseLong(claims.getSubject());
+        } catch (final ExpiredJwtException e) {
+            final Date expiration = e.getClaims().getExpiration();
+            throw new AuthException(EXPIRED_AUTH_TOKEN, format("이미 만료된 인증 토큰입니다. 토큰 만료일: %s", expiration));
+        } catch (final JwtException e) {
+            throw new AuthException(INVALID_AUTH_TOKEN, "유효하지 않은 인증 토큰입니다.", e);
+        }
     }
 }
