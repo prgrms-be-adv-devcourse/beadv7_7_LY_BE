@@ -3,8 +3,10 @@ package site.coreservice.order.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,11 +27,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.coreservice.global.event.AuctionWonEvent;
+import site.coreservice.order.application.dto.OrderDetailResult;
+import site.coreservice.order.application.dto.OrderSearchResult;
 import site.coreservice.order.domain.CancelReason;
 import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderSearchPage;
 import site.coreservice.order.domain.OrderStatus;
 import site.coreservice.order.application.port.ProductInfo;
 import site.coreservice.order.application.port.ProductPort;
@@ -520,6 +525,161 @@ class OrderServiceTest {
 
             // then
             verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("getOrderDetail")
+    class GetOrderDetail {
+
+        private Order pendingOrder() {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+        }
+
+        @Test
+        @DisplayName("구매자가 조회하면 주문 상세를 반환한다")
+        void returnsDetailForBuyer() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 301L);
+
+            // then
+            assertThat(result.buyerId()).isEqualTo(301L);
+            assertThat(result.sellerId()).isEqualTo(302L);
+        }
+
+        @Test
+        @DisplayName("판매자가 조회해도 주문 상세를 반환한다")
+        void returnsDetailForSeller() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 302L);
+
+            // then
+            assertThat(result.sellerId()).isEqualTo(302L);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.getOrderDetail(1L, 301L))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("구매자도 판매자도 아니면 예외가 발생한다")
+        void throwsWhenNeitherBuyerNorSeller() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.getOrderDetail(1L, 999L))
+                    .isInstanceOf(OrderException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("findOrders")
+    class FindOrders {
+
+        private Order pendingOrder(Long id) {
+            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), itemSnapshot);
+            ReflectionTestUtils.setField(order, "id", id);
+            return order;
+        }
+
+        @Test
+        @DisplayName("perspective=buyer면 구매자 기준으로 조회한다")
+        void findsByBuyerPerspective() {
+            // given
+            given(orderRepository.findAllByBuyerId(eq(301L), isNull(), eq(0), eq(20)))
+                    .willReturn(new OrderSearchPage(List.of(pendingOrder(1L)), 1L));
+
+            // when
+            OrderSearchResult result = orderService.findOrders(301L, "buyer", null, 0, 20);
+
+            // then
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.totalElements()).isEqualTo(1L);
+            verify(orderRepository, never()).findAllBySellerId(any(), any(), anyInt(), anyInt());
+        }
+
+        @Test
+        @DisplayName("perspective=seller면 판매자 기준으로 조회한다")
+        void findsBySellerPerspective() {
+            // given
+            given(orderRepository.findAllBySellerId(eq(302L), isNull(), eq(0), eq(20)))
+                    .willReturn(new OrderSearchPage(List.of(pendingOrder(1L)), 1L));
+
+            // when
+            OrderSearchResult result = orderService.findOrders(302L, "seller", null, 0, 20);
+
+            // then
+            assertThat(result.content()).hasSize(1);
+            verify(orderRepository, never()).findAllByBuyerId(any(), any(), anyInt(), anyInt());
+        }
+
+        @Test
+        @DisplayName("perspective이 buyer/seller가 아니면 예외가 발생한다")
+        void throwsWhenPerspectiveInvalid() {
+            // when & then
+            assertThatThrownBy(() -> orderService.findOrders(301L, "admin", null, 0, 20))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("status 문자열이 유효하지 않으면 예외가 발생한다")
+        void throwsWhenStatusInvalid() {
+            // when & then
+            assertThatThrownBy(() -> orderService.findOrders(301L, "buyer", "NOT_A_STATUS", 0, 20))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("size가 1보다 작으면 기본값(20)으로 대체된다")
+        void clampsSizeToDefaultWhenTooSmall() {
+            // given
+            given(orderRepository.findAllByBuyerId(eq(301L), isNull(), eq(0), eq(20)))
+                    .willReturn(new OrderSearchPage(List.of(), 0L));
+
+            // when
+            OrderSearchResult result = orderService.findOrders(301L, "buyer", null, 0, 0);
+
+            // then
+            assertThat(result.size()).isEqualTo(20);
+        }
+
+        @Test
+        @DisplayName("page가 음수면 0으로 보정된다")
+        void clampsNegativePageToZero() {
+            // given
+            given(orderRepository.findAllByBuyerId(eq(301L), isNull(), eq(0), eq(20)))
+                    .willReturn(new OrderSearchPage(List.of(), 0L));
+
+            // when
+            OrderSearchResult result = orderService.findOrders(301L, "buyer", null, -3, 20);
+
+            // then
+            assertThat(result.page()).isEqualTo(0);
         }
     }
 }

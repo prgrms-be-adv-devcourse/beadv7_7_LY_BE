@@ -11,6 +11,7 @@ import site.coreservice.order.domain.DeliveryInfo;
 import site.coreservice.order.domain.Order;
 import site.coreservice.order.domain.OrderItemSnapshot;
 import site.coreservice.order.domain.OrderRepository;
+import site.coreservice.order.domain.OrderSearchPage;
 import site.coreservice.order.domain.OrderStatus;
 import site.coreservice.support.RepositoryTest;
 
@@ -91,5 +92,66 @@ class OrderRepositoryImplTest {
         List<Order> result = orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, now);
 
         assertThat(result).isEmpty();
+    }
+
+    private Order orderFor(Long auctionId, Long buyerId, Long sellerId) {
+        OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
+                "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+        return Order.of(auctionId, 1201L, buyerId, sellerId, BigDecimal.valueOf(85_000),
+                LocalDateTime.now().plusHours(24), itemSnapshot);
+    }
+
+    @Test
+    @DisplayName("findAllByBuyerId는 해당 구매자의 주문만 반환한다")
+    void findAllByBuyerId_returnsOnlyThatBuyersOrders() {
+        orderRepository.save(orderFor(5001L, 301L, 302L));
+        orderRepository.save(orderFor(5002L, 999L, 302L));
+
+        OrderSearchPage result = orderRepository.findAllByBuyerId(301L, null, 0, 20);
+
+        assertThat(result.content()).extracting(Order::getAuctionId).containsExactly(5001L);
+        assertThat(result.totalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("findAllByBuyerId는 status로 필터링한다")
+    void findAllByBuyerId_filtersByStatus() {
+        Order ordered = orderFor(5001L, 301L, 302L);
+        ordered.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                LocalDateTime.now().plusDays(7), LocalDateTime.now());
+        orderRepository.save(ordered);
+        orderRepository.save(orderFor(5002L, 301L, 302L));
+
+        OrderSearchPage result = orderRepository.findAllByBuyerId(301L, OrderStatus.ORDERED, 0, 20);
+
+        assertThat(result.content()).extracting(Order::getAuctionId).containsExactly(5001L);
+    }
+
+    @Test
+    @DisplayName("findAllBySellerId는 해당 판매자의 주문만 반환한다")
+    void findAllBySellerId_returnsOnlyThatSellersOrders() {
+        orderRepository.save(orderFor(5001L, 301L, 302L));
+        orderRepository.save(orderFor(5002L, 301L, 999L));
+
+        OrderSearchPage result = orderRepository.findAllBySellerId(302L, null, 0, 20);
+
+        assertThat(result.content()).extracting(Order::getAuctionId).containsExactly(5001L);
+        assertThat(result.totalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("findAllByBuyerId는 페이징이 되고 totalElements는 전체 개수와 일치한다")
+    void findAllByBuyerId_paginates() {
+        orderRepository.save(orderFor(5001L, 301L, 302L));
+        orderRepository.save(orderFor(5002L, 301L, 302L));
+        orderRepository.save(orderFor(5003L, 301L, 302L));
+
+        OrderSearchPage firstPage = orderRepository.findAllByBuyerId(301L, null, 0, 2);
+        OrderSearchPage secondPage = orderRepository.findAllByBuyerId(301L, null, 1, 2);
+
+        assertThat(firstPage.content()).hasSize(2);
+        assertThat(secondPage.content()).hasSize(1);
+        assertThat(firstPage.totalElements()).isEqualTo(3L);
     }
 }
