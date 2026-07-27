@@ -331,4 +331,112 @@ class AuctionTest {
         assertThat(auction.getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_FAILED);
         assertThat(auction.isEffectiveClosingAt(afterEnd)).isFalse();
     }
+
+    @Test
+    @DisplayName("입찰 조건을 만족하면 applyBid()로 최고입찰이 갱신된다")
+    void testApplyBid_validBid_updatesHighestBid() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when
+        auction.applyBid(2L, Money.of(1_100L), 10L, afterStart);
+
+        // then
+        assertThat(auction.getHighestBid().getAmount()).isEqualTo(Money.of(1_100L));
+        assertThat(auction.getHighestBid().isBidder(2L)).isTrue();
+        assertThat(auction.getHighestBid().getBidId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("취소된 경매는 입찰할 수 없다")
+    void testValidateBiddable_notRunning_throws() {
+        // given: CANCELED는 시각과 무관하게 실효 상태도 항상 CANCELED다
+        Auction auction = auctionWith(AuctionStatus.CANCELED);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(1_100L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_BIDDABLE);
+    }
+
+    @Test
+    @DisplayName("시작 시각 전이면 입찰할 수 없다")
+    void testValidateBiddable_beforeStart_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(1_100L), beforeStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_BIDDABLE);
+    }
+
+    @Test
+    @DisplayName("종료 시각이 지났으면 입찰할 수 없다")
+    void testValidateBiddable_afterEnd_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(1_100L), afterEnd))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_BIDDABLE);
+    }
+
+    @Test
+    @DisplayName("판매자 본인은 자기 경매에 입찰할 수 없다")
+    void testValidateBiddable_seller_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(1L, Money.of(1_100L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_SELLER_CANNOT_BID);
+    }
+
+    @Test
+    @DisplayName("현재 최고입찰자는 다시 입찰할 수 없다")
+    void testValidateBiddable_currentHighestBidder_throws() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(1_100L), 2L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, highestBid);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(1_200L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ALREADY_HIGHEST_BIDDER);
+    }
+
+    @Test
+    @DisplayName("최소 입찰가 미만이면 입찰할 수 없다")
+    void testValidateBiddable_belowMinimum_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then: pricing = 시작가 1_000 + 배송비 0, 최소 입찰가는 1_000
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(999L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
+    }
+
+    @Test
+    @DisplayName("기존 최고입찰가 + 입찰단위 미만이면 입찰할 수 없다")
+    void testValidateBiddable_belowNextMinBidAmount_throws() {
+        // given: bidUnit = 100, 기존 최고입찰 1_100 → 다음 최소 입찰가는 1_200
+        HighestBid highestBid = HighestBid.of(Money.of(1_100L), 2L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, highestBid);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(3L, Money.of(1_150L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
+    }
 }
