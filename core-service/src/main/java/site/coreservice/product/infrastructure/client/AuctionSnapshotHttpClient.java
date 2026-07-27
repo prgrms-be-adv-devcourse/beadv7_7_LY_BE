@@ -3,6 +3,7 @@ package site.coreservice.product.infrastructure.client;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import site.coreservice.product.domain.AuctionSnapshotPort;
@@ -24,6 +25,7 @@ import site.coreservice.product.infrastructure.client.dto.AuctionSummaryPayload;
  * 셋을 뭉뚱그리면 로그가 원인을 반대로 가리킨다. 특히 경로 오타도 404라서, 상태코드만 보고
  * "경매 없음"으로 처리하면 우리 버그를 보낸 쪽 탓으로 기록하게 된다.
  */
+@Component
 public class AuctionSnapshotHttpClient implements AuctionSnapshotPort {
 
     /** 경매가 "그런 경매 없다"고 답할 때 쓰는 코드. 이 값일 때만 빈 결과로 바꾼다. */

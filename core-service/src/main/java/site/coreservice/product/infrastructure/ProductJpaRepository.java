@@ -58,7 +58,4 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
                               where aa.artistId = p.artistId and aa.normalizedName like :pattern))
             """)
     long countActiveHits(@Param("pattern") String pattern);
-
-    @Query("select p.id from Product p where p.active = true")
-    List<Long> findAllActiveIds();
 }
