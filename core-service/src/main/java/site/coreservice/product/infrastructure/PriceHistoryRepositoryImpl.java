@@ -1,7 +1,9 @@
 package site.coreservice.product.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
 import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
@@ -25,5 +27,11 @@ public class PriceHistoryRepositoryImpl implements PriceHistoryRepository {
     @Override
     public boolean existsByAuctionId(Long auctionId) {
         return priceHistoryJpaRepository.existsByAuctionId(auctionId);
+    }
+
+    @Override
+    public List<PriceHistory> findRecentTrades(Long productId, int limit) {
+        return priceHistoryJpaRepository
+                .findByProductIdAndOutlierFalseOrderByTradedAtDescIdDesc(productId, Limit.of(limit));
     }
 }
