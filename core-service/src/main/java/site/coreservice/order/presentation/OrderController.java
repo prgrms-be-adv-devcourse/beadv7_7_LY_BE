@@ -1,14 +1,18 @@
 package site.coreservice.order.presentation;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.coreservice.order.application.OrderService;
+import site.coreservice.order.presentation.dto.OrderDetailResponse;
+import site.coreservice.order.presentation.dto.OrderPageResponse;
 import site.coreservice.order.presentation.dto.OrderPlaceRequest;
 
 @RestController
@@ -34,5 +38,22 @@ public class OrderController {
     public ApiResponse<Void> completeOrder(@MemberId Long buyerId, @PathVariable Long orderId) {
         orderService.completeOrder(orderId, buyerId);
         return ApiResponse.success();
+    }
+
+    @GetMapping("/{orderId}")
+    public ApiResponse<OrderDetailResponse> getOrder(@MemberId Long memberId, @PathVariable Long orderId) {
+        return ApiResponse.success(OrderDetailResponse.from(orderService.getOrderDetail(orderId, memberId)));
+    }
+
+    @GetMapping
+    public ApiResponse<OrderPageResponse> getOrders(
+            @MemberId Long memberId,
+            @RequestParam String perspective,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(
+                OrderPageResponse.from(orderService.findOrders(memberId, perspective, status, page, size)));
     }
 }

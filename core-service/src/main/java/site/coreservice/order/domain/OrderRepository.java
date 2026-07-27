@@ -15,4 +15,10 @@ public interface OrderRepository {
     List<Order> findAllByStatusAndOrderDeadlineBefore(OrderStatus status, LocalDateTime threshold);
 
     List<Order> findAllByStatusAndCompletionDeadlineBefore(OrderStatus status, LocalDateTime threshold);
+
+    /** status는 nullable — null이면 해당 조건 미적용. 정렬은 createdAt desc 고정. */
+    OrderSearchPage findAllByBuyerId(Long buyerId, OrderStatus status, int page, int size);
+
+    /** status는 nullable — null이면 해당 조건 미적용. 정렬은 createdAt desc 고정. */
+    OrderSearchPage findAllBySellerId(Long sellerId, OrderStatus status, int page, int size);
 }

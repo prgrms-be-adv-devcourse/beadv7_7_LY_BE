@@ -1,12 +1,17 @@
 package site.coreservice.order.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,6 +21,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.coreservice.order.application.OrderService;
+import site.coreservice.order.application.dto.DeliveryAddressResult;
+import site.coreservice.order.application.dto.OrderDetailResult;
+import site.coreservice.order.application.dto.OrderSearchResult;
+import site.coreservice.order.application.dto.OrderSummaryResult;
+import site.coreservice.order.application.dto.ProductSnapshotResult;
 import site.coreservice.order.exception.OrderErrorCode;
 import site.coreservice.order.exception.OrderException;
 import site.coreservice.order.presentation.dto.OrderPlaceRequest;
@@ -140,6 +150,120 @@ class OrderControllerTest {
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.error.code").value("OERR-2007"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/orders/{orderId}")
+    class GetOrder {
+
+        private final ProductSnapshotResult product = new ProductSnapshotResult(
+                "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
+                "https://cdn.example.com/listings/5001/photo1.jpg");
+
+        private final DeliveryAddressResult deliveryAddress =
+                new DeliveryAddressResult("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호");
+
+        @Test
+        @DisplayName("성공하면 200과 주문 상세 정보를 반환한다")
+        void getOrder_success() throws Exception {
+            OrderDetailResult result = new OrderDetailResult(
+                    1L, 5001L, 301L, 302L, BigDecimal.valueOf(85_000), "ORDERED", null,
+                    LocalDateTime.now().plusHours(24), LocalDateTime.now().plusDays(7),
+                    LocalDateTime.now(), null, null, product, deliveryAddress);
+            given(orderService.getOrderDetail(1L, 301L)).willReturn(result);
+
+            mockMvc.perform(get("/api/v1/orders/{orderId}", 1L)
+                            .header(MEMBER_ID_HEADER, "301"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.orderId").value(1))
+                    .andExpect(jsonPath("$.data.status").value("ORDERED"))
+                    .andExpect(jsonPath("$.data.product.albumTitle").value("Abbey Road"))
+                    .andExpect(jsonPath("$.data.deliveryAddress.recipientName").value("홍길동"));
+        }
+
+        @Test
+        @DisplayName("주문을 찾을 수 없으면 404와 실패 응답을 반환한다")
+        void getOrder_orderNotFound() throws Exception {
+            given(orderService.getOrderDetail(1L, 301L))
+                    .willThrow(new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+            mockMvc.perform(get("/api/v1/orders/{orderId}", 1L)
+                            .header(MEMBER_ID_HEADER, "301"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2001"));
+        }
+
+        @Test
+        @DisplayName("구매자/판매자가 아니면 403과 실패 응답을 반환한다")
+        void getOrder_accessDenied() throws Exception {
+            given(orderService.getOrderDetail(1L, 999L))
+                    .willThrow(new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED));
+
+            mockMvc.perform(get("/api/v1/orders/{orderId}", 1L)
+                            .header(MEMBER_ID_HEADER, "999"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/orders")
+    class GetOrders {
+
+        @Test
+        @DisplayName("성공하면 200과 주문 목록 페이지를 반환한다")
+        void getOrders_success() throws Exception {
+            ProductSnapshotResult product = new ProductSnapshotResult(
+                    "Abbey Road", "비틀즈", 1969, "ORIGINAL", "VERY_GOOD_PLUS",
+                    "https://cdn.example.com/listings/5001/photo1.jpg");
+            OrderSummaryResult summary = new OrderSummaryResult(
+                    1L, 5001L, "ORDERED", BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), LocalDateTime.now().plusDays(7), product);
+            OrderSearchResult searchResult = new OrderSearchResult(List.of(summary), 0, 20, 1L, 1, true);
+            given(orderService.findOrders(301L, "buyer", "ORDERED", 0, 20)).willReturn(searchResult);
+
+            mockMvc.perform(get("/api/v1/orders")
+                            .header(MEMBER_ID_HEADER, "301")
+                            .param("perspective", "buyer")
+                            .param("status", "ORDERED"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content[0].orderId").value(1))
+                    .andExpect(jsonPath("$.data.totalElements").value(1))
+                    .andExpect(jsonPath("$.data.last").value(true));
+        }
+
+        @Test
+        @DisplayName("perspective가 유효하지 않으면 400과 실패 응답을 반환한다")
+        void getOrders_invalidPerspective() throws Exception {
+            given(orderService.findOrders(301L, "invalid", null, 0, 20))
+                    .willThrow(new OrderException(OrderErrorCode.INVALID_PERSPECTIVE));
+
+            mockMvc.perform(get("/api/v1/orders")
+                            .header(MEMBER_ID_HEADER, "301")
+                            .param("perspective", "invalid"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2008"));
+        }
+
+        @Test
+        @DisplayName("status가 유효하지 않으면 400과 실패 응답을 반환한다")
+        void getOrders_invalidStatus() throws Exception {
+            given(orderService.findOrders(301L, "buyer", "INVALID", 0, 20))
+                    .willThrow(new OrderException(OrderErrorCode.INVALID_STATUS));
+
+            mockMvc.perform(get("/api/v1/orders")
+                            .header(MEMBER_ID_HEADER, "301")
+                            .param("perspective", "buyer")
+                            .param("status", "INVALID"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2009"));
         }
     }
 
