@@ -12,7 +12,7 @@ import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.presentation.request.LoginRequest;
 
 @RequiredArgsConstructor
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/auth")
 @RestController
 public class AuthApiController {
 
