@@ -38,10 +38,10 @@ class AuctionRepositoryImplTest {
         final ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "실제 저장 확인용 상품 설명입니다.", List.of("1.png", "2.png"));
         final Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
         final AuctionSchedule schedule = AuctionSchedule.of(
-                Period.of(LocalDateTime.now(), LocalDateTime.now().plusDays(1)),
+                Period.of(LocalDateTime.now().plusHours(1), LocalDateTime.now().plusHours(1).plusDays(1)),
                 true, 5
         );
-        final Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        final Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, LocalDateTime.now());
 
         final Auction saved = auctionRepository.save(auction);
         final Auction found = auctionJpaRepository.findById(saved.getId()).orElseThrow();

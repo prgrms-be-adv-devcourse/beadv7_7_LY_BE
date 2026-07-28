@@ -21,6 +21,11 @@ class AuctionTest {
     private final LocalDateTime beforeStart = schedule.getPeriod().getStartAt().minusMinutes(1);
     private final LocalDateTime afterStart = schedule.getPeriod().getStartAt().plusMinutes(1);
     private final LocalDateTime afterEnd = schedule.getPeriod().getEndAt().plusMinutes(1);
+    private final LocalDateTime registerNow = schedule.getPeriod().getStartAt().minusHours(1);
+    // 수정/취소 마감 시한(10분) 밖: 성공 케이스 검증용
+    private final LocalDateTime wellBeforeStart = schedule.getPeriod().getStartAt().minusMinutes(15);
+    // 수정/취소 마감 시한(10분) 안: 실패 케이스 검증용
+    private final LocalDateTime withinEditDeadline = schedule.getPeriod().getStartAt().minusMinutes(5);
 
     private Auction auctionWith(AuctionStatus status) {
         return auctionWith(status, null);
@@ -34,7 +39,7 @@ class AuctionTest {
     @DisplayName("register()로 생성하면 SCHEDULED 상태이고 입찰이 없다")
     void testRegister_createsScheduledAuctionWithoutBid() {
         // when
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // then
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.SCHEDULED);
@@ -42,21 +47,34 @@ class AuctionTest {
     }
 
     @Test
+    @DisplayName("시작 시각이 현재로부터 30분 이내면 register()는 예외를 던진다")
+    void testRegister_startTimeTooSoon_throws() {
+        // given: 시작 시각이 now로부터 정확히 30분 미만
+        LocalDateTime tooSoonNow = schedule.getPeriod().getStartAt().minusMinutes(29);
+
+        // when & then
+        assertThatThrownBy(() -> Auction.register(1L, 100L, itemInfo, pricing, schedule, tooSoonNow))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_START_TOO_SOON);
+    }
+
+    @Test
     @DisplayName("필수 값이 null이면 register()는 예외를 던진다")
     void testRegister_nullRequiredFields_throws() {
         // when & then
-        assertThatThrownBy(() -> Auction.register(null, 100L, itemInfo, pricing, schedule)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Auction.register(1L, null, itemInfo, pricing, schedule)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Auction.register(1L, 100L, null, pricing, schedule)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Auction.register(1L, 100L, itemInfo, null, schedule)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Auction.register(1L, 100L, itemInfo, pricing, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Auction.register(null, 100L, itemInfo, pricing, schedule, registerNow)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Auction.register(1L, null, itemInfo, pricing, schedule, registerNow)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Auction.register(1L, 100L, null, pricing, schedule, registerNow)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Auction.register(1L, 100L, itemInfo, null, schedule, registerNow)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Auction.register(1L, 100L, itemInfo, pricing, null, registerNow)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("SCHEDULED에서 RUNNING으로 상태를 전이할 수 있다")
     void testChangeStatus_scheduledToRunning_succeeds() {
         // given
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when
         auction.changeStatus(AuctionStatus.RUNNING);
@@ -69,7 +87,7 @@ class AuctionTest {
     @DisplayName("허용되지 않은 상태 전이를 시도하면 예외가 발생한다")
     void testChangeStatus_invalidTransition_throws() {
         // given
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when & then
         assertThatThrownBy(() -> auction.changeStatus(AuctionStatus.ENDED_WON)).isInstanceOf(IllegalStateException.class);
@@ -79,7 +97,7 @@ class AuctionTest {
     @DisplayName("종료 상태에서는 더 이상 전이할 수 없다")
     void testChangeStatus_ofTerminalStatus_throws() {
         // given
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
         auction.changeStatus(AuctionStatus.CANCELED);
 
         // when & then
@@ -132,10 +150,23 @@ class AuctionTest {
         Auction auction = auctionWith(AuctionStatus.RUNNING);
 
         // when
-        auction.modify(1L, 200L, itemInfo, pricing, schedule, beforeStart);
+        auction.modify(1L, 200L, itemInfo, pricing, schedule, wellBeforeStart);
 
         // then
         assertThat(auction.getProductId()).isEqualTo(200L);
+    }
+
+    @Test
+    @DisplayName("시작 시각 10분 이내로 임박하면 아직 SCHEDULED여도 수정할 수 없다")
+    void testModify_withinEditDeadline_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED);
+
+        // when & then
+        assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, schedule, withinEditDeadline))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test
@@ -189,7 +220,7 @@ class AuctionTest {
         Auction auction = auctionWith(AuctionStatus.SCHEDULED);
 
         // when
-        auction.cancel(1L, beforeStart);
+        auction.cancel(1L, wellBeforeStart);
 
         // then
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.CANCELED);
@@ -215,10 +246,23 @@ class AuctionTest {
         Auction auction = auctionWith(AuctionStatus.RUNNING);
 
         // when
-        auction.cancel(1L, beforeStart);
+        auction.cancel(1L, wellBeforeStart);
 
         // then
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("시작 시각 10분 이내로 임박하면 아직 SCHEDULED여도 취소할 수 없다")
+    void testCancel_withinEditDeadline_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED);
+
+        // when & then
+        assertThatThrownBy(() -> auction.cancel(1L, withinEditDeadline))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
     }
 
     @Test

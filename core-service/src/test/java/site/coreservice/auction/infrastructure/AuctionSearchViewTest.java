@@ -27,13 +27,14 @@ class AuctionSearchViewTest {
     );
     private final ProductSnapshot productSnapshot =
             new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
+    private final LocalDateTime registerNow = schedule.getPeriod().getStartAt().minusHours(1);
 
     @Test
     @DisplayName("경매, 상품, 판매자 정보를 하나의 뷰로 합친다")
     void testFrom_mapsAuctionAndProductFields() {
         // given
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png", "2.png"));
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when
         AuctionSearchView view = AuctionSearchView.from(auction, productSnapshot, "vinyl_king");
@@ -55,7 +56,7 @@ class AuctionSearchViewTest {
     void testFrom_nullImages_thumbnailIsNull() {
         // given
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", null);
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when
         AuctionSearchView view = AuctionSearchView.from(auction, productSnapshot, "vinyl_king");
@@ -69,7 +70,7 @@ class AuctionSearchViewTest {
     void testFrom_emptyImages_thumbnailIsNull() {
         // given
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of());
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when
         AuctionSearchView view = AuctionSearchView.from(auction, productSnapshot, "vinyl_king");
@@ -83,7 +84,7 @@ class AuctionSearchViewTest {
     void testUpdateStatus_updatesStatusOnly() {
         // given
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
         AuctionSearchView view = AuctionSearchView.from(auction, productSnapshot, "vinyl_king");
 
         // when

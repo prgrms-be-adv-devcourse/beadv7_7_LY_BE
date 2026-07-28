@@ -46,7 +46,7 @@ class AuctionSearchRepositoryImplTest {
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
         Pricing pricing = Pricing.of(Money.of(price), Money.of(500L), Money.of(0L));
         AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, startAt.minusHours(1));
         ReflectionTestUtils.setField(auction, "id", auctionId);
         ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Title" + auctionId, "Artist" + auctionId, 1969, genre, pressType, true);
         auctionSearchViewRepository.save(auction, productSnapshot, "seller" + auctionId);
@@ -66,7 +66,7 @@ class AuctionSearchRepositoryImplTest {
                 Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
                 false, null
         );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
         ReflectionTestUtils.setField(auction, "id", 1L);
         ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
 
@@ -90,7 +90,7 @@ class AuctionSearchRepositoryImplTest {
                 Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
                 false, null
         );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
         ReflectionTestUtils.setField(auction, "id", 1L);
         ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
         auctionSearchViewRepository.save(auction, productSnapshot, "vinyl_king");
@@ -114,7 +114,7 @@ class AuctionSearchRepositoryImplTest {
                 Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
                 false, null
         );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
         ReflectionTestUtils.setField(auction, "id", 999L);
         auction.changeStatus(AuctionStatus.RUNNING);
 
