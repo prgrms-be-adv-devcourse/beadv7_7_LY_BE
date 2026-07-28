@@ -7,5 +7,7 @@ import java.util.Optional;
 
 public interface BankAccountRepository {
 
+    BankAccount save(BankAccount bankAccount);
+
     Optional<BankAccount> findByMember(Member member);
 }

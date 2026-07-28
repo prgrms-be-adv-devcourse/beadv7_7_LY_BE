@@ -15,6 +15,11 @@ public class BankAccountRepositoryImpl implements BankAccountRepository {
     private final BankAccountJpaRepository bankAccountJpaRepository;
 
     @Override
+    public BankAccount save(final BankAccount bankAccount) {
+        return bankAccountJpaRepository.save(bankAccount);
+    }
+
+    @Override
     public Optional<BankAccount> findByMember(final Member member) {
         return bankAccountJpaRepository.findByMember(member);
     }
