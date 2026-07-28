@@ -8,12 +8,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.domain.Address;
+import site.memberservice.member.domain.BankAccount;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.PhoneNumber;
+import site.memberservice.member.domain.repository.BankAccountRepository;
 import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.exception.MemberException;
 
@@ -27,9 +30,11 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 class MemberServiceTest {
 
     // TODO : #60 반복되는 객체 생성은 Fixture 분리 고민
+    // TODO : #102 DB 연결 없이 Mock으로 테스트를 변경할지 고민
 
     @Autowired private MemberService memberService;
     @Autowired private MemberRepository memberRepository;
+    @Autowired private BankAccountRepository bankAccountRepository;
 
     @DisplayName("회원 가입을 수행한다.")
     @Test
@@ -239,5 +244,60 @@ class MemberServiceTest {
         assertThatThrownBy(() -> memberService.getMemberProfile(notFoundMemberId))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
+    }
+
+    @DisplayName("회원 계좌 정보를 조회한다.")
+    @Test
+    void getMemberBankAccount() {
+        // Given
+        final Member member = new Member(
+            null,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+        final BankAccount bankAccount = new BankAccount(null, "110-123-456789", "켈리뱅크", member);
+
+        memberRepository.save(member);
+        bankAccountRepository.save(bankAccount);
+
+        // When
+        final BankAccountDto memberBankAccount = memberService.getMemberBankAccount(member.getId());
+
+        // Then
+        assertThat(memberBankAccount).isNotNull();
+    }
+
+    @DisplayName("회원 계좌 정보가 존재하지 않는 상태에서 조회를 시도하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenGetNotFoundBankAccount() {
+        // Given
+        final Member member = new Member(
+            null,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+
+        memberRepository.save(member);
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.getMemberBankAccount(member.getId()))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("회원 은행 계좌 정보가 존재하지 않습니다. memberId: %s", member.getId()));
     }
 }
