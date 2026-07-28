@@ -10,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.coreservice.settlement.exception.SettlementErrorCode;
+import site.coreservice.settlement.exception.SettlementException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -49,10 +51,10 @@ public class CommissionPolicy extends BaseEntity {
         Objects.requireNonNull(commissionRate, "commissionRate는 null일 수 없습니다.");
         Objects.requireNonNull(effectiveFrom, "effectiveFrom은 null일 수 없습니다.");
         if (commissionRate.compareTo(BigDecimal.ZERO) < 0 || commissionRate.compareTo(BigDecimal.ONE) >= 0) {
-            throw new IllegalArgumentException("commissionRate는 0 이상 1 미만이어야 합니다.");
+            throw new SettlementException(SettlementErrorCode.INVALID_COMMISSION_RATE);
         }
         if (effectiveTo != null && !effectiveFrom.isBefore(effectiveTo)) {
-            throw new IllegalArgumentException("effectiveFrom은 effectiveTo보다 이전이어야 합니다.");
+            throw new SettlementException(SettlementErrorCode.INVALID_EFFECTIVE_PERIOD);
         }
     }
 
@@ -65,10 +67,10 @@ public class CommissionPolicy extends BaseEntity {
     public void close(LocalDateTime effectiveTo) {
         Objects.requireNonNull(effectiveTo, "effectiveTo는 null일 수 없습니다.");
         if (this.effectiveTo != null) {
-            throw new IllegalStateException("이미 종료된 정책입니다.");
+            throw new SettlementException(SettlementErrorCode.COMMISSION_POLICY_ALREADY_CLOSED);
         }
         if (!effectiveFrom.isBefore(effectiveTo)) {
-            throw new IllegalArgumentException("effectiveTo는 effectiveFrom보다 이후여야 합니다.");
+            throw new SettlementException(SettlementErrorCode.INVALID_EFFECTIVE_PERIOD);
         }
         this.effectiveTo = effectiveTo;
     }

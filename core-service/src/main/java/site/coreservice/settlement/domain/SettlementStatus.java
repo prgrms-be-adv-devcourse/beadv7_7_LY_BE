@@ -2,5 +2,5 @@ package site.coreservice.settlement.domain;
 
 public enum SettlementStatus {
     PENDING, // 정산 대기
-    PAID // 정산금 지급 완료
+    CONFIRMED // 정산 확정 완료
 }

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import site.coreservice.settlement.exception.SettlementException;
 
 @DisplayName("CommissionPolicy")
 class CommissionPolicyTest {
@@ -42,7 +43,7 @@ class CommissionPolicyTest {
 
             // when & then
             assertThatThrownBy(() -> CommissionPolicy.of(RATE, effectiveFrom, effectiveTo))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("effectiveFrom은 effectiveTo보다 이전이어야 합니다.");
         }
 
@@ -64,7 +65,7 @@ class CommissionPolicyTest {
 
             // when & then
             assertThatThrownBy(() -> CommissionPolicy.of(negativeRate, LocalDateTime.now(), null))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
         }
 
@@ -73,7 +74,7 @@ class CommissionPolicyTest {
         void rateEqualToOne_throwsException() {
             // given & when & then
             assertThatThrownBy(() -> CommissionPolicy.of(BigDecimal.ONE, LocalDateTime.now(), null))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
         }
 
@@ -85,7 +86,7 @@ class CommissionPolicyTest {
 
             // when & then
             assertThatThrownBy(() -> CommissionPolicy.of(overRate, LocalDateTime.now(), null))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("commissionRate는 0 이상 1 미만이어야 합니다.");
         }
     }
@@ -170,7 +171,7 @@ class CommissionPolicyTest {
 
             // when & then
             assertThatThrownBy(() -> policy.close(LocalDateTime.now()))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(SettlementException.class)
                     .hasMessage("이미 종료된 정책입니다.");
         }
 
@@ -183,8 +184,8 @@ class CommissionPolicyTest {
 
             // when & then
             assertThatThrownBy(() -> policy.close(effectiveFrom.minusDays(1)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("effectiveTo는 effectiveFrom보다 이후여야 합니다.");
+                    .isInstanceOf(SettlementException.class)
+                    .hasMessage("effectiveFrom은 effectiveTo보다 이전이어야 합니다.");
         }
     }
 }

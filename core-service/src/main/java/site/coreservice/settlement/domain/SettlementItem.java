@@ -15,6 +15,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.coreservice.settlement.exception.SettlementErrorCode;
+import site.coreservice.settlement.exception.SettlementException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -58,8 +60,8 @@ public class SettlementItem extends BaseEntity {
     @Column(name = "completed_at", nullable = false)
     private LocalDateTime completedAt;
 
-    @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
 
     @Column(name = "settlement_batch_id")
     private Long settlementBatchId;
@@ -91,14 +93,14 @@ public class SettlementItem extends BaseEntity {
         Objects.requireNonNull(completedAt, "completedAt은 null일 수 없습니다.");
     }
 
-    public void markPaid(Long settlementBatchId, LocalDateTime paidAt) {
+    public void markConfirmed(Long settlementBatchId, LocalDateTime confirmedAt) {
         Objects.requireNonNull(settlementBatchId, "settlementBatchId는 null일 수 없습니다.");
-        Objects.requireNonNull(paidAt, "paidAt은 null일 수 없습니다.");
+        Objects.requireNonNull(confirmedAt, "confirmedAt은 null일 수 없습니다.");
         if (status != SettlementStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태의 정산 항목만 지급 처리할 수 있습니다.");
+            throw new SettlementException(SettlementErrorCode.SETTLEMENT_ITEM_NOT_PENDING);
         }
-        this.status = SettlementStatus.PAID;
+        this.status = SettlementStatus.CONFIRMED;
         this.settlementBatchId = settlementBatchId;
-        this.paidAt = paidAt;
+        this.confirmedAt = confirmedAt;
     }
 }
