@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 
 @RequiredArgsConstructor
@@ -30,5 +31,12 @@ public class MemberInternalController {
         final MemberProfileDto memberProfile = memberService.getMemberProfile(memberId);
 
         return ResponseEntity.ok(ApiResponse.success(memberProfile));
+    }
+
+    @GetMapping("/members/{memberId}/bank-account")
+    public ResponseEntity<ApiResponse<BankAccountDto>> getMemberBankAccount(@PathVariable final Long memberId) {
+        final BankAccountDto memberBankAccount = memberService.getMemberBankAccount(memberId);
+
+        return ResponseEntity.ok(ApiResponse.success(memberBankAccount));
     }
 }
