@@ -2,6 +2,7 @@ package site.coreservice.pointwallet.hold.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -222,19 +223,17 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("해제할 홀드가 없으면 HOLD_NOT_FOUND를 던진다")
-        void release_홀드없으면_예외() {
+        @DisplayName("해제할 홀드가 없으면 예외 없이 조용히 종료한다 (트랜잭션 rollback-only 방지)")
+        void release_홀드없으면_예외없이_스킵() {
             // given
             when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.release(AUCTION_ID))
-                    .isInstanceOf(HoldException.class)
-                    .extracting(e -> ((HoldException) e).getErrorCode())
-                    .isEqualTo(HoldErrorCode.HOLD_NOT_FOUND);
+            assertThatCode(() -> sut.release(AUCTION_ID)).doesNotThrowAnyException();
 
             verify(walletService, never()).credit(any(), any());
             verify(holdRepository, never()).delete(any());
+            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
         }
     }
 
@@ -260,18 +259,18 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("소멸시킬 홀드가 없으면 HOLD_NOT_FOUND를 던진다")
-        void consume_홀드없으면_예외() {
+        @DisplayName("소멸시킬 홀드가 없으면 예외 없이 조용히 종료한다 (트랜잭션 rollback-only 방지)")
+        void consume_홀드없으면_예외없이_스킵() {
             // given
             when(holdRepository.findByAuctionId(AUCTION_ID)).thenReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.consume(AUCTION_ID))
-                    .isInstanceOf(HoldException.class)
-                    .extracting(e -> ((HoldException) e).getErrorCode())
-                    .isEqualTo(HoldErrorCode.HOLD_NOT_FOUND);
+            assertThatCode(() -> sut.consume(AUCTION_ID)).doesNotThrowAnyException();
 
             verify(holdRepository, never()).delete(any());
         }
     }
+
+
+
 }

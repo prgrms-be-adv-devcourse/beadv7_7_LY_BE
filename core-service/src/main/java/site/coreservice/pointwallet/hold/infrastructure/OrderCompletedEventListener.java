@@ -17,14 +17,6 @@ public class OrderCompletedEventListener {
 
     @EventListener
     public void handle(OrderCompletedEvent event) {
-        try {
-            holdService.consume(event.getAuctionId());
-        } catch (HoldException e) {
-            if (e.getErrorCode() == HoldErrorCode.HOLD_NOT_FOUND) {
-                log.warn("OrderCompletedEvent 처리 중 소멸시킬 홀드 없음, 스킵: auctionId={}", event.getAuctionId());
-                return;
-            }
-            throw e;
-        }
+        holdService.consume(event.getAuctionId());
     }
 }

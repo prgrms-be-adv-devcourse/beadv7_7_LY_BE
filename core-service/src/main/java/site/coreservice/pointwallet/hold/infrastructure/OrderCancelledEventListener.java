@@ -17,15 +17,6 @@ public class OrderCancelledEventListener {
 
     @EventListener
     public void handle(OrderCancelledEvent event) {
-        try {
-            holdService.release(event.getAuctionId());
-        } catch (HoldException e) {
-            if (e.getErrorCode() == HoldErrorCode.HOLD_NOT_FOUND) {
-                // 이미 처리됐거나(중복 이벤트) 순서가 꼬여 홀드가 없는 경우 - 스킵
-                log.warn("OrderCancelledEvent 처리 중 해제할 홀드 없음, 스킵: auctionId={}", event.getAuctionId());
-                return;
-            }
-            throw e;
-        }
+        holdService.release(event.getAuctionId());
     }
 }
