@@ -182,4 +182,27 @@ class AuctionSnapshotHttpClientTest {
         assertThatThrownBy(() -> client.findClosedAuction(7L))
                 .isInstanceOf(AuctionContractViolationException.class);
     }
+
+    @Test
+    @DisplayName("인증 실패 같은 4xx는 계약 위반으로 올린다")
+    void findClosedAuction_401_계약위반() {
+        // given: 내부 API에 접근 통제가 붙으면 자격증명 없는 호출이 여기로 온다
+        server.expect(requestTo(URI)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        // when-then: 다시 넣어도 같은 결과라 "재시도하면 됨"으로 분류되면 안 된다
+        assertThatThrownBy(() -> client.findClosedAuction(7L))
+                .isInstanceOf(AuctionContractViolationException.class);
+    }
+
+    @Test
+    @DisplayName("호출량 제한(429)은 감싸지 않고 그대로 올려 재시도 대상으로 남긴다")
+    void findClosedAuction_429_전파() {
+        // given
+        server.expect(requestTo(URI)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        // when-then: 잠시 뒤면 풀리는 실패라 계약 위반과 갈래가 다르다
+        assertThatThrownBy(() -> client.findClosedAuction(7L))
+                .isInstanceOf(RestClientException.class)
+                .isNotInstanceOf(AuctionContractViolationException.class);
+    }
 }

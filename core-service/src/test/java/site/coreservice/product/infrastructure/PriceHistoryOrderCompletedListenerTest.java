@@ -1,22 +1,31 @@
 package site.coreservice.product.infrastructure;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import site.coreservice.global.event.OrderCompletedEvent;
 import site.coreservice.product.application.PriceHistoryRecordService;
 import site.coreservice.product.exception.AuctionContractViolationException;
+import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,8 +37,29 @@ class PriceHistoryOrderCompletedListenerTest {
     @InjectMocks
     private PriceHistoryOrderCompletedListener listener;
 
+    private Logger listenerLogger;
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void setUp() {
+        listenerLogger = (Logger) LoggerFactory.getLogger(PriceHistoryOrderCompletedListener.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        listenerLogger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        listenerLogger.detachAppender(logAppender);
+    }
+
     private OrderCompletedEvent event(Long auctionId, LocalDateTime completedAt) {
         return new OrderCompletedEvent(1L, auctionId, 2L, 3L, BigDecimal.valueOf(15_000), completedAt);
+    }
+
+    private boolean hasMarker(String marker) {
+        return logAppender.list.stream()
+                .anyMatch(e -> e.getLevel() == Level.ERROR && e.getFormattedMessage().contains(marker));
     }
 
     @Test
@@ -43,6 +73,7 @@ class PriceHistoryOrderCompletedListenerTest {
 
         // then
         verify(priceHistoryRecordService).recordConfirmedTrade(1010L, completedAt);
+        assertThat(logAppender.list).isEmpty();
     }
 
     @Test
@@ -54,6 +85,7 @@ class PriceHistoryOrderCompletedListenerTest {
 
         // then
         verify(priceHistoryRecordService, never()).recordConfirmedTrade(any(), any());
+        assertThat(hasMarker("[시세적재-이벤트결함]")).isTrue();
     }
 
     @Test
@@ -64,11 +96,12 @@ class PriceHistoryOrderCompletedListenerTest {
 
         // then
         verify(priceHistoryRecordService, never()).recordConfirmedTrade(any(), any());
+        assertThat(hasMarker("[시세적재-이벤트결함]")).isTrue();
     }
 
     @Test
-    @DisplayName("데이터 불일치 예외를 삼켜 발행자에게 전파하지 않는다")
-    void handle_데이터불일치_삼킴() {
+    @DisplayName("경매를 찾을 수 없는 데이터 불일치 예외를 삼켜 발행자에게 전파하지 않는다")
+    void handle_데이터불일치_경매없음_삼킴() {
         // given
         willThrow(new PriceHistoryAuctionNotFoundException(1010L))
                 .given(priceHistoryRecordService).recordConfirmedTrade(any(), any());
@@ -76,6 +109,20 @@ class PriceHistoryOrderCompletedListenerTest {
         // when-then: 예외가 새면 발행자 응답이 오염되고 같은 커밋의 다른 리스너 실행까지 끊긴다
         assertThatCode(() -> listener.handleOrderCompletedEvent(event(1010L, LocalDateTime.now())))
                 .doesNotThrowAnyException();
+        assertThat(hasMarker("[시세적재-데이터불일치]")).isTrue();
+    }
+
+    @Test
+    @DisplayName("경매가 아직 마감되지 않은 데이터 불일치 예외를 삼켜 발행자에게 전파하지 않는다")
+    void handle_데이터불일치_미마감_삼킴() {
+        // given
+        willThrow(new PriceHistoryAuctionNotClosedException(1010L, "RUNNING"))
+                .given(priceHistoryRecordService).recordConfirmedTrade(any(), any());
+
+        // when-then
+        assertThatCode(() -> listener.handleOrderCompletedEvent(event(1010L, LocalDateTime.now())))
+                .doesNotThrowAnyException();
+        assertThat(hasMarker("[시세적재-데이터불일치]")).isTrue();
     }
 
     @Test
@@ -88,6 +135,7 @@ class PriceHistoryOrderCompletedListenerTest {
         // when-then
         assertThatCode(() -> listener.handleOrderCompletedEvent(event(1010L, LocalDateTime.now())))
                 .doesNotThrowAnyException();
+        assertThat(hasMarker("[시세적재-계약위반]")).isTrue();
     }
 
     @Test
@@ -100,5 +148,6 @@ class PriceHistoryOrderCompletedListenerTest {
         // when-then
         assertThatCode(() -> listener.handleOrderCompletedEvent(event(1010L, LocalDateTime.now())))
                 .doesNotThrowAnyException();
+        assertThat(hasMarker("[시세적재-실패]")).isTrue();
     }
 }

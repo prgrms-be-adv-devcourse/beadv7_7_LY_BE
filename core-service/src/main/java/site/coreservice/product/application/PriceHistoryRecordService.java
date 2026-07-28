@@ -11,6 +11,7 @@ import site.coreservice.product.domain.AuctionSnapshotPort;
 import site.coreservice.product.domain.ClosedAuction;
 import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;
 
@@ -63,7 +64,7 @@ public class PriceHistoryRecordService {
             throw new PriceHistoryAuctionNotClosedException(auctionId, auction.status());
         }
 
-        PriceHistory priceHistory = PriceHistory.of(auction, confirmedAt);
+        PriceHistory priceHistory = toPriceHistory(auction, confirmedAt);
         try {
             txTemplate.executeWithoutResult(status -> priceHistoryRepository.save(priceHistory));
         } catch (DataIntegrityViolationException e) {
@@ -77,5 +78,28 @@ public class PriceHistoryRecordService {
             throw e;
         }
         log.info("시세 기록 저장 — auctionId: {}, productId: {}", auctionId, auction.productId());
+    }
+
+    /**
+     * 엔티티 검증 실패를 계약 위반으로 번역한다. PriceHistory.of가 걸러내는 것들(빠진 필수값, 0 이하 낙찰가
+     * 등)은 전부 "경매가 준 값이 우리 계약과 다르다"는 뜻인데, 평범한 IllegalArgumentException으로 나가면
+     * 수신 측에서 "다시 넣으면 되는 실패"로 분류돼 사람이 헛되이 재적재를 반복한다.
+     * <p>
+     * try-catch로 감싸는 이유: 검증이 응답 변환(AuctionSummaryPayload)과 엔티티 생성(PriceHistory) 두
+     * 계층에 나뉘어 있고, 앞쪽만 계약 위반을 알고 있다. 한쪽으로 합치는 게 더 깔끔하지만 엔티티 불변식은
+     * 경매와 무관하게 지켜야 하는 것이라 그대로 두는 편이 맞고, 그 판단에 시간을 더 쓰기 어려워
+     * **지금은 경계에서 번역만 한다.** 검증 위치를 정리할 때 이 메서드는 사라질 수 있다.
+     * <p>
+     * 호출 한 줄만 감싸는 이유: 범위를 넓히면 이 경로의 무관한 IllegalArgumentException까지
+     * 계약 위반으로 오분류된다.
+     */
+    private PriceHistory toPriceHistory(ClosedAuction auction, LocalDateTime confirmedAt) {
+        try {
+            return PriceHistory.of(auction, confirmedAt);
+        } catch (IllegalArgumentException e) {
+            throw new AuctionContractViolationException(
+                    "경매 응답 값으로 시세를 만들 수 없습니다 — auctionId: " + auction.auctionId()
+                            + ", " + e.getMessage());
+        }
     }
 }
