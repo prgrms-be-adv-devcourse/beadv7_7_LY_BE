@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionSchedule;
-import site.coreservice.auction.domain.AuctionStatus;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.ItemInfo;
 import site.coreservice.auction.domain.Money;
@@ -77,21 +76,5 @@ class AuctionSearchViewTest {
 
         // then
         assertThat(view.getThumbnail()).isNull();
-    }
-
-    @Test
-    @DisplayName("updateStatus()로 상태만 갱신할 수 있다")
-    void testUpdateStatus_updatesStatusOnly() {
-        // given
-        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
-        AuctionSearchView view = AuctionSearchView.from(auction, productSnapshot, "vinyl_king");
-
-        // when
-        view.updateStatus(AuctionStatus.RUNNING);
-
-        // then
-        assertThat(view.getStatus()).isEqualTo(AuctionStatus.RUNNING);
-        assertThat(view.getTitle()).isEqualTo("Abbey Road");
     }
 }

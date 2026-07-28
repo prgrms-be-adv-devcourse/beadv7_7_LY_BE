@@ -13,11 +13,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AuctionSearchViewRepository {
+
     void save(Auction auction, ProductSnapshot product, String sellerNickname);
 
     void updateFromAuction(Auction auction, ProductSnapshot product);
-
-    void updateStatus(Auction auction);
 
     void deleteById(Long auctionId);
 
@@ -25,6 +24,7 @@ public interface AuctionSearchViewRepository {
 
     Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable);
 
-    void updateOnBid(Long auctionId, BigDecimal highestBidAmount, int bidCount, LocalDateTime endAt);
+    void updateOnBid(Long auctionId, BigDecimal highestBidAmount, int bidCount,
+        LocalDateTime endAt);
 
 }
