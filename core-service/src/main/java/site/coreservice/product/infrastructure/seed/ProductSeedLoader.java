@@ -1,5 +1,9 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.seed;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -19,14 +23,13 @@ import site.coreservice.product.domain.ProductAliasRepository;
 import site.coreservice.product.domain.ProductRepository;
 import site.coreservice.product.domain.TextNormalizer;
 
-import java.util.List;
-import java.util.Optional;
-
 /**
  * LP 릴리스 시드 로더. local 프로파일 + {@code product.seed.enabled=true}일 때만 동작한다(기본 OFF).
  * 커밋본은 플래그 미설정이라 팀원이 pull 받아 local로 켜도 이 시드는 돌지 않는다.
  * 로컬 적재 시엔 application-local.yml(커밋하지 않는 변경)에 {@code product.seed.enabled: true}와
  * {@code ddl-auto: update}를 함께 둔다.
+ * <p>
+ * 무엇을 넣을지는 {@link ProductSeedData} 원장에 있고, 이 클래스는 그걸 순회하며 넣는 절차만 맡는다.
  * <p>
  * 여러 번 실행해도 안전하다. 확인 단위는 "자원 각각"이다 — 아티스트·상품은 이미 있으면 새로 만들지 않고
  * ID만 가져오며, 별칭은 소유자가 이미 있었더라도 별칭 자체의 존재를 따로 확인해 없는 것만 넣는다.
@@ -51,26 +54,21 @@ public class ProductSeedLoader implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        Long beatles = ensureArtist("The Beatles", List.of("비틀즈", "Beatles"));
-        Long pinkFloyd = ensureArtist("Pink Floyd", List.of("핑크 플로이드"));
-        Long milesDavis = ensureArtist("Miles Davis", List.of("마일스 데이비스"));
-
-        ensureProduct("PCS 7088", beatles, "Abbey Road", List.of("애비 로드"), "UK", 1969,
-                PressType.ORIGINAL, "LP", "Apple Records", "Rock", null, "1969년 영국 오리지널 프레싱");
-        ensureProduct("0602577915096", beatles, "Abbey Road", List.of("애비 로드"), "UK", 2019,
-                PressType.REISSUE, "180g", "Apple Records", "Rock", null, "2019년 50주년 리마스터 리이슈");
-        ensureProduct("SHVL 804", pinkFloyd, "The Dark Side of the Moon", List.of("다크 사이드 오브 더 문"),
-                "UK", 1973, PressType.ORIGINAL, "LP", "Harvest", "Progressive Rock", null,
-                "1973년 영국 오리지널 프레싱");
-        ensureProduct("PFRLP8", pinkFloyd, "The Dark Side of the Moon", List.of("다크 사이드 오브 더 문"),
-                "Europe", 2016, PressType.REISSUE, "180g", "Pink Floyd Records", "Progressive Rock", null,
-                "2016년 리마스터 리이슈");
-        ensureProduct("CL 1355", milesDavis, "Kind of Blue", List.of("카인드 오브 블루"), "US", 1959,
-                PressType.ORIGINAL, "LP", "Columbia", "Jazz", null, "1959년 미국 오리지널 프레싱");
-        ensureProduct(null, beatles, "Kum Back", List.of("컴 백"), "US", 1969,
-                PressType.ORIGINAL, "LP", null, "Rock", null, "겟 백 세션 부틀렉 — 카탈로그번호 없는 음반 예시");
-
-        log.info("[ProductSeedLoader] 시드 적재 완료 (여러 번 실행해도 안전)");
+        Map<String, Long> artistIdsByName = new HashMap<>();
+        for (ProductSeedData.ArtistSeed artist : ProductSeedData.ARTISTS) {
+            artistIdsByName.put(artist.name(), ensureArtist(artist.name(), artist.aliases()));
+        }
+        for (ProductSeedData.ProductSeed seed : ProductSeedData.PRODUCTS) {
+            Long artistId = artistIdsByName.get(seed.artistName());
+            if (artistId == null) {
+                throw new IllegalStateException("시드 데이터 오류 — 아티스트 원장에 없는 이름: " + seed.artistName());
+            }
+            ensureProduct(seed.catalogNumber(), artistId, seed.title(), seed.titleAliases(), seed.releaseCountry(),
+                    seed.releaseYear(), seed.pressType(), seed.format(), seed.label(), seed.genre(), null,
+                    seed.description());
+        }
+        log.info("[ProductSeedLoader] 시드 적재 완료 — 아티스트 {}팀, 상품 {}건 (여러 번 실행해도 안전)",
+                ProductSeedData.ARTISTS.size(), ProductSeedData.PRODUCTS.size());
     }
 
     private Long ensureArtist(String name, List<String> aliases) {
