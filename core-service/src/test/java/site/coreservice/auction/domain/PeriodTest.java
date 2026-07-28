@@ -78,4 +78,49 @@ class PeriodTest {
         assertThat(period.isEnded(end)).isTrue();
         assertThat(period.isEnded(end.minusSeconds(1))).isFalse();
     }
+
+    @Test
+    @DisplayName("종료까지 N분 이내로 남았으면 마감 임박이다")
+    void testIsNearEnd_withinThreshold_isTrue() {
+        // given
+        Period period = Period.of(start, end);
+
+        // then
+        assertThat(period.isNearEnd(end.minusMinutes(5), 10)).isTrue();
+    }
+
+    @Test
+    @DisplayName("종료까지 N분보다 많이 남았으면 마감 임박이 아니다")
+    void testIsNearEnd_beyondThreshold_isFalse() {
+        // given
+        Period period = Period.of(start, end);
+
+        // then
+        assertThat(period.isNearEnd(end.minusMinutes(30), 10)).isFalse();
+    }
+
+    @Test
+    @DisplayName("이미 종료된 시각이면 마감 임박이 아니라 이미 종료로 취급한다")
+    void testIsNearEnd_alreadyEnded_isFalse() {
+        // given
+        Period period = Period.of(start, end);
+
+        // then
+        assertThat(period.isNearEnd(end, 10)).isFalse();
+        assertThat(period.isNearEnd(end.plusMinutes(1), 10)).isFalse();
+    }
+
+    @Test
+    @DisplayName("extendEnd는 시작 시각은 유지한 채 종료 시각만 뒤로 민다")
+    void testExtendEnd_pushesEndAtOnly() {
+        // given
+        Period period = Period.of(start, end);
+
+        // when
+        Period extended = period.extendEnd(10);
+
+        // then
+        assertThat(extended.getStartAt()).isEqualTo(start);
+        assertThat(extended.getEndAt()).isEqualTo(end.plusMinutes(10));
+    }
 }

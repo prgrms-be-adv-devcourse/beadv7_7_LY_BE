@@ -142,4 +142,10 @@ public class AuctionSearchView {
             this.pressType = product.pressType();
         }
     }
+
+    public void updateOnBid(BigDecimal highestBidAmount, int bidCount, LocalDateTime endAt) {
+        this.highestBidAmount = highestBidAmount;
+        this.bidCount = bidCount;
+        this.endAt = endAt;
+    }
 }

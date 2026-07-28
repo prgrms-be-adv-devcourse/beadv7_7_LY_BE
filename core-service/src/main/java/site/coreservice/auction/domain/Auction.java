@@ -115,7 +115,7 @@ public class Auction extends BaseEntity {
     }
 
     public AuctionStatus getEffectiveStatusAt(LocalDateTime now) {
-        if(isCanceled() || isEndedWon() || isEndedFailed()) {
+        if (isCanceled() || isEndedWon() || isEndedFailed()) {
             return this.status;
         }
         if (!schedule.isStartedAt(now)) {
@@ -156,4 +156,45 @@ public class Auction extends BaseEntity {
         return status == AuctionStatus.CANCELED;
     }
 
+
+    /* 입찰 검증 + 최고입찰 갱신 */
+    public void applyBid(Long bidderId, Money amount, Long newBidId, LocalDateTime now) {
+        validateBiddable(bidderId, amount, now);
+        this.highestBid = HighestBid.of(amount, bidderId, newBidId);
+        this.schedule = this.schedule.extendIfNeeded(now);
+    }
+
+    /* 상태 변경 없이 검증. 예치금 호출 전에 미리 걸러내는 용도. */
+    public void validateBiddable(Long bidderId, Money amount, LocalDateTime now) {
+        requireBiddable(now);
+        requireNotSeller(bidderId);
+        requireNotCurrentHighestBidder(bidderId);
+        requireMoreThanMinBidAmount(amount);
+    }
+
+    private void requireBiddable(LocalDateTime now) {
+        AuctionStatus effective = getEffectiveStatusAt(now);
+        if (effective != AuctionStatus.RUNNING) {
+            throw new AuctionException(AuctionErrorCode.AUCTION_NOT_BIDDABLE);
+        }
+    }
+
+    private void requireNotSeller(Long bidderId) {
+        if (this.sellerId.equals(bidderId)) {
+            throw new AuctionException(AuctionErrorCode.AUCTION_SELLER_CANNOT_BID);
+        }
+    }
+
+    private void requireNotCurrentHighestBidder(Long bidderId) {
+        if (hasBid() && this.highestBid.isBidder(bidderId)) {
+            throw new AuctionException(AuctionErrorCode.ALREADY_HIGHEST_BIDDER);
+        }
+    }
+
+    private void requireMoreThanMinBidAmount(Money amount) {
+        Money minimum = this.pricing.nextMinBidAmount(this.highestBid);
+        if (amount.isLessThan(minimum)) {
+            throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
+        }
+    }
 }
