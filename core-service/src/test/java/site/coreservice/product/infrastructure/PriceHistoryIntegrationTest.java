@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,7 @@ import site.coreservice.product.domain.PriceHistoryRepository;
  * 가짜 발행 플래그는 강제로 끈다 — local yml에 켜 둔 상태로 테스트를 돌리면 컨텍스트 기동 때
  * 다른 경로가 먼저 적재해 행 수 단언이 어긋난다.
  */
+@Tag("integration")
 @SpringBootTest(properties = "product.fake-trade.enabled=false")
 @ActiveProfiles("local")
 class PriceHistoryIntegrationTest {
