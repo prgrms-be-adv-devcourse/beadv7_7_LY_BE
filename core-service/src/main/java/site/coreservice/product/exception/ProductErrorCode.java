@@ -33,6 +33,8 @@ public enum ProductErrorCode implements ErrorCode {
             "시세를 적재할 경매를 찾을 수 없습니다"),
     PRICE_HISTORY_AUCTION_NOT_CLOSED(HttpStatus.INTERNAL_SERVER_ERROR, "PERR-4902",
             "거래확정 이벤트인데 경매가 마감 상태가 아닙니다"),
+    AUCTION_CONTRACT_VIOLATION(HttpStatus.INTERNAL_SERVER_ERROR, "PERR-4903",
+            "경매 조회 응답이 우리 계약과 다릅니다"),
     ;
 
     private final HttpStatus status;

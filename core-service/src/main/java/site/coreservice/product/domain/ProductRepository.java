@@ -27,7 +27,4 @@ public interface ProductRepository {
     Optional<Product> findById(Long id);
 
     List<Product> findAllByIds(List<Long> ids);
-
-    /** 활성 상품의 id만 전부 조회한다. 가짜 경매 응답이 실존 상품을 가리키게 만드는 데 쓴다. */
-    List<Long> findAllActiveIds();
 }

@@ -30,6 +30,7 @@ import site.coreservice.product.domain.ClosedAuction;
 import site.coreservice.product.domain.MediaCondition;
 import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;
 
@@ -168,5 +169,19 @@ class PriceHistoryRecordServiceTest {
         assertThatThrownBy(() -> service.recordConfirmedTrade(1024L, CONFIRMED_AT))
                 .isInstanceOf(PriceHistoryAuctionNotClosedException.class);
         verify(priceHistoryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("경매 응답에 필수값이 빠져 있으면 계약 위반으로 올린다")
+    void recordConfirmedTrade_필수값_누락_계약위반() {
+        // given: 경매가 응답 필드명을 바꾸면 파싱은 성공하고 값만 null이 된다
+        ClosedAuction 마감시각없음 = new ClosedAuction(1024L, 55L, MediaCondition.NEAR_MINT, 72000L, 7,
+                null, "ENDED_WON");
+        given(priceHistoryRepository.findByAuctionId(1024L)).willReturn(Optional.empty());
+        given(auctionSnapshotPort.findClosedAuction(1024L)).willReturn(Optional.of(마감시각없음));
+
+        // when-then: 재시도해도 같은 결과라 일시 장애 갈래로 가면 안 된다
+        assertThatThrownBy(() -> service.recordConfirmedTrade(1024L, CONFIRMED_AT))
+                .isInstanceOf(AuctionContractViolationException.class);
     }
 }
