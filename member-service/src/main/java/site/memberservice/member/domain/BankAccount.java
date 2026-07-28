@@ -26,8 +26,8 @@ import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER
     name = "bank_account",
     uniqueConstraints = {
         @UniqueConstraint(
-            name = "uk_member_id_account_number",
-            columnNames = {"member_id", "account_number"}
+            name = "uk_bank_name_account_number",
+            columnNames = {"bank_name", "account_number"}
         ),
     }
 )
