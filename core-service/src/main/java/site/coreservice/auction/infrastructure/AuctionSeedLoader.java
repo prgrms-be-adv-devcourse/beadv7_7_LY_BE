@@ -67,8 +67,8 @@ public class AuctionSeedLoader implements CommandLineRunner {
         }
         final AuctionSchedule schedule = AuctionSchedule.of(
             Period.of(startAt, startAt.plusHours(2)), false, null);
-        final Auction auction = Auction.register(SEED_SELLER_ID, productId, itemInfo(), pricing(),
-            schedule);
+        final Auction auction = Auction.of(SEED_SELLER_ID, productId, itemInfo(), pricing(),
+            schedule, AuctionStatus.SCHEDULED, null);
         saveWithSearchView(auction, productId);
     }
 

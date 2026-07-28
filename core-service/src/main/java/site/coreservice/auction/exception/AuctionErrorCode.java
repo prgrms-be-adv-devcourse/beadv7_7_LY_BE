@@ -22,6 +22,7 @@ public enum AuctionErrorCode implements ErrorCode {
     ALREADY_HIGHEST_BIDDER(HttpStatus.FORBIDDEN ,"AERR-5011", "현재 최고 입찰자는 다시 입찰할 수 없습니다."),
     BID_AMOUNT_TOO_LOW(HttpStatus.BAD_REQUEST, "AERR-5012", "입찰 금액이 최소 입찰가보다 낮습니다."),
     WALLET_HOLD_FAILED(HttpStatus.BAD_GATEWAY, "AERR-5013", "예치금 처리 중 오류가 발생했습니다."),
+    AUCTION_START_TOO_SOON(HttpStatus.BAD_REQUEST, "AERR-5014", "경매 시작 시각은 현재로부터 최소 30분 이후여야 합니다."),
     WATCHED_AUCTION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5101", "장바구니 경매 개수 제한을 초과했습니다."),
     WATCHED_AUCTION_STATUS_INVALID(HttpStatus.BAD_REQUEST, "AERR-5102",
         "종료되었거나 취소된 경매는 장바구니에 등록할 수 없습니다."),

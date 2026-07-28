@@ -58,9 +58,10 @@ public class Auction extends BaseEntity {
         return new Auction(sellerId, productId, itemInfo, pricing, schedule, status, highestBid);
     }
 
-    public static Auction register(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule) {
+    public static Auction register(Long sellerId, Long productId, ItemInfo itemInfo, Pricing pricing, AuctionSchedule schedule, LocalDateTime now) {
         Objects.requireNonNull(sellerId, "판매자 ID는 null일 수 없습니다.");
         validateContent(productId, itemInfo, pricing, schedule);
+        validateStartLeadTime(schedule, now);
         return new Auction(sellerId, productId, itemInfo, pricing, schedule, AuctionStatus.SCHEDULED, null);
     }
 
@@ -90,6 +91,15 @@ public class Auction extends BaseEntity {
     private void validateEditable(LocalDateTime now) {
         if (!isEffectiveScheduledAt(now)) {
             throw new AuctionException(AuctionErrorCode.AUCTION_NOT_EDITABLE);
+        }
+        if (!now.isBefore(schedule.getPeriod().getStartAt().minusMinutes(AuctionPolicy.EDIT_DEADLINE_MINUTES))) {
+            throw new AuctionException(AuctionErrorCode.AUCTION_NOT_EDITABLE);
+        }
+    }
+
+    private static void validateStartLeadTime(AuctionSchedule schedule, LocalDateTime now) {
+        if (schedule.getPeriod().getStartAt().isBefore(now.plusMinutes(AuctionPolicy.MIN_START_LEAD_MINUTES))) {
+            throw new AuctionException(AuctionErrorCode.AUCTION_START_TOO_SOON);
         }
     }
 

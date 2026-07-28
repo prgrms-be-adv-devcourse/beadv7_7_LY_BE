@@ -15,6 +15,12 @@ public final class AuctionPolicy {
     // 경매 최소 지속 시간
     public static final int MIN_DURATION_HOURS = 1;
 
+    // 경매 생성 시 최소 리드타임(시작 시각은 현재로부터 최소 N분 이후여야 함)
+    public static final int MIN_START_LEAD_MINUTES = 30;
+
+    // 경매 수정/취소 가능 마감 시한(시작 시각 N분 전까지만 허용)
+    public static final int EDIT_DEADLINE_MINUTES = 10;
+
     // 경매 최소 시작가
     public static final Money MIN_START_PRICE = Money.of(1000L);
 
