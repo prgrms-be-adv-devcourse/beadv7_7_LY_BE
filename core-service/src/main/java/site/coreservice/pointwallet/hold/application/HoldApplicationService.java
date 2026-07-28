@@ -1,6 +1,7 @@
 package site.coreservice.pointwallet.hold.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.coreservice.pointwallet.hold.domain.Hold;
@@ -15,6 +16,7 @@ import site.coreservice.pointwallet.wallet.application.WalletService;
 import site.coreservice.pointwallet.wallet.domain.InsufficientBalanceException;
 import site.coreservice.pointwallet.wallet.exception.WalletNotFoundException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HoldApplicationService implements HoldService {
@@ -74,18 +76,18 @@ public class HoldApplicationService implements HoldService {
     @Override
     @Transactional
     public void release(Long auctionId) {
-        Hold hold = holdRepository.findByAuctionId(auctionId)
-                .orElseThrow(() -> new HoldException(HoldErrorCode.HOLD_NOT_FOUND));
-        releasePreviousHold(hold); // 기존 private 메서드 그대로 재사용 (지갑 환원 + RELEASE 원장 기록 + delete)
+        holdRepository.findByAuctionId(auctionId).ifPresentOrElse(
+                this::releasePreviousHold,
+                () -> log.warn("해제할 홀드 없음, 스킵: auctionId={}", auctionId)
+        );
     }
 
     @Override
     @Transactional
     public void consume(Long auctionId) {
-        Hold hold = holdRepository.findByAuctionId(auctionId)
-                .orElseThrow(() -> new HoldException(HoldErrorCode.HOLD_NOT_FOUND));
-        // 지갑은 건드리지 않는다 - hold() 시점에 이미 deduct()로 영구히 빠져나간 돈이라
-        // 완료 시점엔 추가 잔액 이동이 없다. 그때 기록된 HOLD 원장 항목이 그대로 영구 기록으로 남는다.
-        holdRepository.delete(hold);
+        holdRepository.findByAuctionId(auctionId).ifPresentOrElse(
+                holdRepository::delete,
+                () -> log.warn("소멸시킬 홀드 없음, 스킵: auctionId={}", auctionId)
+        );
     }
 }
