@@ -31,9 +31,6 @@ class AuctionScheduleServiceTest {
     @Mock
     private AuctionRepository auctionRepository;
 
-    @Mock
-    private AuctionSearchViewRepository auctionSearchViewRepository;
-
     @Test
     void startAuction은_RUNNING으로_전이하고_해당_경매를_반환한다() {
         final Auction auction = registerScheduledAuction();
@@ -41,13 +38,12 @@ class AuctionScheduleServiceTest {
         when(auctionRepository.save(auction)).thenReturn(auction);
 
         final AuctionScheduleService service =
-            new AuctionScheduleService(auctionRepository, auctionSearchViewRepository);
+            new AuctionScheduleService(auctionRepository);
         final Auction result = service.startAuction(auction.getId());
 
         assertThat(result).isSameAs(auction);
         assertThat(result.getStatus()).isEqualTo(AuctionStatus.RUNNING);
         verify(auctionRepository).save(auction);
-        verify(auctionSearchViewRepository).updateStatus(auction);
     }
 
     @Test
@@ -55,7 +51,7 @@ class AuctionScheduleServiceTest {
         when(auctionRepository.findById(999L)).thenReturn(Optional.empty());
 
         final AuctionScheduleService service =
-            new AuctionScheduleService(auctionRepository, auctionSearchViewRepository);
+            new AuctionScheduleService(auctionRepository);
 
         assertThatThrownBy(() -> service.startAuction(999L)).isInstanceOf(
             AuctionException.class);
@@ -68,13 +64,12 @@ class AuctionScheduleServiceTest {
         when(auctionRepository.save(auction)).thenReturn(auction);
 
         final AuctionScheduleService service =
-            new AuctionScheduleService(auctionRepository, auctionSearchViewRepository);
+            new AuctionScheduleService(auctionRepository);
         final Auction result = service.closeAuction(auction.getId());
 
         assertThat(result).isSameAs(auction);
         assertThat(result.getStatus()).isEqualTo(AuctionStatus.ENDED_WON);
         verify(auctionRepository).save(auction);
-        verify(auctionSearchViewRepository).updateStatus(auction);
     }
 
     @Test
@@ -84,13 +79,12 @@ class AuctionScheduleServiceTest {
         when(auctionRepository.save(auction)).thenReturn(auction);
 
         final AuctionScheduleService service =
-            new AuctionScheduleService(auctionRepository, auctionSearchViewRepository);
+            new AuctionScheduleService(auctionRepository);
         final Auction result = service.closeAuction(auction.getId());
 
         assertThat(result).isSameAs(auction);
         assertThat(result.getStatus()).isEqualTo(AuctionStatus.ENDED_FAILED);
         verify(auctionRepository).save(auction);
-        verify(auctionSearchViewRepository).updateStatus(auction);
     }
 
     @Test
@@ -98,7 +92,7 @@ class AuctionScheduleServiceTest {
         when(auctionRepository.findById(999L)).thenReturn(Optional.empty());
 
         final AuctionScheduleService service =
-            new AuctionScheduleService(auctionRepository, auctionSearchViewRepository);
+            new AuctionScheduleService(auctionRepository);
 
         assertThatThrownBy(() -> service.closeAuction(999L)).isInstanceOf(
             AuctionException.class);
