@@ -118,8 +118,8 @@ class AuctionServiceTest {
                 BigDecimal.valueOf(10_000),
                 BigDecimal.valueOf(3_000),
                 BigDecimal.valueOf(500),
-                LocalDateTime.of(2026, 7, 1, 0, 0),
-                LocalDateTime.of(2026, 7, 2, 0, 0),
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(2),
                 false,
                 null
         );

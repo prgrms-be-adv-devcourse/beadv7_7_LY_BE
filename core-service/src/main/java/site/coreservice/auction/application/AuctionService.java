@@ -49,7 +49,8 @@ public class AuctionService {
             Pricing.of(Money.from(command.startPrice()), Money.from(command.bidUnit()),
                 Money.from(command.shippingFee())),
             AuctionSchedule.of(Period.of(command.startAt(), command.endAt()),
-                command.extensionEnabled(), command.extensionTime())
+                command.extensionEnabled(), command.extensionTime()),
+            LocalDateTime.now()
         );
         auctionRepository.save(auction);
         searchViewRepository.save(auction, productSnapshot, sellerNickname);
