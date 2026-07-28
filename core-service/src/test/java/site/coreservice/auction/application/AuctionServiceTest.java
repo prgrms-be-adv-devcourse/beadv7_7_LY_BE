@@ -185,7 +185,7 @@ class AuctionServiceTest {
     void testModifyAuction_scheduledStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, PAST_START, PAST_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -200,7 +200,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_beforeStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when
         AuctionResult result = auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L);
@@ -214,7 +214,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -228,7 +228,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 수정하려 하면 예외를 던진다")
     void testModifyAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
@@ -242,7 +242,7 @@ class AuctionServiceTest {
     void testModifyAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 2L))
@@ -257,7 +257,7 @@ class AuctionServiceTest {
     void testModifyAuction_productIdChanged_refetchesProductAndUpdatesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
         given(productPort.getProduct(200L)).willReturn(productSnapshot);
 
         // when
@@ -273,7 +273,7 @@ class AuctionServiceTest {
     void testDeleteAuction_cancelsAuctionAndDeletesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.deleteAuction(1L, 1L);
@@ -287,7 +287,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 취소하려 하면 예외를 던진다")
     void testDeleteAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -302,7 +302,7 @@ class AuctionServiceTest {
     void testDeleteAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 2L))
@@ -317,7 +317,7 @@ class AuctionServiceTest {
     void testDeleteAuction_notEditable_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -704,7 +704,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(1L, 2L, Money.of(13_000L)))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
@@ -739,7 +739,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(13_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, 10L, BigDecimal.valueOf(87_000)));
 
@@ -766,7 +766,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매에 입찰하면 예외를 던지고 예치금 홀드를 호출하지 않는다")
     void testPlaceBid_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
 
         // when & then
@@ -783,7 +783,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
 
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(1_000));
 
@@ -802,7 +802,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willThrow(new AuctionException(AuctionErrorCode.WALLET_HOLD_FAILED));
 
@@ -822,7 +822,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
