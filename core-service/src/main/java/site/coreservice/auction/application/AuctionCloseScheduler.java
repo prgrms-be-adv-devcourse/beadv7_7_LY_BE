@@ -24,7 +24,7 @@ public class AuctionCloseScheduler {
     private static final long CLOSE_DELAY_MINUTES = 1L;
 
     private final AuctionRepository auctionRepository;
-    private final AuctionCloseService auctionCloseService;
+    private final AuctionScheduleService auctionScheduleService;
     private final AuctionEventPublisher auctionEventPublisher;
 
     @Scheduled(fixedDelay = POLL_INTERVAL_MILLIS)
@@ -34,7 +34,7 @@ public class AuctionCloseScheduler {
 
         for (final Auction auction : auctions) {
             try {
-                final Auction closedAuction = auctionCloseService.closeAuction(auction.getId());
+                final Auction closedAuction = auctionScheduleService.closeAuction(auction.getId());
                 auctionEventPublisher.publishAuctionClosed(closedAuction);
             } catch (final Exception e) {
                 log.error("경매 마감 처리 실패: auctionId={}", auction.getId(), e);
