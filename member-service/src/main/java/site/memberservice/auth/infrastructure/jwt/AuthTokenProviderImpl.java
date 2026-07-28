@@ -45,7 +45,7 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
             .claims(claims)
             .issuedAt(now)
             .expiration(validity)
-            .signWith(secretKey)
+            .signWith(secretKey, Jwts.SIG.HS256)
             .compact();
 
         return new AuthToken(jwtValue);
