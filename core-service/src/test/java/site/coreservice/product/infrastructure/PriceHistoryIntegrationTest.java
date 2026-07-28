@@ -22,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.common.event.EventPublisher;
 import site.coreservice.global.event.OrderCompletedEvent;
+import site.coreservice.pointwallet.hold.application.HoldService;
 import site.coreservice.product.domain.AuctionSnapshotPort;
 import site.coreservice.product.domain.ClosedAuction;
 import site.coreservice.product.domain.MediaCondition;
@@ -38,6 +39,11 @@ import site.coreservice.product.domain.PriceHistoryRepository;
  * <p>
  * 가짜 발행 플래그는 강제로 끈다 — local yml에 켜 둔 상태로 테스트를 돌리면 컨텍스트 기동 때
  * 다른 경로가 먼저 적재해 행 수 단언이 어긋난다.
+ * <p>
+ * 홀드 서비스도 목으로 대신한다. 주문 완료 이벤트는 공용이라 예치금 쪽 리스너도 함께 깨어나는데,
+ * 그 리스너는 커밋 전에 같은 트랜잭션 안에서 돌면서 홀드를 찾는다. 여기서 만드는 이벤트에는 대응하는
+ * 홀드가 없어 그쪽이 예외를 던지고, 예외를 잡아 넘기더라도 트랜잭션은 이미 롤백 전용으로 표시돼
+ * 커밋이 거부된다. 이 테스트가 보려는 건 시세 적재 배선이지 예치금 흐름이 아니므로 끊어둔다.
  */
 @Tag("integration")
 @SpringBootTest(properties = "product.fake-trade.enabled=false")
@@ -54,6 +60,9 @@ class PriceHistoryIntegrationTest {
 
     @MockitoBean
     private AuctionSnapshotPort auctionSnapshotPort;
+
+    @MockitoBean
+    private HoldService holdService;
 
     @MockitoSpyBean
     private PriceHistoryRepository priceHistoryRepository;
