@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import site.common.response.ApiResponse;
 import site.coreservice.pointwallet.withdraw.application.port.BankAccount;
@@ -27,16 +28,18 @@ public class MemberBankAccountHttpClient implements MemberBankAccountPort {
 
     @Override
     public Optional<BankAccount> getBankAccount(Long memberId) {
-        ApiResponse<MemberBankAccountApiResponse> body = memberRestClient.get()
-                .uri("/internal/v1/members/{memberId}/bank-account", memberId)
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+        try {
+            ApiResponse<MemberBankAccountApiResponse> body = memberRestClient.get()
+                    .uri("/internal/v1/members/{memberId}/bank-account", memberId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
-        MemberBankAccountApiResponse data = body.getData();
-        if (data == null || data.accountNumber() == null || data.accountNumber().isBlank()) {
-            return Optional.empty(); // 계좌 미등록 — 응답 스펙에 에러 케이스가 없어 방어적으로 처리
+            MemberBankAccountApiResponse data = body.getData();
+            return data == null ? Optional.empty()
+                    : Optional.of(new BankAccount(data.bankName(), data.accountNumber(), data.depositorName()));
+        } catch (HttpClientErrorException.NotFound e) {
+            return Optional.empty(); // MERR-0003 계좌 미등록 - 정상 케이스
         }
-        return Optional.of(new BankAccount(data.bankName(), data.accountNumber(), data.depositorName()));
     }
 }
