@@ -56,7 +56,6 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         AuctionStatus status = query.status() == null ? null : AuctionStatus.from(query.status());
         LocalDateTime now = LocalDateTime.now();
 
-        // infra 엔티티(AuctionSearchView) → application 타입 변환은 여기서 끝낸다
         List<AuctionListSummary> content = findByStatus(query.genre(), query.pressType(), status,
             now, sortedPageable);
         long total = countByStatus(query.genre(), query.pressType(), status, now);
@@ -67,7 +66,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     // status 컬럼 대신 startAt/endAt/bidCount로 상태별 결과를 나눠 조회한다.
     // 상태 필터가 걸린 분기는 쿼리 자체가 이미 그 status만 골라온 것이므로 status를 그대로 넣어 매핑하고,
     // 필터가 없는 전체 조회만 행별로 시간/bidCount를 보고 status를 계산한다.
-    // CANCELED는 애초에 삭제되는 행이라 조회 대상에서 항상 빈 결과다.
+    // CANCELED는 애초에 삭제되는 행이라 조회 대상에서 항상 빈 결과를 반환한다.
     private List<AuctionListSummary> findByStatus(String genre, String pressType,
         AuctionStatus status,
         LocalDateTime now, Pageable pageable) {
