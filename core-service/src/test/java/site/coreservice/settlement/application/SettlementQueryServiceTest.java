@@ -76,14 +76,14 @@ class SettlementQueryServiceTest {
         @DisplayName("status가 유효한 값이면 파싱해서 검색 조건으로 넘긴다")
         void parsesValidStatus() {
             // given
-            given(settlementItemRepository.search(SELLER_ID, SettlementStatus.PAID, null, null, 0, 20))
+            given(settlementItemRepository.search(SELLER_ID, SettlementStatus.CONFIRMED, null, null, 0, 20))
                     .willReturn(new SettlementItemSearchPage(List.of(), 0L));
 
             // when
-            settlementQueryService.findItems(SELLER_ID, "PAID", null, null, 0, 20);
+            settlementQueryService.findItems(SELLER_ID, "CONFIRMED", null, null, 0, 20);
 
             // then
-            verify(settlementItemRepository).search(SELLER_ID, SettlementStatus.PAID, null, null, 0, 20);
+            verify(settlementItemRepository).search(SELLER_ID, SettlementStatus.CONFIRMED, null, null, 0, 20);
         }
 
         @Test

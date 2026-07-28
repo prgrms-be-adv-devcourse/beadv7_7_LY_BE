@@ -14,7 +14,7 @@ public interface SettlementItemRepository {
 
     boolean existsByOrderId(Long orderId);
 
-    List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt);
+    List<Long> findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt);
 
     List<SettlementItem> findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus status, LocalDateTime completedAt, Long sellerId);
 

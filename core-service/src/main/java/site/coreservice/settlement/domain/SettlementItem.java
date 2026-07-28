@@ -60,8 +60,8 @@ public class SettlementItem extends BaseEntity {
     @Column(name = "completed_at", nullable = false)
     private LocalDateTime completedAt;
 
-    @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
 
     @Column(name = "settlement_batch_id")
     private Long settlementBatchId;
@@ -93,14 +93,14 @@ public class SettlementItem extends BaseEntity {
         Objects.requireNonNull(completedAt, "completedAt은 null일 수 없습니다.");
     }
 
-    public void markPaid(Long settlementBatchId, LocalDateTime paidAt) {
+    public void markConfirmed(Long settlementBatchId, LocalDateTime confirmedAt) {
         Objects.requireNonNull(settlementBatchId, "settlementBatchId는 null일 수 없습니다.");
-        Objects.requireNonNull(paidAt, "paidAt은 null일 수 없습니다.");
+        Objects.requireNonNull(confirmedAt, "confirmedAt은 null일 수 없습니다.");
         if (status != SettlementStatus.PENDING) {
             throw new SettlementException(SettlementErrorCode.SETTLEMENT_ITEM_NOT_PENDING);
         }
-        this.status = SettlementStatus.PAID;
+        this.status = SettlementStatus.CONFIRMED;
         this.settlementBatchId = settlementBatchId;
-        this.paidAt = paidAt;
+        this.confirmedAt = confirmedAt;
     }
 }

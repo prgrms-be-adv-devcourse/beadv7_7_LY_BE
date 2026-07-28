@@ -13,7 +13,7 @@ public record SettlementItemResult(
         BigDecimal netAmount,
         String status,
         LocalDateTime completedAt,
-        LocalDateTime paidAt,
+        LocalDateTime confirmedAt,
         Long settlementBatchId
 ) {
 
@@ -27,7 +27,7 @@ public record SettlementItemResult(
                 item.getNetAmount().getValue(),
                 item.getStatus().name(),
                 item.getCompletedAt(),
-                item.getPaidAt(),
+                item.getConfirmedAt(),
                 item.getSettlementBatchId()
         );
     }

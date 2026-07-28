@@ -25,10 +25,7 @@ public class SettlementBatchService {
 
     @Transactional(readOnly = true)
     public List<Long> findEligibleSellerIds(LocalDateTime periodTo) {
-        return settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo).stream()
-            .map(SettlementItem::getSellerId)
-            .distinct()
-            .toList();
+        return settlementItemRepository.findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo);
     }
 
     public void createBatchForSeller(Long sellerId, LocalDateTime periodFrom, LocalDateTime periodTo, LocalDateTime confirmedAt) {
@@ -54,7 +51,7 @@ public class SettlementBatchService {
             return;
         }
 
-        items.forEach(item -> item.markPaid(savedBatch.getId(), confirmedAt));
+        items.forEach(item -> item.markConfirmed(savedBatch.getId(), confirmedAt));
 
         settlementEventPublisher.publishConfirmed(savedBatch);
         log.info("정산 배치 생성 완료: sellerId={}, batchId={}, itemCount={}", sellerId, savedBatch.getId(), items.size());

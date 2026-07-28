@@ -78,42 +78,42 @@ class SettlementItemTest {
             SettlementItem item = defaultItem();
 
             // then
-            assertThat(item.getPaidAt()).isNull();
+            assertThat(item.getConfirmedAt()).isNull();
             assertThat(item.getSettlementBatchId()).isNull();
         }
     }
 
     @Nested
-    @DisplayName("지급 처리 (markPaid)")
-    class MarkPaid {
+    @DisplayName("확정 처리 (markConfirmed)")
+    class MarkConfirmed {
 
         @Test
-        @DisplayName("PENDING 상태에서 지급 처리하면 PAID로 바뀌고 배치 정보가 채워진다")
-        void markPaidFromPending() {
+        @DisplayName("PENDING 상태에서 확정 처리하면 CONFIRMED로 바뀌고 배치 정보가 채워진다")
+        void markConfirmedFromPending() {
             // given
             SettlementItem item = defaultItem();
-            LocalDateTime paidAt = LocalDateTime.now();
+            LocalDateTime confirmedAt = LocalDateTime.now();
 
             // when
-            item.markPaid(9001L, paidAt);
+            item.markConfirmed(9001L, confirmedAt);
 
             // then
-            assertThat(item.getStatus()).isEqualTo(SettlementStatus.PAID);
+            assertThat(item.getStatus()).isEqualTo(SettlementStatus.CONFIRMED);
             assertThat(item.getSettlementBatchId()).isEqualTo(9001L);
-            assertThat(item.getPaidAt()).isEqualTo(paidAt);
+            assertThat(item.getConfirmedAt()).isEqualTo(confirmedAt);
         }
 
         @Test
-        @DisplayName("이미 지급 처리된 항목을 다시 지급 처리하려 하면 예외가 발생한다")
-        void markPaidAlreadyPaid_throwsException() {
+        @DisplayName("이미 확정 처리된 항목을 다시 확정 처리하려 하면 예외가 발생한다")
+        void markConfirmedAlreadyConfirmed_throwsException() {
             // given
             SettlementItem item = defaultItem();
-            item.markPaid(9001L, LocalDateTime.now());
+            item.markConfirmed(9001L, LocalDateTime.now());
 
             // when & then
-            assertThatThrownBy(() -> item.markPaid(9002L, LocalDateTime.now()))
+            assertThatThrownBy(() -> item.markConfirmed(9002L, LocalDateTime.now()))
                     .isInstanceOf(SettlementException.class)
-                    .hasMessage("PENDING 상태의 정산 항목만 지급 처리할 수 있습니다.");
+                    .hasMessage("PENDING 상태의 정산 항목만 확정 처리할 수 있습니다.");
         }
     }
 }

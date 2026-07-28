@@ -61,11 +61,8 @@ class SettlementBatchServiceTest {
         void returnsDistinctSellerIds() {
             // given
             LocalDateTime periodTo = LocalDateTime.now();
-            SettlementItem item1 = settlementItem(1001L, 301L, 10_000);
-            SettlementItem item2 = settlementItem(1002L, 301L, 20_000);
-            SettlementItem item3 = settlementItem(1003L, 302L, 30_000);
-            given(settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo))
-                    .willReturn(List.of(item1, item2, item3));
+            given(settlementItemRepository.findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo))
+                    .willReturn(List.of(301L, 302L));
 
             // when
             List<Long> sellerIds = settlementBatchService.findEligibleSellerIds(periodTo);
@@ -79,7 +76,7 @@ class SettlementBatchServiceTest {
         void returnsEmptyWhenNoneEligible() {
             // given
             LocalDateTime periodTo = LocalDateTime.now();
-            given(settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo))
+            given(settlementItemRepository.findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus.PENDING, periodTo))
                     .willReturn(List.of());
 
             // when
@@ -99,8 +96,8 @@ class SettlementBatchServiceTest {
         private final LocalDateTime confirmedAt = LocalDateTime.now();
 
         @Test
-        @DisplayName("PENDING 항목들을 모아 배치를 생성하고, 항목들을 PAID로 전환하며 정산 확정 이벤트를 발행한다")
-        void createsBatchMarksItemsPaidAndPublishesEvent() {
+        @DisplayName("PENDING 항목들을 모아 배치를 생성하고, 항목들을 CONFIRMED로 전환하며 정산 확정 이벤트를 발행한다")
+        void createsBatchMarksItemsConfirmedAndPublishesEvent() {
             // given
             SettlementItem item1 = settlementItem(1001L, SELLER_ID, 85_000);
             SettlementItem item2 = settlementItem(1002L, SELLER_ID, 15_000);
@@ -122,10 +119,10 @@ class SettlementBatchServiceTest {
             // then
             SettlementBatch savedBatch = settlementBatchCaptor.getValue();
             assertThat(savedBatch.getSellerId()).isEqualTo(SELLER_ID);
-            assertThat(item1.getStatus()).isEqualTo(SettlementStatus.PAID);
+            assertThat(item1.getStatus()).isEqualTo(SettlementStatus.CONFIRMED);
             assertThat(item1.getSettlementBatchId()).isEqualTo(9001L);
-            assertThat(item1.getPaidAt()).isEqualTo(confirmedAt);
-            assertThat(item2.getStatus()).isEqualTo(SettlementStatus.PAID);
+            assertThat(item1.getConfirmedAt()).isEqualTo(confirmedAt);
+            assertThat(item2.getStatus()).isEqualTo(SettlementStatus.CONFIRMED);
             assertThat(item2.getSettlementBatchId()).isEqualTo(9001L);
             verify(settlementEventPublisher).publishConfirmed(savedBatch);
         }

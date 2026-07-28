@@ -38,7 +38,7 @@ public record SettlementItemPageResponse(
             BigDecimal netAmount,
             String status,
             LocalDateTime completedAt,
-            LocalDateTime paidAt,
+            LocalDateTime confirmedAt,
             Long settlementBatchId
     ) {
 
@@ -52,7 +52,7 @@ public record SettlementItemPageResponse(
                     result.netAmount(),
                     result.status(),
                     result.completedAt(),
-                    result.paidAt(),
+                    result.confirmedAt(),
                     result.settlementBatchId()
             );
         }

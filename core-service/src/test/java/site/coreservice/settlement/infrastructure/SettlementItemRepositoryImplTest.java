@@ -71,24 +71,25 @@ class SettlementItemRepositoryImplTest {
     }
 
     @Test
-    void findAllByStatusAndCompletedAtBefore는_PENDING이고_기준_이전인_항목만_반환한다() {
+    void findDistinctSellerIdsByStatusAndCompletedAtBefore는_PENDING이고_기준_이전인_항목의_판매자만_중복없이_반환한다() {
         LocalDateTime now = LocalDateTime.now();
         settlementItemJpaRepository.save(settlementItem(5001L, now.minusDays(1)));
-        settlementItemJpaRepository.save(settlementItem(5002L, now.plusDays(1)));
+        settlementItemJpaRepository.save(settlementItem(5002L, now.minusDays(1)));
+        settlementItemJpaRepository.save(settlementItem(5003L, now.plusDays(1)));
 
-        List<SettlementItem> result = settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
+        List<Long> result = settlementItemRepository.findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
 
-        assertThat(result).extracting(SettlementItem::getOrderId).containsExactly(5001L);
+        assertThat(result).containsExactly(SELLER_ID);
     }
 
     @Test
-    void findAllByStatusAndCompletedAtBefore는_PAID_상태는_제외한다() {
+    void findDistinctSellerIdsByStatusAndCompletedAtBefore는_CONFIRMED_상태는_제외한다() {
         LocalDateTime now = LocalDateTime.now();
-        SettlementItem paidItem = settlementItemJpaRepository.save(settlementItem(5001L, now.minusDays(1)));
-        paidItem.markPaid(9001L, now);
-        settlementItemJpaRepository.save(paidItem);
+        SettlementItem confirmedItem = settlementItemJpaRepository.save(settlementItem(5001L, now.minusDays(1)));
+        confirmedItem.markConfirmed(9001L, now);
+        settlementItemJpaRepository.save(confirmedItem);
 
-        List<SettlementItem> result = settlementItemRepository.findAllByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
+        List<Long> result = settlementItemRepository.findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus.PENDING, now);
 
         assertThat(result).isEmpty();
     }

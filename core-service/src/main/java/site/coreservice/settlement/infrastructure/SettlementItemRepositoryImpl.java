@@ -39,8 +39,8 @@ public class SettlementItemRepositoryImpl implements SettlementItemRepository {
     }
 
     @Override
-    public List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt) {
-        return settlementItemJpaRepository.findAllByStatusAndCompletedAtBefore(status, completedAt);
+    public List<Long> findDistinctSellerIdsByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt) {
+        return settlementItemJpaRepository.findDistinctSellerIdByStatusAndCompletedAtBefore(status, completedAt);
     }
 
     @Override

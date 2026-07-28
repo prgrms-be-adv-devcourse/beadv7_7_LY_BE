@@ -17,7 +17,12 @@ public interface SettlementItemJpaRepository extends JpaRepository<SettlementIte
 
     boolean existsByOrderId(Long orderId);
 
-    List<SettlementItem> findAllByStatusAndCompletedAtBefore(SettlementStatus status, LocalDateTime completedAt);
+    @Query("""
+            select distinct s.sellerId from SettlementItem s
+            where s.status = :status and s.completedAt < :completedAt
+            """)
+    List<Long> findDistinctSellerIdByStatusAndCompletedAtBefore(@Param("status") SettlementStatus status,
+                                                                 @Param("completedAt") LocalDateTime completedAt);
 
     List<SettlementItem> findAllByStatusAndCompletedAtBeforeAndSellerId(SettlementStatus status, LocalDateTime completedAt, Long sellerId);
 
