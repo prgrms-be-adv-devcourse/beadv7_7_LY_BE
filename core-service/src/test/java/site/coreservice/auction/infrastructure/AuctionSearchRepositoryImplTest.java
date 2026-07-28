@@ -44,13 +44,15 @@ class AuctionSearchRepositoryImplTest {
     private static final LocalDateTime PAST_END = LocalDateTime.of(2000, 1, 1, 0, 0);
 
     private void saveSearchView(Long auctionId, String genre, String pressType,
-                                 long price, int bidCount, LocalDateTime startAt, LocalDateTime endAt) {
+        long price, int bidCount, LocalDateTime startAt, LocalDateTime endAt) {
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
         Pricing pricing = Pricing.of(Money.of(price), Money.of(500L), Money.of(0L));
         AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, startAt.minusHours(1));
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule,
+            startAt.minusHours(1));
         ReflectionTestUtils.setField(auction, "id", auctionId);
-        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Title" + auctionId, "Artist" + auctionId, 1969, genre, pressType, true);
+        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Title" + auctionId,
+            "Artist" + auctionId, 1969, genre, pressType, true);
         auctionSearchViewRepository.save(auction, productSnapshot, "seller" + auctionId);
 
         AuctionSearchView view = searchViewJpaRepository.findById(auctionId).orElseThrow();
@@ -64,12 +66,14 @@ class AuctionSearchRepositoryImplTest {
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
         Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
         AuctionSchedule schedule = AuctionSchedule.of(
-                Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
-                false, null
+            Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
+            false, null
         );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule,
+            schedule.getPeriod().getStartAt().minusHours(1));
         ReflectionTestUtils.setField(auction, "id", 1L);
-        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
+        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Abbey Road", "The Beatles",
+            1969, "Rock", "ORIGINAL", true);
 
         // when
         auctionSearchViewRepository.save(auction, productSnapshot, "vinyl_king");
@@ -85,52 +89,40 @@ class AuctionSearchRepositoryImplTest {
     @DisplayName("status=RUNNING으로 필터링하면 startAt~endAt 사이인 경매만 반환한다")
     void testSearch_filtersByStatus_running() {
         // given
-        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
-        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
-        AuctionSchedule schedule = AuctionSchedule.of(
-                Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
-                false, null
-        );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
-        ReflectionTestUtils.setField(auction, "id", 1L);
-        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
-        auctionSearchViewRepository.save(auction, productSnapshot, "vinyl_king");
-        auction.changeStatus(AuctionStatus.RUNNING);
+        saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0,
+            LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1));
+        saveSearchView(2L, "Rock", "ORIGINAL", 10_000L, 0,
+            FUTURE_START, FUTURE_START.plusDays(1));
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "RUNNING", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, "RUNNING", null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(1L);
-        assertThat(result.getContent()).extracting(AuctionListSummary::status).containsExactly(AuctionStatus.RUNNING);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::status)
+            .containsExactly(AuctionStatus.RUNNING);
     }
 
     @Test
     @DisplayName("status=SCHEDULED로 필터링하면 startAt이 아직 안 지난 경매만 반환한다")
     void testSearch_filtersByStatus_scheduled() {
         // given
-        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
-        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
-        AuctionSchedule schedule = AuctionSchedule.of(
-                Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
-                false, null
-        );
-        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, schedule.getPeriod().getStartAt().minusHours(1));
-        ReflectionTestUtils.setField(auction, "id", 999L);
-        auction.changeStatus(AuctionStatus.RUNNING);
         saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0,
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1));
+            LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1));
         saveSearchView(2L, "Rock", "ORIGINAL", 10_000L, 0,
-                FUTURE_START, FUTURE_START.plusDays(1));
+            FUTURE_START, FUTURE_START.plusDays(1));
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "SCHEDULED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, "SCHEDULED", null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L);
-        assertThat(result.getContent()).extracting(AuctionListSummary::status).containsExactly(AuctionStatus.SCHEDULED);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::status)
+            .containsExactly(AuctionStatus.SCHEDULED);
     }
 
     @Test
@@ -138,17 +130,19 @@ class AuctionSearchRepositoryImplTest {
     void testSearch_filtersByStatus_endedWon() {
         // given
         saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 3,
-                PAST_END.minusHours(2), PAST_END);
+            PAST_END.minusHours(2), PAST_END);
         saveSearchView(2L, "Rock", "ORIGINAL", 10_000L, 0,
-                PAST_END.minusHours(2), PAST_END);
+            PAST_END.minusHours(2), PAST_END);
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "ENDED_WON", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, "ENDED_WON", null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(1L);
-        assertThat(result.getContent()).extracting(AuctionListSummary::status).containsExactly(AuctionStatus.ENDED_WON);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::status)
+            .containsExactly(AuctionStatus.ENDED_WON);
     }
 
     @Test
@@ -156,17 +150,19 @@ class AuctionSearchRepositoryImplTest {
     void testSearch_filtersByStatus_endedFailed() {
         // given
         saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 3,
-                PAST_END.minusHours(2), PAST_END);
+            PAST_END.minusHours(2), PAST_END);
         saveSearchView(2L, "Rock", "ORIGINAL", 10_000L, 0,
-                PAST_END.minusHours(2), PAST_END);
+            PAST_END.minusHours(2), PAST_END);
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "ENDED_FAILED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, "ENDED_FAILED", null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L);
-        assertThat(result.getContent()).extracting(AuctionListSummary::status).containsExactly(AuctionStatus.ENDED_FAILED);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::status)
+            .containsExactly(AuctionStatus.ENDED_FAILED);
     }
 
     @Test
@@ -174,11 +170,11 @@ class AuctionSearchRepositoryImplTest {
     void testSearch_filtersByStatus_canceled_alwaysEmpty() {
         // given
         saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0,
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1));
+            LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1));
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "CANCELED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, "CANCELED", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).isEmpty();
@@ -189,10 +185,10 @@ class AuctionSearchRepositoryImplTest {
     @DisplayName("유효하지 않은 status 값으로 조회하면 예외를 던진다")
     void testSearch_invalidStatus_throws() {
         assertThatThrownBy(() -> auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, "NOT_A_STATUS", null), PageRequest.of(0, 20)))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.AUCTION_STATUS_INVALID);
+            new AuctionListQuery(null, null, "NOT_A_STATUS", null), PageRequest.of(0, 20)))
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_STATUS_INVALID);
     }
 
     @Test
@@ -200,25 +196,28 @@ class AuctionSearchRepositoryImplTest {
     void testSearch_noFilter_returnsAllWithComputedStatus() {
         // given
         saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0,
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1)); // RUNNING
-        saveSearchView(2L, "Jazz", "REISSUE", 20_000L, 0, FUTURE_START, FUTURE_START.plusDays(1)); // SCHEDULED
-        saveSearchView(3L, "Rock", "ORIGINAL", 10_000L, 2, PAST_END.minusHours(2), PAST_END); // ENDED_WON
-        saveSearchView(4L, "Rock", "ORIGINAL", 10_000L, 0, PAST_END.minusHours(2), PAST_END); // ENDED_FAILED
+            LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1)); // RUNNING
+        saveSearchView(2L, "Jazz", "REISSUE", 20_000L, 0, FUTURE_START,
+            FUTURE_START.plusDays(1)); // SCHEDULED
+        saveSearchView(3L, "Rock", "ORIGINAL", 10_000L, 2, PAST_END.minusHours(2),
+            PAST_END); // ENDED_WON
+        saveSearchView(4L, "Rock", "ORIGINAL", 10_000L, 0, PAST_END.minusHours(2),
+            PAST_END); // ENDED_FAILED
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getTotalElements()).isEqualTo(4);
         assertThat(result.getContent())
-                .extracting(AuctionListSummary::auctionId, AuctionListSummary::status)
-                .containsExactlyInAnyOrder(
-                        tuple(1L, AuctionStatus.RUNNING),
-                        tuple(2L, AuctionStatus.SCHEDULED),
-                        tuple(3L, AuctionStatus.ENDED_WON),
-                        tuple(4L, AuctionStatus.ENDED_FAILED)
-                );
+            .extracting(AuctionListSummary::auctionId, AuctionListSummary::status)
+            .containsExactlyInAnyOrder(
+                tuple(1L, AuctionStatus.RUNNING),
+                tuple(2L, AuctionStatus.SCHEDULED),
+                tuple(3L, AuctionStatus.ENDED_WON),
+                tuple(4L, AuctionStatus.ENDED_FAILED)
+            );
     }
 
     @Test
@@ -230,14 +229,14 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).containsExactly(new AuctionListSummary(
-                view.getAuctionId(), view.getProductId(), view.getTitle(), view.getArtistName(),
-                view.getReleaseYear(), view.getGenre(), view.getPressType(), view.getThumbnail(),
-                view.getSellerId(), view.getSellerNickname(), AuctionStatus.SCHEDULED,
-                view.getHighestBidAmount(), view.getBidCount(), view.getStartAt(), view.getEndAt()
+            view.getAuctionId(), view.getProductId(), view.getTitle(), view.getArtistName(),
+            view.getReleaseYear(), view.getGenre(), view.getPressType(), view.getThumbnail(),
+            view.getSellerId(), view.getSellerNickname(), AuctionStatus.SCHEDULED,
+            view.getHighestBidAmount(), view.getBidCount(), view.getStartAt(), view.getEndAt()
         ));
     }
 
@@ -250,10 +249,11 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery("Rock", null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery("Rock", null, null, null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(1L);
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
@@ -266,10 +266,11 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, "REISSUE", null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, "REISSUE", null, null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L);
     }
 
     @Test
@@ -281,10 +282,11 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, "price_asc"), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, null, "price_asc"), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L, 1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L, 1L);
     }
 
     @Test
@@ -296,20 +298,21 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, "most_bids"), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, null, "most_bids"), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L, 1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L, 1L);
     }
 
     @Test
     @DisplayName("유효하지 않은 sort 값으로 조회하면 예외를 던진다")
     void testSearch_invalidSort_throws() {
         assertThatThrownBy(() -> auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, "not_a_sort"), PageRequest.of(0, 20)))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.AUCTION_SORT_INVALID);
+            new AuctionListQuery(null, null, null, "not_a_sort"), PageRequest.of(0, 20)))
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_SORT_INVALID);
     }
 
     @Test
@@ -321,9 +324,10 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-                new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null, null, null, null), PageRequest.of(0, 20));
 
         // then
-        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId).containsExactly(2L, 1L);
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(2L, 1L);
     }
 }

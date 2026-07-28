@@ -21,18 +21,19 @@ class AuctionSearchViewTest {
 
     private final Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
     private final AuctionSchedule schedule = AuctionSchedule.of(
-            Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
-            false, null
+        Period.of(LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0)),
+        false, null
     );
     private final ProductSnapshot productSnapshot =
-            new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
+        new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", true);
     private final LocalDateTime registerNow = schedule.getPeriod().getStartAt().minusHours(1);
 
     @Test
     @DisplayName("경매, 상품, 판매자 정보를 하나의 뷰로 합친다")
     void testFrom_mapsAuctionAndProductFields() {
         // given
-        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png", "2.png"));
+        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.",
+            List.of("1.png", "2.png"));
         Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, registerNow);
 
         // when
