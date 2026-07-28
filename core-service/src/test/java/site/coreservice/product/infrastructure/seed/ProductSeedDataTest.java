@@ -70,6 +70,31 @@ class ProductSeedDataTest {
     }
 
     @Test
+    @DisplayName("기준가 있는 상품은 카탈로그번호도 있고 값이 양수다 — 시세 시드가 번호로 상품을 찾기 때문")
+    void 기준가_상품은_카탈로그번호_필수() {
+        // when & then
+        assertThat(ProductSeedData.PRODUCTS)
+                .filteredOn(product -> product.basePrice() != null)
+                .allSatisfy(product -> {
+                    assertThat(product.catalogNumber()).isNotNull();
+                    assertThat(product.basePrice()).isPositive();
+                });
+    }
+
+    @Test
+    @DisplayName("시세 대상은 50개 이상이되, 시세 없는 상품도 남아 있다 (빈 배열 응답 시연용)")
+    void 시세_대상_규모와_빈_상품_보존() {
+        // given
+        long pricedCount = ProductSeedData.PRODUCTS.stream()
+                .filter(product -> product.basePrice() != null)
+                .count();
+
+        // when & then
+        assertThat(pricedCount).isGreaterThanOrEqualTo(50);
+        assertThat(ProductSeedData.PRODUCTS.size() - pricedCount).isPositive();
+    }
+
+    @Test
     @DisplayName("데모 규모 — 아티스트 50팀 이상, 상품 100건 이상 (한국·해외 모두 포함)")
     void 데모_규모_충족() {
         // when & then

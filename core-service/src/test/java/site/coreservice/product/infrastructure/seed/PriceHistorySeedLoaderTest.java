@@ -10,8 +10,9 @@ import static org.mockito.BDDMockito.times;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +27,14 @@ import site.coreservice.product.domain.PriceHistory;
 import site.coreservice.product.domain.PriceHistoryRepository;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductRepository;
-import site.coreservice.product.domain.TextNormalizer;
 
 @ExtendWith(MockitoExtension.class)
 class PriceHistorySeedLoaderTest {
 
+    // 대상 수는 원장에서 계산한다 — 기준가를 더하거나 빼도 테스트를 고칠 필요가 없도록
+    private static final int TARGET_COUNT = (int) ProductSeedData.PRODUCTS.stream()
+            .filter(product -> product.basePrice() != null)
+            .count();
     private static final int TRADES_PER_PRODUCT = MediaCondition.values().length
             * PriceHistorySeedLoader.TRADES_PER_CONDITION;
 
@@ -45,20 +49,18 @@ class PriceHistorySeedLoaderTest {
         return product;
     }
 
-    private void givenAllTargetProductsExist() {
-        given(productRepository.findByNaturalKey("pcs7088", "LP", "UK"))
-                .willReturn(Optional.of(productWithId(10L)));
-        given(productRepository.findByNaturalKey("shvl804", "LP", "UK"))
-                .willReturn(Optional.of(productWithId(11L)));
-        given(productRepository.findByNaturalKey("cl1355", "LP", "US"))
-                .willReturn(Optional.of(productWithId(12L)));
+    /** 대상 상품 조회가 호출될 때마다 서로 다른 id의 상품을 돌려준다 (1, 2, 3, ...). */
+    private void givenEveryTargetProductExists() {
+        AtomicLong nextId = new AtomicLong(1);
+        given(productRepository.findByNaturalKey(any(), any(), any()))
+                .willAnswer(inv -> Optional.of(productWithId(nextId.getAndIncrement())));
     }
 
     @Test
-    @DisplayName("빈 DB면 대상 상품 3개에 각 36건씩, 경매 id가 전부 다르게 저장된다")
+    @DisplayName("빈 DB면 기준가 있는 상품마다 36건씩, 경매 id가 전부 다르게 저장된다")
     void run_빈_DB면_대상_상품마다_36건_저장() {
         // given
-        givenAllTargetProductsExist();
+        givenEveryTargetProductExists();
         given(priceHistoryRepository.existsByAuctionId(anyLong())).willReturn(false);
 
         // when
@@ -66,17 +68,16 @@ class PriceHistorySeedLoaderTest {
 
         // then
         ArgumentCaptor<PriceHistory> captor = ArgumentCaptor.forClass(PriceHistory.class);
-        then(priceHistoryRepository).should(times(3 * TRADES_PER_PRODUCT)).save(captor.capture());
+        then(priceHistoryRepository).should(times(TARGET_COUNT * TRADES_PER_PRODUCT)).save(captor.capture());
         List<PriceHistory> saved = captor.getAllValues();
         assertThat(saved).extracting(PriceHistory::getAuctionId).doesNotHaveDuplicates();
-        for (long productId : new long[] {10L, 11L, 12L}) {
-            List<PriceHistory> ofProduct = saved.stream()
-                    .filter(trade -> trade.getProductId() == productId)
-                    .toList();
-            // 상품당 건수는 시세 조회 상한(PriceQueryService.RECENT_TRADES_LIMIT = 100)보다 작아야
-            // "최근 100건" 잘림 없이 전부 화면에 나온다
-            assertThat(ofProduct).hasSize(TRADES_PER_PRODUCT);
-            assertThat(ofProduct.size()).isLessThan(100);
+        // 상품당 건수는 시세 조회 상한(PriceQueryService.RECENT_TRADES_LIMIT = 100)보다 작아야
+        // "최근 100건" 잘림 없이 전부 화면에 나온다
+        assertThat(TRADES_PER_PRODUCT).isLessThan(100);
+        for (long productId = 1; productId <= TARGET_COUNT; productId++) {
+            long currentProductId = productId;
+            assertThat(saved.stream().filter(trade -> trade.getProductId() == currentProductId))
+                    .hasSize(TRADES_PER_PRODUCT);
         }
     }
 
@@ -84,7 +85,7 @@ class PriceHistorySeedLoaderTest {
     @DisplayName("거래 시각은 미래가 아니고, 확정 시각은 거래 시각 이후다")
     void run_시각_질서_보장() {
         // given
-        givenAllTargetProductsExist();
+        givenEveryTargetProductExists();
         given(priceHistoryRepository.existsByAuctionId(anyLong())).willReturn(false);
 
         // when
@@ -93,7 +94,7 @@ class PriceHistorySeedLoaderTest {
 
         // then
         ArgumentCaptor<PriceHistory> captor = ArgumentCaptor.forClass(PriceHistory.class);
-        then(priceHistoryRepository).should(times(3 * TRADES_PER_PRODUCT)).save(captor.capture());
+        then(priceHistoryRepository).should(times(TARGET_COUNT * TRADES_PER_PRODUCT)).save(captor.capture());
         assertThat(captor.getAllValues()).allSatisfy(trade -> {
             assertThat(trade.getTradedAt()).isBefore(before);
             assertThat(trade.getConfirmedAt()).isAfter(trade.getTradedAt());
@@ -104,7 +105,7 @@ class PriceHistorySeedLoaderTest {
     @DisplayName("전부 이미 있으면 아무것도 저장하지 않는다 (여러 번 실행해도 안전)")
     void run_전부_있으면_저장_없음() {
         // given
-        givenAllTargetProductsExist();
+        givenEveryTargetProductExists();
         given(priceHistoryRepository.existsByAuctionId(anyLong())).willReturn(true);
 
         // when
@@ -117,36 +118,37 @@ class PriceHistorySeedLoaderTest {
     @Test
     @DisplayName("대상 상품이 DB에 없으면 그 상품 것만 건너뛰고 나머지는 저장한다")
     void run_상품_없으면_그_상품만_건너뜀() {
-        // given — Abbey Road만 없음
-        given(productRepository.findByNaturalKey("pcs7088", "LP", "UK")).willReturn(Optional.empty());
-        given(productRepository.findByNaturalKey("shvl804", "LP", "UK"))
-                .willReturn(Optional.of(productWithId(11L)));
-        given(productRepository.findByNaturalKey("cl1355", "LP", "US"))
-                .willReturn(Optional.of(productWithId(12L)));
+        // given — 첫 번째 대상만 없음
+        AtomicInteger callCount = new AtomicInteger();
+        AtomicLong nextId = new AtomicLong(1);
+        given(productRepository.findByNaturalKey(any(), any(), any())).willAnswer(inv ->
+                callCount.getAndIncrement() == 0
+                        ? Optional.empty()
+                        : Optional.of(productWithId(nextId.getAndIncrement())));
         given(priceHistoryRepository.existsByAuctionId(anyLong())).willReturn(false);
 
         // when
         seedLoader.run();
 
         // then
-        then(priceHistoryRepository).should(times(2 * TRADES_PER_PRODUCT)).save(any());
+        then(priceHistoryRepository).should(times((TARGET_COUNT - 1) * TRADES_PER_PRODUCT)).save(any());
     }
 
     @Test
     @DisplayName("컨디션 6등급에 등급별 6건씩 분산되고, 좋은 등급이 나쁜 등급보다 항상 비싸다")
     void run_컨디션_분산과_가격_질서() {
         // given
-        givenAllTargetProductsExist();
+        givenEveryTargetProductExists();
         given(priceHistoryRepository.existsByAuctionId(anyLong())).willReturn(false);
 
         // when
         seedLoader.run();
 
-        // then — 상품 하나(10L)만 떼어 확인
+        // then — 첫 번째 상품(id 1)만 떼어 확인
         ArgumentCaptor<PriceHistory> captor = ArgumentCaptor.forClass(PriceHistory.class);
-        then(priceHistoryRepository).should(times(3 * TRADES_PER_PRODUCT)).save(captor.capture());
+        then(priceHistoryRepository).should(times(TARGET_COUNT * TRADES_PER_PRODUCT)).save(captor.capture());
         List<PriceHistory> ofProduct = captor.getAllValues().stream()
-                .filter(trade -> trade.getProductId() == 10L)
+                .filter(trade -> trade.getProductId() == 1L)
                 .toList();
         for (MediaCondition condition : MediaCondition.values()) {
             List<PriceHistory> ofCondition = ofProduct.stream()
@@ -165,24 +167,5 @@ class PriceHistorySeedLoaderTest {
                 .max()
                 .orElseThrow();
         assertThat(mintLowest).isGreaterThan(poorHighest);
-    }
-
-    @Test
-    @DisplayName("시세 시드가 찾는 대상 상품은 모두 상품 시드 원장에 있다")
-    void targets_상품_원장에_존재() {
-        // given — 두 시드는 (카탈로그번호+포맷+국가)로 연결된다. 원장에서 대상이 빠지면 시세가 조용히 비어 데모가 깨진다
-        for (PriceHistorySeedLoader.SeedTarget target : PriceHistorySeedLoader.TARGETS) {
-            // when
-            boolean exists = ProductSeedData.PRODUCTS.stream()
-                    .anyMatch(product -> Objects.equals(TextNormalizer.normalize(product.catalogNumber()),
-                            TextNormalizer.normalize(target.catalogNumber()))
-                            && product.format().equals(target.format())
-                            && product.releaseCountry().equals(target.releaseCountry()));
-
-            // then
-            assertThat(exists)
-                    .as("상품 원장에 없음: %s — 시세 시드가 이 상품을 못 찾아 건너뛴다", target.catalogNumber())
-                    .isTrue();
-        }
     }
 }
