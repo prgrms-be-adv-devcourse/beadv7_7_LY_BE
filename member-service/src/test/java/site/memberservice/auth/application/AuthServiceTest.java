@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import site.memberservice.auth.application.dto.LoginCommand;
 import site.memberservice.auth.application.dto.LoginResult;
@@ -40,7 +40,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         this.memberService = Mockito.mock(MemberService.class);
-        this.passwordEncoder = new BCryptPasswordEncoder();
+        this.passwordEncoder = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
         AuthTokenProvider authTokenProvider = new AuthTokenProviderImpl("testSecretKey12345678901234567890", 3600000L);
 
         authService = new AuthService(memberService, passwordEncoder, authTokenProvider);
