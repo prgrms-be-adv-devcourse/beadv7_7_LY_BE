@@ -8,3 +8,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+app:
+  jwt:
+    secret-key: c2VjcmV0LWtleS1mb3ItbG9jYWwtZGV2ZWxvcG1lbnQtZW52aXJvbm1lbnQxMjM0NTY3ODkw
+    token-expiration-time: 3600000 # 1시간 (밀리초 단위)
