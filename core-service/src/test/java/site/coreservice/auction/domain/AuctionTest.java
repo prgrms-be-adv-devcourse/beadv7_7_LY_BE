@@ -148,12 +148,32 @@ class AuctionTest {
     void testModify_runningStatus_beforeStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING);
+        LocalDateTime newStartAt = wellBeforeStart.plusMinutes(31);
+        AuctionSchedule updatedSchedule = AuctionSchedule.of(
+                Period.of(newStartAt, newStartAt.plusHours(2)), false, null);
 
         // when
-        auction.modify(1L, 200L, itemInfo, pricing, schedule, wellBeforeStart);
+        auction.modify(1L, 200L, itemInfo, pricing, updatedSchedule, wellBeforeStart);
 
         // then
         assertThat(auction.getProductId()).isEqualTo(200L);
+    }
+
+    @Test
+    @DisplayName("수정 시 다시 설정하는 startAt이 현재로부터 30분 이내면, 기존 startAt이 마감 시한 전이어도 예외를 던진다")
+    void testModify_newStartAtTooSoon_throws() {
+        // given: 기존 startAt까지는 아직 15분 남아 편집 마감(10분)엔 안 걸리지만,
+        // 새로 설정하려는 startAt이 now로부터 10분 후라 리드타임(30분) 미만이다
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED);
+        LocalDateTime tooSoonNewStartAt = wellBeforeStart.plusMinutes(10);
+        AuctionSchedule tooSoonSchedule = AuctionSchedule.of(
+                Period.of(tooSoonNewStartAt, tooSoonNewStartAt.plusHours(2)), false, null);
+
+        // when & then
+        assertThatThrownBy(() -> auction.modify(1L, 200L, itemInfo, pricing, tooSoonSchedule, wellBeforeStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_START_TOO_SOON);
     }
 
     @Test

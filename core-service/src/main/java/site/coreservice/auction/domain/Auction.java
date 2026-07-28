@@ -69,6 +69,7 @@ public class Auction extends BaseEntity {
         validateOwnership(sellerId);
         validateEditable(now);
         validateContent(productId, itemInfo, pricing, schedule);
+        validateStartLeadTime(schedule, now);
         this.productId = productId;
         this.itemInfo = itemInfo;
         this.pricing = pricing;
