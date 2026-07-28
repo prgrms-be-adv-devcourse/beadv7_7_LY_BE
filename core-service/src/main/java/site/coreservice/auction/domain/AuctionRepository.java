@@ -14,6 +14,9 @@ public interface AuctionRepository {
 
     Optional<Auction> findById(Long id);
 
+    // 비관적 쓰기 락(SELECT ... FOR UPDATE)으로 조회. Auction/Bid를 변경하는 5개 경로(입찰/수정/취소/시작·마감 스케줄러)에서 사용.
+    Optional<Auction> findByIdForUpdate(Long id);
+
     List<Auction> findAllByIds(List<Long> ids);
 
     List<Auction> findAllScheduledToStart(LocalDateTime threshold);
