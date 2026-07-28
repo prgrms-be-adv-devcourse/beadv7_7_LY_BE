@@ -50,6 +50,13 @@ subprojects {
     }
 
     tasks.named('test') {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            // 로컬에 띄운 MySQL이 있어야 도는 테스트에는 @Tag("integration")을 붙여둔다.
+            // CI 러너에는 DB가 없으므로 -PexcludeTags=integration 으로 걸러낸다.
+            // 옵션을 주지 않으면(= 로컬 실행) 아무것도 제외하지 않고 전부 실행된다.
+            if (project.hasProperty('excludeTags')) {
+                excludeTags project.property('excludeTags').split(',')
+            }
+        }
     }
 }
