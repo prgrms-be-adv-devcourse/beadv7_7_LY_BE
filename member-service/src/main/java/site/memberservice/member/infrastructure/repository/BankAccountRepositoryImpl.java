@@ -6,7 +6,7 @@ import site.memberservice.member.domain.BankAccount;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.repository.BankAccountRepository;
 
-import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Repository
@@ -15,7 +15,7 @@ public class BankAccountRepositoryImpl implements BankAccountRepository {
     private final BankAccountJpaRepository bankAccountJpaRepository;
 
     @Override
-    public List<BankAccount> findAllByMember(final Member member) {
-        return bankAccountJpaRepository.findAllByMember(member);
+    public Optional<BankAccount> findByMember(final Member member) {
+        return bankAccountJpaRepository.findByMember(member);
     }
 }

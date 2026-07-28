@@ -7,12 +7,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.common.entity.BaseEntity;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.regex.Pattern;
@@ -31,7 +32,7 @@ import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER
     }
 )
 @Entity
-public class BankAccount {
+public class BankAccount extends BaseEntity {
 
     private static final Pattern ACCOUNT_NUMBER_PATTERN = Pattern.compile("^[0-9]+(-[0-9]+)*$");
 
@@ -45,7 +46,7 @@ public class BankAccount {
     @Column(name = "bank_name", length = 50, nullable = false)
     private String bankName;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
 

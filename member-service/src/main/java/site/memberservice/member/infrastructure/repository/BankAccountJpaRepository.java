@@ -4,9 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import site.memberservice.member.domain.BankAccount;
 import site.memberservice.member.domain.Member;
 
-import java.util.List;
+import java.util.Optional;
 
 public interface BankAccountJpaRepository extends JpaRepository<BankAccount, Long> {
 
-    List<BankAccount> findAllByMember(Member member);
+    Optional<BankAccount> findByMember(Member member);
 }
