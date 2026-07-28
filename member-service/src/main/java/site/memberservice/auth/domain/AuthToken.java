@@ -15,13 +15,21 @@ public class AuthToken {
 
     public AuthToken(final String value) {
         validateValue(value);
-        this.value = value;
+        this.value = removePrefix(value);
     }
 
     private void validateValue(final String value) {
         if (value == null || value.isBlank()) {
             throw new AuthException(INVALID_AUTH_TOKEN, format("인증 토큰은 null 혹은 공백일 수 없습니다. input: %s", value));
         }
+    }
+
+    private String removePrefix(final String value) {
+        if (value.startsWith("Bearer ")) {
+            return value.substring(7);
+        }
+
+        return value;
     }
 
     @Override
