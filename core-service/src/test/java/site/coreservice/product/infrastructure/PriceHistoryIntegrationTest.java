@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.willReturn;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,12 +34,16 @@ import site.coreservice.product.domain.PriceHistoryRepository;
  * 실행 전제: docker/local MySQL 기동 + application-local.yml에 ddl-auto: update (로컬 전용, 커밋 금지).
  * 수신 리스너는 진짜 커밋에만 반응하므로 테스트 트랜잭션 자동 롤백은 쓸 수 없다 — 수동 정리한다.
  * <p>
+ * 확인과 정리는 전부 이 테스트 전용 경매 id 기준으로 한다. 같은 테이블에 다른 데이터(데모 시드 등)가
+ * 있어도 테스트가 흔들리지 않고, 그 데이터를 지우지도 않기 위해서다 — 전체 개수 단언과 전체 삭제는
+ * 다른 컨텍스트가 먼저 적재해 두면 바로 깨진다.
+ * <p>
  * 경매 조회는 목으로 대신한다. 여기서 보려는 건 리스너·서비스·DB 사이의 배선이고, 응답 해석은
  * AuctionSnapshotHttpClientTest가 따로 덮는다. 목이 대체하는 건 조회 창구 빈이라 HTTP 요청이 나가지
  * 않는다(RestClient 빈 자체는 컨텍스트에 그대로 뜬다). 덕분에 실행에 경매 데이터가 필요 없다.
  * <p>
- * 가짜 발행 플래그는 강제로 끈다 — local yml에 켜 둔 상태로 테스트를 돌리면 컨텍스트 기동 때
- * 다른 경로가 먼저 적재해 행 수 단언이 어긋난다.
+ * 시드 플래그는 강제로 끈다 — local yml에 켜 둔 상태로 테스트를 돌리면 컨텍스트 기동 때
+ * 시드 로더가 먼저 적재해 행 수 단언이 어긋난다.
  * <p>
  * 홀드 서비스도 목으로 대신한다. 주문 완료 이벤트는 공용이라 예치금 쪽 리스너도 함께 깨어나는데,
  * 그 리스너는 커밋 전에 같은 트랜잭션 안에서 돌면서 홀드를 찾는다. 여기서 만드는 이벤트에는 대응하는
@@ -46,11 +51,12 @@ import site.coreservice.product.domain.PriceHistoryRepository;
  * 커밋이 거부된다. 이 테스트가 보려는 건 시세 적재 배선이지 예치금 흐름이 아니므로 끊어둔다.
  */
 @Tag("integration")
-@SpringBootTest(properties = "product.fake-trade.enabled=false")
+@SpringBootTest(properties = {"product.seed.enabled=false", "product.price-seed.enabled=false"})
 @ActiveProfiles("local")
 class PriceHistoryIntegrationTest {
 
     private static final Long PRODUCT_ID = 1L;
+    private static final List<Long> TEST_AUCTION_IDS = List.of(501L, 502L, 503L, 504L, 90_001L, 90_501L);
 
     @Autowired
     private EventPublisher eventPublisher;
@@ -78,7 +84,8 @@ class PriceHistoryIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        priceHistoryJpaRepository.deleteAll();
+        TEST_AUCTION_IDS.forEach(auctionId -> priceHistoryJpaRepository.findByAuctionId(auctionId)
+                .ifPresent(priceHistoryJpaRepository::delete));
     }
 
     private ClosedAuction closedAuction(Long auctionId) {
@@ -123,8 +130,8 @@ class PriceHistoryIntegrationTest {
         publishInTransaction(event, false);
         publishInTransaction(orderCompleted(502L), false);
 
-        // then
-        assertThat(priceHistoryJpaRepository.count()).isEqualTo(1);
+        // then — auction_id 유니크 제약이 있어 "있음" = "정확히 한 개". 두 번째 발행이 예외 없이 건너뛰었는지가 핵심
+        assertThat(priceHistoryJpaRepository.findByAuctionId(502L)).isPresent();
     }
 
     @Test
@@ -134,7 +141,7 @@ class PriceHistoryIntegrationTest {
         publishInTransaction(orderCompleted(503L), true);
 
         // then
-        assertThat(priceHistoryJpaRepository.count()).isZero();
+        assertThat(priceHistoryJpaRepository.findByAuctionId(503L)).isEmpty();
     }
 
     @Test
@@ -147,7 +154,7 @@ class PriceHistoryIntegrationTest {
         publishInTransaction(orderCompleted(90_001L), false);
 
         // then
-        assertThat(priceHistoryJpaRepository.count()).isZero();
+        assertThat(priceHistoryJpaRepository.findByAuctionId(90_001L)).isEmpty();
     }
 
     @Test
@@ -162,7 +169,7 @@ class PriceHistoryIntegrationTest {
         publishInTransaction(orderCompleted(90_501L), false);
 
         // then
-        assertThat(priceHistoryJpaRepository.count()).isZero();
+        assertThat(priceHistoryJpaRepository.findByAuctionId(90_501L)).isEmpty();
     }
 
     @Test
@@ -175,7 +182,7 @@ class PriceHistoryIntegrationTest {
         // when: 리스너 방벽 덕에 예외가 새지 않고, 서비스는 재확인 후 정상 종료해야 한다
         publishInTransaction(orderCompleted(504L), false);
 
-        // then: 행은 여전히 한 개
-        assertThat(priceHistoryJpaRepository.count()).isEqualTo(1);
+        // then: 행은 여전히 있다 (auction_id 유니크 제약이 있어 "있음" = "정확히 한 개")
+        assertThat(priceHistoryJpaRepository.findByAuctionId(504L)).isPresent();
     }
 }
