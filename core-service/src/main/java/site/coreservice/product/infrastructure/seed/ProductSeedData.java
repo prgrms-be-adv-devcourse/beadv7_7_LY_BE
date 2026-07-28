@@ -15,6 +15,9 @@ import site.coreservice.product.domain.PressType;
  * basePrice는 시세 시드(PriceHistorySeedLoader)가 쓰는 기준 낙찰가(NEAR_MINT 기준, 원)다.
  * 값이 있으면 그 상품에 시세 기록이 쌓이고, null이면 시세 없이 남는다 —
  * "거래 없음 = 200 + 빈 배열" 응답도 시연해야 하므로 일부는 반드시 null로 남겨둔다 (테스트가 지킨다).
+ * <p>
+ * 새 상품은 목록 끝에 추가한다. 시세 시드의 경매 id가 "기준가 있는 상품의 등장 순번"으로 계산되기 때문에,
+ * 중간에 끼워 넣으면 이미 시드를 돌린 DB에서 순번이 밀린 상품들에 거래가 이중으로 쌓인다.
  */
 final class ProductSeedData {
 

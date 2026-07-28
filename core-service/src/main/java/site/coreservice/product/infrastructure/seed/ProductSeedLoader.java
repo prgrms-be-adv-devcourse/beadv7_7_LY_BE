@@ -1,5 +1,9 @@
 package site.coreservice.product.infrastructure.seed;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -18,11 +22,6 @@ import site.coreservice.product.domain.ProductAlias;
 import site.coreservice.product.domain.ProductAliasRepository;
 import site.coreservice.product.domain.ProductRepository;
 import site.coreservice.product.domain.TextNormalizer;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * LP 릴리스 시드 로더. local 프로파일 + {@code product.seed.enabled=true}일 때만 동작한다(기본 OFF).

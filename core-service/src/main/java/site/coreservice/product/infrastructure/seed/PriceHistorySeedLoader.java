@@ -117,7 +117,7 @@ public class PriceHistorySeedLoader implements CommandLineRunner {
         };
     }
 
-    /** 최근 석 달 안에 거래가 고르게 흩어지도록 회차·등급·상품마다 다른 날짜를 만든다. 미래 시각은 나오지 않는다. */
+    /** 최근 석 달 남짓(최장 100일) 안에 거래가 고르게 흩어지도록 회차·등급·상품마다 다른 날짜를 만든다. 미래 시각은 나오지 않는다. */
     private LocalDateTime calculateTradedAt(LocalDateTime now, int targetIndex, int conditionIndex, int sequence) {
         int daysAgo = 1 + sequence * 15 + conditionIndex * 2 + targetIndex % 15;
         return now.minusDays(daysAgo).minusHours(conditionIndex * 3L + sequence);
