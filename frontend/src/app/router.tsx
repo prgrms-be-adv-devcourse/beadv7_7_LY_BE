@@ -7,6 +7,7 @@ import { FeedPage } from "../pages/FeedPage";
 import { AuctionDetailPage } from "../pages/AuctionDetailPage";
 import { LoginPage } from "../pages/LoginPage";
 import { SignupPage } from "../pages/SignupPage";
+import { MyPage } from "../pages/MyPage";
 
 export const router = createBrowserRouter([
     {
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
             { path: "products/:productId", element: <ProductDetailPage /> },
             { path: "feed", element: <FeedPage /> },
             { path: "auctions/:auctionId", element: <AuctionDetailPage /> },
+            { path: "mypage", element: <MyPage /> },
             { path: "login", element: <LoginPage /> },
             { path: "signup", element: <SignupPage /> },
         ],

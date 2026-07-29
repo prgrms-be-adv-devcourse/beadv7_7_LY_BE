@@ -69,6 +69,16 @@ export function Layout() {
                     </form>
                     {user ? (
                         <div className="flex items-center gap-2 text-sm">
+                            <NavLink
+                                to="/mypage"
+                                className={({ isActive }) =>
+                                    `rounded-lg px-3 py-1.5 text-[13.5px] font-semibold transition-colors ${
+                                        isActive ? "bg-ink text-paper" : "text-muted hover:bg-surface2 hover:text-ink"
+                                    }`
+                                }
+                            >
+                                마이페이지
+                            </NavLink>
                             <span className="font-semibold">{user}</span>
                             <button type="button" onClick={logout} className="text-xs text-muted underline hover:text-ink">
                                 로그아웃
