@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${PORT_NUMBER}
   tomcat:
     mbeanregistry:
       enabled: true
@@ -15,8 +15,16 @@ spring:
   profiles:
     active: local
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USER_NAME}
+    password: ${DB_PASSWORD}
+
   jpa:
     open-in-view: false
+    hibernate:
+      ddl-auto: none
 
 management:
   endpoints:
@@ -24,3 +32,8 @@ management:
       exposure:
         include: prometheus, health
       base-path: /api/actuator
+
+app:
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+    token-expiration-time: ${JWT_EXPIRATION_TIME}
