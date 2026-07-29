@@ -17,7 +17,7 @@ public class ProductHttpClient implements ProductPort {
     @Override
     public ProductInfo getProductInfo(Long productId) {
         ApiResponse<ProductInfo> response = productRestClient.get()
-                .uri("/internal/v1/products/{productId}", productId)
+                .uri("/internal/v1/products/{productId}/snapshot", productId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<ApiResponse<ProductInfo>>() {
                 });
