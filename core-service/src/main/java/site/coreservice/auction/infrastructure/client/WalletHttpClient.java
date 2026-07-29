@@ -16,7 +16,6 @@ import site.coreservice.auction.exception.AuctionException;
 import java.util.Map;
 
 @Component
-@Profile("!local")
 @RequiredArgsConstructor
 public class WalletHttpClient implements WalletPort {
 
