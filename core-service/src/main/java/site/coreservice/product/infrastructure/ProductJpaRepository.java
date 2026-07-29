@@ -58,4 +58,22 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
                               where aa.artistId = p.artistId and aa.normalizedName like :pattern))
             """)
     long countActiveHits(@Param("pattern") String pattern);
+
+    // 주의: 목록 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
+    // (지금은 조건이 active 하나뿐이지만, 아티스트 조인이 양쪽에 다 있어야 수가 맞는다)
+    @Query("""
+            select new site.coreservice.product.domain.ProductSearchHit(
+                    p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType, p.releaseCountry)
+            from Product p join Artist a on a.id = p.artistId
+            where p.active = true
+            order by p.id desc
+            """)
+    List<ProductSearchHit> findActiveHits(Pageable pageable);
+
+    @Query("""
+            select count(p)
+            from Product p join Artist a on a.id = p.artistId
+            where p.active = true
+            """)
+    long countActive();
 }

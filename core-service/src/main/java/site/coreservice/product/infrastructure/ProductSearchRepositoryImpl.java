@@ -25,4 +25,11 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
         long totalElements = productJpaRepository.countActiveHits(pattern);
         return new ProductSearchPage(hits, totalElements);
     }
+
+    @Override
+    public ProductSearchPage findActivePage(int page, int size) {
+        List<ProductSearchHit> hits = productJpaRepository.findActiveHits(PageRequest.of(page, size));
+        long totalElements = productJpaRepository.countActive();
+        return new ProductSearchPage(hits, totalElements);
+    }
 }
