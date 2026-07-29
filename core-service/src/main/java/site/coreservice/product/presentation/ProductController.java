@@ -4,10 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.coreservice.product.application.ProductService;
+import site.coreservice.product.application.dto.ProductListQuery;
 import site.coreservice.product.presentation.dto.ProductDetailResponse;
+import site.coreservice.product.presentation.dto.ProductListResponse;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -19,5 +22,13 @@ public class ProductController {
     @GetMapping("/{productId}")
     public ApiResponse<ProductDetailResponse> getActiveProductDetail(@PathVariable Long productId) {
         return ApiResponse.success(ProductDetailResponse.from(productService.getActiveProductDetail(productId)));
+    }
+
+    @GetMapping
+    public ApiResponse<ProductListResponse> getProductList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.success(ProductListResponse.from(
+                productService.getProductList(new ProductListQuery(page, size))));
     }
 }

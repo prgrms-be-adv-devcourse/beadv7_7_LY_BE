@@ -11,4 +11,10 @@ public interface ProductSearchRepository {
      * 정렬은 productId 오름차순 고정 — LIKE 검색엔 "더 잘 맞는 순서" 개념이 없어 페이지가 안 흔들리는 순서만 보장한다.
      */
     ProductSearchPage searchActiveByKeyword(String normalizedKeyword, int page, int size);
+
+    /**
+     * 카탈로그 브라우징. 활성 상품 전체를 최신 등록순(id 내림차순)으로 한 페이지 돌려준다.
+     * 검색어로 걸러내는 건 searchActiveByKeyword 쪽 일이고, 여기는 조건 없이 훑는 용도다.
+     */
+    ProductSearchPage findActivePage(int page, int size);
 }

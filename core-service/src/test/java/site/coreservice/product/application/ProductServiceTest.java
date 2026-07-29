@@ -3,8 +3,11 @@ package site.coreservice.product.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,22 +18,42 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.coreservice.product.application.dto.ProductDetailResult;
+import site.coreservice.product.application.dto.ProductListQuery;
+import site.coreservice.product.application.dto.ProductListResult;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
+import site.coreservice.product.application.port.AuctionOpenCountPort;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 import site.coreservice.product.domain.PressType;
+import site.coreservice.product.domain.PriceHistory;
+import site.coreservice.product.domain.PriceHistoryRepository;
 import site.coreservice.product.domain.Product;
+import site.coreservice.product.domain.ProductSearchHit;
+import site.coreservice.product.domain.ProductSearchPage;
+import site.coreservice.product.domain.ProductSearchRepository;
 import site.coreservice.product.exception.ProductNotFoundException;
 import site.coreservice.product.domain.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
+    private static final ProductSearchHit CATALOG_HIT =
+            new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK");
+
     @Mock
     private ProductRepository productRepository;
 
     @Mock
     private ArtistRepository artistRepository;
+
+    @Mock
+    private ProductSearchRepository productSearchRepository;
+
+    @Mock
+    private PriceHistoryRepository priceHistoryRepository;
+
+    @Mock
+    private AuctionOpenCountPort auctionOpenCountPort;
 
     @InjectMocks
     private ProductService productService;
@@ -182,5 +205,113 @@ class ProductServiceTest {
         // when & then
         assertThatThrownBy(() -> productService.getProductSnapshots(List.of(55L)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("목록 조회는 상품 카드에 발매국과 진행 중 경매 수를 함께 담는다")
+    void getProductList_카드_필드_조합() {
+        // given
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of(55L, 2L));
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).country()).isEqualTo("UK");
+        assertThat(result.content().get(0).openAuctionCount()).isEqualTo(2L);
+        assertThat(result.totalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("거래 이력이 있는 상품은 최근 낙찰가를, 없는 상품은 null을 담는다")
+    void getProductList_최근_낙찰가_병합() {
+        // given
+        ProductSearchHit second = new ProductSearchHit(56L, "Kind of Blue", "Miles Davis", null, 1959,
+                PressType.REISSUE, "US");
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT, second), 2L));
+        PriceHistory trade = mock(PriceHistory.class);
+        given(trade.getProductId()).willReturn(55L);
+        given(trade.getFinalPrice()).willReturn(132000L);
+        given(priceHistoryRepository.findLatestTrades(List.of(55L, 56L))).willReturn(List.of(trade));
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L, 56L))).willReturn(Map.of());
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.content().get(0).lastTradedPrice()).isEqualTo(132000L);
+        assertThat(result.content().get(1).lastTradedPrice()).isNull();
+    }
+
+    @Test
+    @DisplayName("경매 건수 조회가 실패해도 목록은 정상 반환하고 openAuctionCount만 전부 null이 된다")
+    void getProductList_경매_조회_실패시_건수만_null() {
+        // given
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L)))
+                .willThrow(new IllegalStateException("경매 서비스 응답 없음"));
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).openAuctionCount()).isNull();
+    }
+
+    @Test
+    @DisplayName("경매 건수 응답에 없는 상품은 0건으로 담는다")
+    void getProductList_건수_응답에_없으면_0() {
+        // given
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of());
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.content().get(0).openAuctionCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("결과가 빈 페이지면 시세·경매 조회를 하지 않는다")
+    void getProductList_빈_페이지면_추가_조회_생략() {
+        // given
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(), 0L));
+
+        // when
+        productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        then(priceHistoryRepository).shouldHaveNoInteractions();
+        then(auctionOpenCountPort).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("size는 1 미만이면 기본값 20, 100 초과면 100으로, page는 음수면 0으로 보정한다")
+    void getProductList_페이징_보정() {
+        // given
+        given(productSearchRepository.findActivePage(0, 20))
+                .willReturn(new ProductSearchPage(List.of(), 0L));
+        given(productSearchRepository.findActivePage(0, 100))
+                .willReturn(new ProductSearchPage(List.of(), 0L));
+
+        // when
+        productService.getProductList(new ProductListQuery(-1, 0));
+        productService.getProductList(new ProductListQuery(0, 101));
+
+        // then
+        then(productSearchRepository).should().findActivePage(0, 20);
+        then(productSearchRepository).should().findActivePage(0, 100);
     }
 }

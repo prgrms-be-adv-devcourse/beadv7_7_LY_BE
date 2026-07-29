@@ -9,7 +9,9 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      # core-service와 같은 DB(lp_auction)를 쓰므로, create로 두면 이쪽을 띄우는 것만으로
+      # 상품·시세 데이터까지 전부 지워진다
+      ddl-auto: none
 
 app:
   jwt:
