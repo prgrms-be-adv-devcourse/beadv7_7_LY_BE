@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT_NUMBER}
   tomcat:
     mbeanregistry:
       enabled: true
@@ -15,8 +15,16 @@ spring:
   profiles:
     active: local
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USER_NAME}
+    password: ${DB_PASSWORD}
+
   jpa:
     open-in-view: false
+    hibernate:
+      ddl-auto: none
 
 management:
   endpoints:
@@ -29,6 +37,7 @@ toss:
   payments:
     client-key: ${TOSS_CLIENT_KEY}
     secret-key: ${TOSS_SECRET_KEY}
+
 member:
   service:
-    base-url: ${MEMBER_SERVICE_BASE_URL:http://localhost:8081}
+    base-url: ${MEMBER_SERVICE_BASE_URL}
