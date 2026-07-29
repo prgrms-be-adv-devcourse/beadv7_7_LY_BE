@@ -1,13 +1,36 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getPriceTrades, getProductDetail } from "../api/products";
+import { getPriceSummary, getPriceTrades, getProductDetail } from "../api/products";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { formatWon } from "../components/AuctionCard";
 import { GRADED_CONDITIONS, PriceSparkline } from "./product-detail/PriceSparkline";
 
+// 요약 카드 머리글용 짧은 컨디션 표기 (백엔드 MediaCondition enum 이름 기준)
+const CONDITION_SHORT: Record<string, string> = {
+    MINT: "M · Mint",
+    NEAR_MINT: "NM · Near Mint",
+    VERY_GOOD_PLUS: "VG+",
+    VERY_GOOD: "VG",
+    GOOD: "G",
+    POOR: "P",
+};
+
+// 차트 컨디션 필터. 기본은 M·NM — 하위 컨디션까지 섞으면 선이 출렁여 흐름이 안 보인다 (PriceSparkline 참고)
+const CHART_FILTERS: { key: string; label: string; conditions: string[] | null }[] = [
+    { key: "MNM", label: "M·NM", conditions: GRADED_CONDITIONS },
+    { key: "ALL", label: "전체", conditions: null },
+    { key: "M", label: "M", conditions: ["MINT"] },
+    { key: "NM", label: "NM", conditions: ["NEAR_MINT"] },
+    { key: "VG+", label: "VG+", conditions: ["VERY_GOOD_PLUS"] },
+];
+
 export function ProductDetailPage() {
     const { productId = "" } = useParams();
+    const [chartFilterKey, setChartFilterKey] = useState("MNM");
+    const chartFilter = CHART_FILTERS.find((f) => f.key === chartFilterKey) ?? CHART_FILTERS[0];
+
     const query = useQuery({
         queryKey: ["product", productId],
         queryFn: () => getProductDetail(productId),
@@ -20,6 +43,13 @@ export function ProductDetailPage() {
         queryFn: () => getPriceTrades(productId),
         enabled: productId !== "",
     });
+
+    const summaryQuery = useQuery({
+        queryKey: ["priceSummary", productId],
+        queryFn: () => getPriceSummary(productId),
+        enabled: productId !== "",
+    });
+    const conditionSummaries = summaryQuery.data?.conditions ?? [];
 
     const trades = tradesQuery.data?.trades ?? [];
     const graded = trades
@@ -69,6 +99,23 @@ export function ProductDetailPage() {
                                 ))}
                             </dl>
                             {detail.description && <p className="mt-4 max-w-[65ch] text-sm text-muted">{detail.description}</p>}
+                            {conditionSummaries.length > 0 && (
+                                <div className="mt-5 flex flex-wrap gap-2.5">
+                                    {conditionSummaries.map((c) => (
+                                        <div key={c.condition} className="min-w-[130px] rounded-xl border border-line bg-surface px-4 py-2.5">
+                                            <p className="text-[10.5px] font-bold uppercase tracking-wider text-faint">
+                                                {CONDITION_SHORT[c.condition] ?? c.condition}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-lg font-bold tabular-nums">
+                                                {formatWon(c.averagePrice)}
+                                            </p>
+                                            <p className="mt-0.5 text-[11px] text-muted">
+                                                표본 {c.sampleCount}건 · {formatWon(c.lowestPrice)}~{formatWon(c.highestPrice)}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -86,8 +133,26 @@ export function ProductDetailPage() {
                                 isEmpty={trades.length === 0}
                                 emptyMessage="시세 데이터가 없습니다."
                             >
-                                <PriceSparkline trades={trades} />
-                                <p className="mt-2 text-[11.5px] text-faint">M/NM 컨디션 낙찰가 기준</p>
+                                <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                                    <span className="mr-1 text-[11px] font-bold uppercase tracking-wider text-faint">컨디션</span>
+                                    {CHART_FILTERS.map((f) => (
+                                        <button
+                                            key={f.key}
+                                            type="button"
+                                            aria-pressed={chartFilterKey === f.key}
+                                            onClick={() => setChartFilterKey(f.key)}
+                                            className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                                chartFilterKey === f.key
+                                                    ? "border-brand bg-brand text-white"
+                                                    : "border-line bg-paper text-muted hover:border-line-strong hover:text-ink"
+                                            }`}
+                                        >
+                                            {f.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <PriceSparkline trades={trades} conditions={chartFilter.conditions} />
+                                <p className="mt-2 text-[11.5px] text-faint">{chartFilter.label} 컨디션 낙찰가 기준</p>
                             </QueryState>
                         </div>
                     </section>
