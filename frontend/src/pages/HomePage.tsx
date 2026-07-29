@@ -15,10 +15,10 @@ export function HomePage() {
         queryKey: ["auctions", "home-ending"],
         queryFn: () => fetchAuctions({ status: "RUNNING", sort: "ending_soon", page: 0, size: 8 }),
     });
-    // 상태 필터 없이 전체(시작 전·낙찰·유찰 포함) — 진행 중이 없어도 등록된 경매가 보이게
-    const all = useQuery({
-        queryKey: ["auctions", "home-all"],
-        queryFn: () => fetchAuctions({ sort: "ending_soon", page: 0, size: 12 }),
+    // 시안의 "실시간 경매" — 진행 중인 것만 입찰 많은순으로. 마감 임박 레일과 같은 풀을 다른 축으로 보여준다
+    const live = useQuery({
+        queryKey: ["auctions", "home-live"],
+        queryFn: () => fetchAuctions({ status: "RUNNING", sort: "most_bids", page: 0, size: 12 }),
     });
 
     function submit(e: React.FormEvent) {
@@ -89,21 +89,21 @@ export function HomePage() {
             <section className="mt-9">
                 <div className="mb-3.5 flex items-baseline justify-between">
                     <div>
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-brand">전체</p>
-                        <h2 className="text-lg font-bold tracking-tight">등록된 경매</h2>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-brand">진행 중</p>
+                        <h2 className="text-lg font-bold tracking-tight">실시간 경매</h2>
                     </div>
                     <Link to="/feed" className="text-[13px] font-semibold text-muted hover:text-ink">
                         더 보기 →
                     </Link>
                 </div>
                 <QueryState
-                    isLoading={all.isPending}
-                    error={all.error}
-                    isEmpty={!all.data || all.data.items.length === 0}
-                    emptyMessage="등록된 경매가 없습니다. 시드 플래그(auction.seed.enabled)를 켜고 재기동했는지 확인하세요."
+                    isLoading={live.isPending}
+                    error={live.error}
+                    isEmpty={!live.data || live.data.items.length === 0}
+                    emptyMessage="진행 중인 경매가 없습니다. 시드 플래그(auction.seed.enabled)를 켜고 재기동했는지 확인하세요."
                 >
                     <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-                        {all.data?.items.map((auction) => (
+                        {live.data?.items.map((auction) => (
                             <AuctionCard key={auction.auctionId} auction={auction} />
                         ))}
                     </div>

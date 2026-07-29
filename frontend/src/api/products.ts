@@ -48,6 +48,24 @@ export function getPriceTrades(productId: string | number): Promise<PriceTradesR
     return apiGet<PriceTradesResponse>(`/api/v1/products/${productId}/price-trades`);
 }
 
+// GET /api/v1/products/{id}/price-summary — 컨디션별 낙찰가 통계 (거래가 있는 컨디션만 내려온다)
+export interface ConditionPriceSummary {
+    condition: string;
+    sampleCount: number;
+    averagePrice: number;
+    lowestPrice: number;
+    highestPrice: number;
+}
+
+export interface PriceSummaryResponse {
+    productId: number;
+    conditions: ConditionPriceSummary[];
+}
+
+export function getPriceSummary(productId: string | number): Promise<PriceSummaryResponse> {
+    return apiGet<PriceSummaryResponse>(`/api/v1/products/${productId}/price-summary`);
+}
+
 export function searchProducts(q: string, page: number, size = 20): Promise<ProductSearchResponse> {
     const params = new URLSearchParams({ q, page: String(page), size: String(size) });
     return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`);

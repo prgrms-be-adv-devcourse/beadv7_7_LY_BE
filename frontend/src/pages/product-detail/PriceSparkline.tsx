@@ -1,11 +1,21 @@
 import type { TradePoint } from "../../api/products";
 
-// M/NM 낙찰만 추이에 쓴다 — 하위 컨디션까지 섞으면 선이 상태 차이에 출렁여 시세 흐름이 안 보인다
+// 기본은 M/NM 낙찰만 — 하위 컨디션까지 섞으면 선이 상태 차이에 출렁여 시세 흐름이 안 보인다
 export const GRADED_CONDITIONS = ["MINT", "NEAR_MINT"];
 
-export function PriceSparkline({ trades, width = 460, height = 120 }: { trades: TradePoint[]; width?: number; height?: number }) {
+export function PriceSparkline({
+    trades,
+    conditions = GRADED_CONDITIONS,
+    width = 460,
+    height = 120,
+}: {
+    trades: TradePoint[];
+    conditions?: string[] | null; // null이면 전체 컨디션
+    width?: number;
+    height?: number;
+}) {
     const points = trades
-        .filter((t) => GRADED_CONDITIONS.includes(t.condition))
+        .filter((t) => conditions === null || conditions.includes(t.condition))
         .sort((a, b) => a.tradedAt.localeCompare(b.tradedAt));
     if (points.length < 2) {
         return <p className="text-sm text-muted">시세 데이터가 부족합니다.</p>;
