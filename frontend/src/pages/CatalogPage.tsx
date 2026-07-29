@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { browseProducts, searchProducts, type ProductSearchCard } from "../api/products";
+import { fetchProductList, searchProducts } from "../api/products";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { Pagination } from "../components/Pagination";
+import { formatWon } from "../components/AuctionCard";
 
 const PAGE_SIZE = 20;
 
@@ -23,7 +24,24 @@ function SkeletonGrid() {
     );
 }
 
-function ProductCard({ card }: { card: ProductSearchCard }) {
+// 검색 결과와 둘러보기 목록을 같은 카드로 그린다. 낙찰가·경매 수는 목록 API에만 있어서
+// 검색 결과에서는 undefined로 들어오고, 그때는 아래 통계 줄을 통째로 접는다
+interface CatalogCard {
+    productId: number;
+    title: string;
+    artistName: string;
+    coverImageUrl: string | null;
+    releaseYear: number;
+    pressType: string;
+    country?: string | null;
+    lastTradedPrice?: number | null;
+    openAuctionCount?: number | null;
+}
+
+function ProductCard({ card }: { card: CatalogCard }) {
+    const hasStats = card.lastTradedPrice !== undefined || card.openAuctionCount !== undefined;
+    const openCount = card.openAuctionCount ?? 0;
+
     return (
         <Link
             to={`/products/${card.productId}`}
@@ -32,39 +50,75 @@ function ProductCard({ card }: { card: ProductSearchCard }) {
             <VinylCover title={card.title} artist={card.artistName} imageUrl={card.coverImageUrl} />
             <div className="mt-2.5 truncate font-display text-sm font-bold">{card.title}</div>
             <div className="truncate text-xs text-muted">{card.artistName}</div>
-            <div className="mt-2 flex gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
                     {card.releaseYear}
                 </span>
                 <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
                     {card.pressType === "ORIGINAL" ? "오리지널" : "재발매"}
                 </span>
+                {card.country && (
+                    <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
+                        {card.country}
+                    </span>
+                )}
             </div>
+            {hasStats && (
+                <div className="mt-2.5 flex items-end justify-between border-t border-line pt-2.5">
+                    <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">최근 낙찰가</div>
+                        {card.lastTradedPrice !== null && card.lastTradedPrice !== undefined ? (
+                            <div className="font-mono text-sm font-bold tabular-nums text-up">
+                                {formatWon(card.lastTradedPrice)}
+                            </div>
+                        ) : (
+                            <div className="text-[13px] font-semibold text-faint">거래 없음</div>
+                        )}
+                    </div>
+                    <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            openCount > 0 ? "bg-live-bg text-live" : "bg-surface2 text-faint"
+                        }`}
+                    >
+                        {openCount > 0 ? `${openCount}건 경매중` : "경매 없음"}
+                    </span>
+                </div>
+            )}
         </Link>
     );
 }
 
-function BrowseList() {
+function BrowseList({ page, onPage }: { page: number; onPage: (page: number) => void }) {
     const query = useQuery({
-        queryKey: ["productBrowse"],
-        queryFn: browseProducts,
+        queryKey: ["productList", page],
+        queryFn: () => fetchProductList(page, PAGE_SIZE),
+        placeholderData: keepPreviousData,
     });
     return (
         <QueryState
             isLoading={query.isPending}
             error={query.error}
-            isEmpty={!query.data || query.data.length === 0}
+            isEmpty={!query.data || query.data.content.length === 0}
             emptyMessage="등록된 상품이 없습니다. 시드 플래그(product.seed.enabled)를 켜고 core-service를 재기동했는지 확인하세요."
             loadingFallback={<SkeletonGrid />}
         >
             <p className="mb-3 text-[13px] text-muted">
-                등록된 릴리스 <b className="font-mono tabular-nums">{query.data?.length}</b>건
+                등록된 릴리스 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
             </p>
-            <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-                {query.data?.map((card) => (
+            <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
+                {query.data?.content.map((card) => (
                     <ProductCard key={card.productId} card={card} />
                 ))}
             </div>
+            {query.data && (
+                <Pagination
+                    page={page}
+                    hasNext={query.data.hasNext}
+                    totalElements={query.data.totalElements}
+                    size={PAGE_SIZE}
+                    onPage={onPage}
+                />
+            )}
         </QueryState>
     );
 }
@@ -124,7 +178,7 @@ export function CatalogPage() {
             </div>
 
             {urlQuery.trim() === "" ? (
-                <BrowseList />
+                <BrowseList page={page} onPage={(next) => setSearchParams({ page: String(next) })} />
             ) : (
                 <QueryState
                     isLoading={query.isPending}
