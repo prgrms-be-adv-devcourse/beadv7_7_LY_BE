@@ -3,8 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
 import { loadSession } from "../auth/session";
 import { OrdersTab } from "./mypage/OrdersTab";
+import { SettlementsTab } from "./mypage/SettlementsTab";
 
-const TABS = [{ value: "orders", label: "주문" }] as const;
+const TABS = [
+    { value: "orders", label: "주문" },
+    { value: "settlements", label: "정산" },
+] as const;
 
 type TabValue = (typeof TABS)[number]["value"];
 
@@ -50,6 +54,7 @@ export function MyPage() {
                 ))}
             </nav>
             {tab === "orders" && <OrdersTab />}
+            {tab === "settlements" && <SettlementsTab />}
         </div>
     );
 }
