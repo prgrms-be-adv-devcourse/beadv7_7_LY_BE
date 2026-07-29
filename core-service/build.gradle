@@ -19,3 +19,11 @@ dependencies {
     // H2 (테스트)
     testRuntimeOnly 'com.h2database:h2'
 }
+
+tasks.named('jar') {
+    enabled = false
+}
+
+bootJar {
+    archiveFileName = 'core-service.jar'
+}
