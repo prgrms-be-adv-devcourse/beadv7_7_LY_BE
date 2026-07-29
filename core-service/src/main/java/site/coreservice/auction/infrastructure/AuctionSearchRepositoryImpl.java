@@ -32,7 +32,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     @Override
     public void updateFromAuction(Auction auction, ProductSnapshot product) {
         AuctionSearchView view = searchViewJpaRepository.findById(auction.getId()).orElseThrow(
-            () -> new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND));
+                () -> new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND));
         view.updateFromAuction(auction, product);
     }
 
@@ -44,21 +44,21 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     @Override
     public List<AuctionProductSummary> findAllSummaryByIds(List<Long> auctionIds) {
         return searchViewJpaRepository.findAllById(auctionIds).stream()
-            .map(v -> new AuctionProductSummary(v.getAuctionId(), v.getTitle(), v.getArtistName()))
-            .toList();
+                .map(v -> new AuctionProductSummary(v.getAuctionId(), v.getTitle(), v.getArtistName()))
+                .toList();
     }
 
     @Override
     public Page<AuctionListSummary> search(AuctionListQuery query, Pageable pageable) {
         AuctionSortType sortType = AuctionSortType.from(query.sort());
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
-            resolveSort(sortType));
+                resolveSort(sortType));
         AuctionStatus status = query.status() == null ? null : AuctionStatus.from(query.status());
         LocalDateTime now = LocalDateTime.now();
 
-        List<AuctionListSummary> content = findByStatus(query.genre(), query.pressType(), status,
-            now, sortedPageable);
-        long total = countByStatus(query.genre(), query.pressType(), status, now);
+        List<AuctionListSummary> content = findByStatus(query.productId(), query.genre(), query.pressType(), status,
+                now, sortedPageable);
+        long total = countByStatus(query.productId(), query.genre(), query.pressType(), status, now);
 
         return new PageImpl<>(content, sortedPageable, total);
     }
@@ -67,27 +67,26 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     // 상태 필터가 걸린 분기는 쿼리 자체가 이미 그 status만 골라온 것이므로 status를 그대로 넣어 매핑하고,
     // 필터가 없는 전체 조회만 행별로 시간/bidCount를 보고 status를 계산한다.
     // CANCELED는 애초에 삭제되는 행이라 조회 대상에서 항상 빈 결과를 반환한다.
-    private List<AuctionListSummary> findByStatus(String genre, String pressType,
-        AuctionStatus status,
-        LocalDateTime now, Pageable pageable) {
+    private List<AuctionListSummary> findByStatus(Long productId, String genre, String pressType,
+                                                  AuctionStatus status,
+                                                  LocalDateTime now, Pageable pageable) {
         if (status == null) {
-            return searchViewJpaRepository.searchAll(genre, pressType, pageable).stream()
-                .map(v -> toSummary(v, resolveStatus(v, now)))
-                .toList();
+            return searchViewJpaRepository.searchAll(productId, genre, pressType, pageable).stream()
+                    .map(v -> toSummary(v, resolveStatus(v, now)))
+                    .toList();
         }
         return switch (status) {
             case SCHEDULED ->
-                searchViewJpaRepository.searchScheduled(genre, pressType, now, pageable).stream()
-                    .map(v -> toSummary(v, AuctionStatus.SCHEDULED)).toList();
-            case RUNNING ->
-                searchViewJpaRepository.searchRunning(genre, pressType, now, pageable).stream()
+                    searchViewJpaRepository.searchScheduled(productId, genre, pressType, now, pageable).stream()
+                            .map(v -> toSummary(v, AuctionStatus.SCHEDULED)).toList();
+            case RUNNING -> searchViewJpaRepository.searchRunning(productId, genre, pressType, now, pageable).stream()
                     .map(v -> toSummary(v, AuctionStatus.RUNNING)).toList();
             case ENDED_WON ->
-                searchViewJpaRepository.searchEndedWon(genre, pressType, now, pageable).stream()
-                    .map(v -> toSummary(v, AuctionStatus.ENDED_WON)).toList();
+                    searchViewJpaRepository.searchEndedWon(productId, genre, pressType, now, pageable).stream()
+                            .map(v -> toSummary(v, AuctionStatus.ENDED_WON)).toList();
             case ENDED_FAILED ->
-                searchViewJpaRepository.searchEndedFailed(genre, pressType, now, pageable).stream()
-                    .map(v -> toSummary(v, AuctionStatus.ENDED_FAILED)).toList();
+                    searchViewJpaRepository.searchEndedFailed(productId, genre, pressType, now, pageable).stream()
+                            .map(v -> toSummary(v, AuctionStatus.ENDED_FAILED)).toList();
             case CANCELED -> List.of();
         };
     }
@@ -102,26 +101,25 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         return v.getBidCount() > 0 ? AuctionStatus.ENDED_WON : AuctionStatus.ENDED_FAILED;
     }
 
-    private long countByStatus(String genre, String pressType, AuctionStatus status,
-        LocalDateTime now) {
+    private long countByStatus(Long productId, String genre, String pressType, AuctionStatus status,
+                               LocalDateTime now) {
         if (status == null) {
-            return searchViewJpaRepository.countSearchAll(genre, pressType);
+            return searchViewJpaRepository.countSearchAll(productId, genre, pressType);
         }
         return switch (status) {
-            case SCHEDULED -> searchViewJpaRepository.countSearchScheduled(genre, pressType, now);
-            case RUNNING -> searchViewJpaRepository.countSearchRunning(genre, pressType, now);
-            case ENDED_WON -> searchViewJpaRepository.countSearchEndedWon(genre, pressType, now);
-            case ENDED_FAILED ->
-                searchViewJpaRepository.countSearchEndedFailed(genre, pressType, now);
+            case SCHEDULED -> searchViewJpaRepository.countSearchScheduled(productId, genre, pressType, now);
+            case RUNNING -> searchViewJpaRepository.countSearchRunning(productId, genre, pressType, now);
+            case ENDED_WON -> searchViewJpaRepository.countSearchEndedWon(productId, genre, pressType, now);
+            case ENDED_FAILED -> searchViewJpaRepository.countSearchEndedFailed(productId, genre, pressType, now);
             case CANCELED -> 0L;
         };
     }
 
     private AuctionListSummary toSummary(AuctionSearchView v, AuctionStatus status) {
         return new AuctionListSummary(v.getAuctionId(), v.getProductId(), v.getTitle(),
-            v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
-            v.getSellerId(), v.getSellerNickname(), status, v.getHighestBidAmount(),
-            v.getBidCount(), v.getStartAt(), v.getEndAt());
+                v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
+                v.getSellerId(), v.getSellerNickname(), status, v.getHighestBidAmount(),
+                v.getBidCount(), v.getStartAt(), v.getEndAt());
     }
 
     private Sort resolveSort(AuctionSortType sortType) {
@@ -135,9 +133,9 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
 
     @Override
     public void updateOnBid(Long auctionId, BigDecimal highestBidAmount, int bidCount,
-        LocalDateTime endAt) {
+                            LocalDateTime endAt) {
         AuctionSearchView view = searchViewJpaRepository.findById(auctionId).orElseThrow(
-            () -> new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND));
+                () -> new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND));
         view.updateOnBid(highestBidAmount, bidCount, endAt);
     }
 

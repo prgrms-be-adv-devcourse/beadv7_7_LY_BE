@@ -14,94 +14,104 @@ public interface AuctionSearchViewJpaRepository extends JpaRepository<AuctionSea
     // CANCELED는 삭제되는 행이라 여기 없음.
 
     @Query("""
-        SELECT v FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-        """)
-    List<AuctionSearchView> searchAll(@Param("genre") String genre,
-        @Param("pressType") String pressType, Pageable pageable);
+            SELECT v FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+            """)
+    List<AuctionSearchView> searchAll(@Param("productId") Long productId, @Param("genre") String genre,
+                                      @Param("pressType") String pressType, Pageable pageable);
 
     @Query("""
-        SELECT COUNT(v) FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-        """)
-    long countSearchAll(@Param("genre") String genre, @Param("pressType") String pressType);
+            SELECT COUNT(v) FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+            """)
+    long countSearchAll(@Param("productId") Long productId, @Param("genre") String genre, @Param("pressType") String pressType);
 
     @Query("""
-        SELECT v FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.startAt > :now
-        """)
-    List<AuctionSearchView> searchScheduled(@Param("genre") String genre,
-        @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now, Pageable pageable);
+            SELECT v FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.startAt > :now
+            """)
+    List<AuctionSearchView> searchScheduled(@Param("productId") Long productId, @Param("genre") String genre,
+                                            @Param("pressType") String pressType,
+                                            @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("""
-        SELECT COUNT(v) FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.startAt > :now
-        """)
-    long countSearchScheduled(@Param("genre") String genre, @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now);
+            SELECT COUNT(v) FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.startAt > :now
+            """)
+    long countSearchScheduled(@Param("productId") Long productId, @Param("genre") String genre, @Param("pressType") String pressType,
+                              @Param("now") LocalDateTime now);
 
     @Query("""
-        SELECT v FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.startAt <= :now AND v.endAt > :now
-        """)
-    List<AuctionSearchView> searchRunning(@Param("genre") String genre,
-        @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now, Pageable pageable);
+            SELECT v FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.startAt <= :now AND v.endAt > :now
+            """)
+    List<AuctionSearchView> searchRunning(@Param("productId") Long productId, @Param("genre") String genre,
+                                          @Param("pressType") String pressType,
+                                          @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("""
-        SELECT COUNT(v) FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.startAt <= :now AND v.endAt > :now
-        """)
-    long countSearchRunning(@Param("genre") String genre, @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now);
+            SELECT COUNT(v) FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.startAt <= :now AND v.endAt > :now
+            """)
+    long countSearchRunning(@Param("productId") Long productId, @Param("genre") String genre, @Param("pressType") String pressType,
+                            @Param("now") LocalDateTime now);
 
     @Query("""
-        SELECT v FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.endAt <= :now AND v.bidCount > 0
-        """)
-    List<AuctionSearchView> searchEndedWon(@Param("genre") String genre,
-        @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now, Pageable pageable);
+            SELECT v FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.endAt <= :now AND v.bidCount > 0
+            """)
+    List<AuctionSearchView> searchEndedWon(@Param("productId") Long productId, @Param("genre") String genre,
+                                           @Param("pressType") String pressType,
+                                           @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("""
-        SELECT COUNT(v) FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.endAt <= :now AND v.bidCount > 0
-        """)
-    long countSearchEndedWon(@Param("genre") String genre, @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now);
+            SELECT COUNT(v) FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.endAt <= :now AND v.bidCount > 0
+            """)
+    long countSearchEndedWon(@Param("productId") Long productId, @Param("genre") String genre, @Param("pressType") String pressType,
+                             @Param("now") LocalDateTime now);
 
     @Query("""
-        SELECT v FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.endAt <= :now AND v.bidCount = 0
-        """)
-    List<AuctionSearchView> searchEndedFailed(@Param("genre") String genre,
-        @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now, Pageable pageable);
+            SELECT v FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.endAt <= :now AND v.bidCount = 0
+            """)
+    List<AuctionSearchView> searchEndedFailed(@Param("productId") Long productId, @Param("genre") String genre,
+                                              @Param("pressType") String pressType,
+                                              @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("""
-        SELECT COUNT(v) FROM AuctionSearchView v
-        WHERE (:genre IS NULL OR v.genre = :genre)
-          AND (:pressType IS NULL OR v.pressType = :pressType)
-          AND v.endAt <= :now AND v.bidCount = 0
-        """)
-    long countSearchEndedFailed(@Param("genre") String genre, @Param("pressType") String pressType,
-        @Param("now") LocalDateTime now);
+            SELECT COUNT(v) FROM AuctionSearchView v
+            WHERE (:productId IS NULL OR v.productId = :productId)
+              AND (:genre IS NULL OR v.genre = :genre)
+              AND (:pressType IS NULL OR v.pressType = :pressType)
+              AND v.endAt <= :now AND v.bidCount = 0
+            """)
+    long countSearchEndedFailed(@Param("productId") Long productId, @Param("genre") String genre, @Param("pressType") String pressType,
+                                @Param("now") LocalDateTime now);
 
 }
