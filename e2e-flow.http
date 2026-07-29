@@ -1,0 +1,219 @@
+### e2e-flow.http
+### LP 경매 플랫폼 - 회원가입부터 정산까지 전체 흐름 수동 테스트
+### IntelliJ HTTP Client: 각 요청 왼쪽의 ▶ 를 눌러 위에서부터 순서대로 실행하세요.
+### docker nginx가 member-service/core-service를 묶어서 라우팅합니다. docker-compose.yml 상 nginx는
+### 컨테이너 80번을 호스트 81번에 매핑하므로(8081 아님) 전부 이 주소로 호출합니다.
+
+@baseUrl = http://localhost:81
+
+### nginx가 로그인/회원가입만 인증 없이 통과시키고, 나머지는 Authorization: Bearer {jwt} 를 검증해서
+### X-Member-Id로 바꿔 백엔드에 넘깁니다 (docker/local/volumes/nginx/nginx.conf 참고).
+### 그래서 3번부터는 전부 Authorization 헤더만 넣으면 됩니다 — X-Member-Id는 직접 넣을 필요 없음.
+### 토큰이 만료되면 2번(로그인)을 다시 실행해서 authToken을 새로 받으세요.
+
+
+### 1. 회원가입 (buyer)
+# 헤더 없음 (nginx 화이트리스트)
+POST {{baseUrl}}/api/v1/members
+Content-Type: application/json
+
+{
+  "email": "elmo6bf@gmail.com",
+  "password": "elmo1234!",
+  "nickName": "elmo",
+  "name": "양성욱",
+  "phoneNumber": "010-7713-5678",
+  "zipcode": "06671",
+  "baseAddress": "서울특별시 서초구 반포대로 45",
+  "detailAddress": "4층(서초동, 명정빌딩)"
+}
+
+
+### 2. 로그인 (buyer)
+# 헤더 없음 (nginx 화이트리스트) — 실행할 때마다 authToken을 새로 받아 아래 요청들에 자동 반영됩니다.
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "elmo6bf@gmail.com",
+  "password": "elmo1234!"
+}
+
+> {%
+    client.global.set("authToken", response.body.data.authToken);
+%}
+
+
+### 3-1. 예치금 충전 요청
+POST {{baseUrl}}/api/v1/deposits
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "amount": 100000
+}
+
+> {%
+    client.global.set("depositOrderId", response.body.data.orderId);
+    client.global.set("depositAmount", response.body.data.amount);
+%}
+
+
+### (3-2. PG사 callback — 주소 미구현, 스킵)
+
+
+### 3-3. 예치금 충전 확정
+# paymentKey는 실제 PG 연동이 없어 임의 문자열 사용 (실 PG 검증 로직이 있다면 여기서 막힐 수 있음)
+POST {{baseUrl}}/api/v1/deposits/confirm
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "paymentKey": "test-payment-key-1",
+  "orderId": "{{depositOrderId}}",
+  "amount": {{depositAmount}}
+}
+
+
+### 4. 예치금 잔액 조회
+# 주의: GET /api/v1/wallet/balance 는 현재 코드베이스에 컨트롤러가 없습니다 (WalletApplicationService만 존재).
+# 실행하면 404가 납니다 — 구현되면 그대로 쓸 수 있게 남겨둡니다.
+GET {{baseUrl}}/api/v1/wallet/balance
+Authorization: Bearer {{authToken}}
+
+
+### 5. 상품 검색
+GET {{baseUrl}}/api/v1/search/products?q=Abbey&page=0&size=20
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.global.set("productId", response.body.data.content[0].productId);
+%}
+
+
+### 6. 상품 상세 조회
+# productId는 위 검색 결과에서 자동으로 채워지거나, 직접 지정해서 실행하세요.
+GET {{baseUrl}}/api/v1/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+
+### 7. 상품 id로 경매 목록 조회
+# AuctionController list에 productId 필터가 있어 이걸로 조회 (전용 엔드포인트 아님)
+GET {{baseUrl}}/api/v1/auctions?productId={{productId}}&status=RUNNING&page=0&size=20
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.global.set("auctionId", response.body.data.items[0].auctionId);
+%}
+
+
+### 7-1. 경매 상세 조회
+# auctionId는 7번 응답에서 자동으로 채워지거나, 직접 지정해서 실행하세요.
+GET {{baseUrl}}/api/v1/auctions/{{auctionId}}
+Authorization: Bearer {{authToken}}
+
+
+### 8. 입찰
+# auctionId는 7번 응답에서 자동으로 채워지거나, 직접 지정해서 실행하세요.
+
+POST {{baseUrl}}/api/v1/auctions/{{auctionId}}/bids
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "bidAmount": 50000
+}
+
+
+### 9. 경매 검색
+GET {{baseUrl}}/api/v1/auctions?status=RUNNING&page=0&size=20
+Authorization: Bearer {{authToken}}
+
+
+### 10. 장바구니(관심 경매)에 추가
+PUT {{baseUrl}}/api/v1/members/me/watched-auctions/{{auctionId}}
+Authorization: Bearer {{authToken}}
+
+
+### 11. 장바구니 경매 목록 조회
+GET {{baseUrl}}/api/v1/members/me/watched-auctions
+Authorization: Bearer {{authToken}}
+
+
+### 12. 입찰 (경쟁 입찰 — 다른 회원으로 붙여보고 싶으면 그 계정으로 2번 로그인을 다시 실행해 authToken을 갱신한 뒤 실행)
+POST {{baseUrl}}/api/v1/auctions/{{auctionId}}/bids
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "bidAmount": 20000
+}
+
+
+### (13. 경매 마감 스케줄러 수동 트리거 — 주소 미구현, 스킵)
+### AuctionCloseScheduler는 @Scheduled로만 동작합니다. 마감을 보려면 endAt이 지날 때까지 기다리거나
+### 테스트 데이터의 endAt을 과거로 세팅해야 합니다.
+
+
+### 14. 주문 (배송지 입력)
+# orderId는 낙찰 후 시스템이 자동 생성하는 값입니다. 아래로 먼저 조회해서 채워 넣으세요.
+# GET {{baseUrl}}/api/v1/orders?perspective=buyer&status=PENDING&page=0&size=20
+# Authorization: Bearer {{authToken}}
+@orderId = 1
+
+POST {{baseUrl}}/api/v1/orders/{{orderId}}/place
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "recipientName": "김구매",
+  "phoneNumber": "01011112222",
+  "baseAddress": "서울시 강남구 테헤란로 123",
+  "detailAddress": "101동 202호"
+}
+
+
+### 15. 주문 확정
+POST {{baseUrl}}/api/v1/orders/{{orderId}}/complete
+Authorization: Bearer {{authToken}}
+
+
+### 판매자 로그인 (seller — 이미 시딩된 계정 이메일/비밀번호로 바꿔서 실행)
+# 헤더 없음 (nginx 화이트리스트)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "seller@example.com",
+  "password": "seller1234!"
+}
+
+> {%
+    client.global.set("sellerAuthToken", response.body.data.authToken);
+%}
+
+
+### 16. 판매자 예치금 잔액 조회
+# 4번과 동일하게 아직 미구현 (404 예상)
+GET {{baseUrl}}/api/v1/wallet/balance
+Authorization: Bearer {{sellerAuthToken}}
+
+
+### (17. 정산 배치 수동 트리거 — 주소 미구현, 스킵)
+### SettlementBatchScheduler도 @Scheduled(cron)로만 동작합니다.
+
+
+### 18. 판매자 예치금 잔액 조회 (정산 후)
+# 4번과 동일하게 아직 미구현 (404 예상)
+GET {{baseUrl}}/api/v1/wallet/balance
+Authorization: Bearer {{sellerAuthToken}}
+
+
+### 19. 예치금 인출 신청
+POST {{baseUrl}}/api/v1/wallet/withdraw/request
+Authorization: Bearer {{sellerAuthToken}}
+Content-Type: application/json
+
+{
+  "amount": 10000
+}

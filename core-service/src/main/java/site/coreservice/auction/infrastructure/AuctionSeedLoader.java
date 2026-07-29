@@ -36,7 +36,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AuctionSeedLoader implements CommandLineRunner {
 
-    private static final Long SEED_SELLER_ID = 1L;
+    private static final Long SEED_SELLER_ID = 111L;
     private static final String SEED_SELLER_NICKNAME = "시드 판매자";
 
     private final AuctionRepository auctionRepository;
@@ -48,9 +48,9 @@ public class AuctionSeedLoader implements CommandLineRunner {
     public void run(String... args) {
         final LocalDateTime now = LocalDateTime.now();
 
-        ensureScheduledAuction(1001L, now.minusMinutes(10)); // 이미 지남 -> 다음 폴링에 바로 시작
-        ensureScheduledAuction(1002L, now.plusMinutes(3));   // 조기 시작 폭(5분) 이내 -> 다음 폴링에 시작
-        ensureScheduledAuction(1003L, now.plusMinutes(10));  // 아직 멀었음 -> 시작 안 됨
+        ensureScheduledAuction(1L, now.minusMinutes(10)); // 이미 지남 -> 다음 폴링에 바로 시작
+        ensureScheduledAuction(2L, now.plusMinutes(3));   // 조기 시작 폭(5분) 이내 -> 다음 폴링에 시작
+        ensureScheduledAuction(3L, now.plusMinutes(10));  // 아직 멀었음 -> 시작 안 됨
 
         ensureRunningAuction(2001L, now.minusMinutes(5),
             HighestBid.of(Money.of(15_000L), 99L,

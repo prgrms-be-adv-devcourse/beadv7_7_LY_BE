@@ -17,7 +17,7 @@ public class SettlementBatchScheduler {
 
     private final SettlementBatchService settlementBatchService;
 
-    @Scheduled(cron = "0 0 0 25,26,27,28 * *")
+    @Scheduled(fixedDelay = 1000 * 10)
     public void createSettlementBatches() {
         LocalDateTime periodTo = currentPeriodTo();
         LocalDateTime periodFrom = periodTo.minusMonths(1);
@@ -33,6 +33,7 @@ public class SettlementBatchScheduler {
     }
 
     private LocalDateTime currentPeriodTo() {
-        return LocalDate.now().withDayOfMonth(SETTLEMENT_DAY_OF_MONTH).atStartOfDay();
+        return LocalDateTime.now();
+        //return LocalDate.now().withDayOfMonth(SETTLEMENT_DAY_OF_MONTH).atStartOfDay();
     }
 }

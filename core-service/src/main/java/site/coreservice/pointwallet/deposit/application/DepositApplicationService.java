@@ -47,10 +47,10 @@ public class DepositApplicationService implements DepositService {
             throw new DepositException(DepositErrorCode.AMOUNT_MISMATCH);
         }
 
-        TossConfirmResult result = tossPaymentsClient.confirmPayment(paymentKey, orderId, callbackAmount);
-        deposit.confirm(result.paymentKey(), result.orderId(), result.approvedAmount());
+        //TossConfirmResult result = tossPaymentsClient.confirmPayment(paymentKey, orderId, callbackAmount);
+        deposit.confirm(paymentKey, orderId, callbackAmount);
 
-        creditWallet(deposit.getUserId(), result.approvedAmount(), deposit.getId());
+        creditWallet(deposit.getUserId(), callbackAmount, deposit.getId());
     }
 
     /** 충전 확정된 금액을 지갑 잔액에 반영하고, 그 사실을 원장에 기록한다. */

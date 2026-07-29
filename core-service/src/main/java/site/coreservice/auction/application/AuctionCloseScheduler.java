@@ -16,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuctionCloseScheduler {
 
-    private static final long POLL_INTERVAL_MILLIS = 60_000L;
+    private static final long POLL_INTERVAL_MILLIS = 10_000L;
 
     // 마감 직전 입찰이 마감시간을 연장시킬 수 있어, endAt이 지나자마자 바로 닫으면
     // 연장 사항이 DB에 반영되기 전 상태를 읽고 마감시켜버릴 위험이 있어서,

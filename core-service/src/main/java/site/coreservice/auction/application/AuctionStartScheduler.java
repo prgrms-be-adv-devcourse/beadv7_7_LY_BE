@@ -18,7 +18,7 @@ import java.util.List;
 public class AuctionStartScheduler {
 
     //1분마다
-    private static final long POLL_INTERVAL_MILLIS = 60_000L;
+    private static final long POLL_INTERVAL_MILLIS = 10_000L;
 
     // 경매 시작 시간 설정 단위의 절반인 5분 전부터 상태 변경 시도
     // ex) 18:00 시작 경매 -> 17:55부터 1분 주기로 상태 변경 시도
