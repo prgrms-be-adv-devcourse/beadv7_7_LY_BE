@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
 import site.coreservice.auction.domain.Auction;
-import site.coreservice.auction.domain.AuctionStatus;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.Money;
 
@@ -61,10 +60,6 @@ public class AuctionSearchView {
     @Column(name = "seller_nickname", nullable = false)
     private String sellerNickname;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AuctionStatus status;
-
     @Column(name = "highest_bid_amount")
     private BigDecimal highestBidAmount;
 
@@ -77,7 +72,7 @@ public class AuctionSearchView {
     @Column(name = "end_at", nullable = false)
     private LocalDateTime endAt;
 
-    private AuctionSearchView(Long id, Long productId, String title, String artistName, Integer releaseYear, String genre, String pressType, ItemCondition itemCondition, String thumbnail, Long sellerId, String sellerNickname, AuctionStatus status, BigDecimal highestBidAmount, Integer bidCount, LocalDateTime startAt, LocalDateTime endAt) {
+    private AuctionSearchView(Long id, Long productId, String title, String artistName, Integer releaseYear, String genre, String pressType, ItemCondition itemCondition, String thumbnail, Long sellerId, String sellerNickname, BigDecimal highestBidAmount, Integer bidCount, LocalDateTime startAt, LocalDateTime endAt) {
         this.auctionId = id;
         this.productId = productId;
         this.title = title;
@@ -89,7 +84,6 @@ public class AuctionSearchView {
         this.thumbnail = thumbnail;
         this.sellerId = sellerId;
         this.sellerNickname = sellerNickname;
-        this.status = status;
         this.highestBidAmount = highestBidAmount;
         this.bidCount = bidCount;
         this.startAt = startAt;
@@ -112,16 +106,11 @@ public class AuctionSearchView {
                 thumbnail,
                 auction.getSellerId(),
                 sellerNickname,
-                auction.getStatus(),
                 currentPrice.getValue(),
                 0,
                 auction.getSchedule().getPeriod().getStartAt(),
                 auction.getSchedule().getPeriod().getEndAt()
         );
-    }
-
-    public void updateStatus(AuctionStatus status) {
-        this.status = status;
     }
 
     public void updateFromAuction(Auction auction, ProductSnapshot product) {

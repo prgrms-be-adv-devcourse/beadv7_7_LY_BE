@@ -16,14 +16,10 @@ public record InternalAuctionSnapshotResult(
 ) {
 
     public static InternalAuctionSnapshotResult from(Auction auction) {
-        BigDecimal currentPrice = auction.hasBid()
-            ? auction.getHighestBid().getAmount().getValue()
-            : auction.getPricing().startBidAmount().getValue();
-
         return new InternalAuctionSnapshotResult(
             auction.getId(),
             auction.getEffectiveStatusAt(LocalDateTime.now()),
-            currentPrice,
+            auction.getPricing().nextMinBidAmount(auction.getHighestBid()).getValue(),
             auction.getSchedule().getPeriod().getStartAt(),
             auction.getSchedule().getPeriod().getEndAt()
         );

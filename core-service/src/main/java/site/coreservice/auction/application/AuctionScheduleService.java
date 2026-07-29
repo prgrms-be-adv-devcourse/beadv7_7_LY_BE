@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.auction.application.port.AuctionSearchViewRepository;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionRepository;
 import site.coreservice.auction.domain.AuctionStatus;
@@ -19,7 +18,6 @@ import site.coreservice.auction.exception.AuctionException;
 public class AuctionScheduleService {
 
     private final AuctionRepository auctionRepository;
-    private final AuctionSearchViewRepository auctionSearchViewRepository;
 
     @Transactional
     protected Auction startAuction(final Long auctionId) {
@@ -28,7 +26,6 @@ public class AuctionScheduleService {
 
         auction.changeStatus(AuctionStatus.RUNNING);
         Auction saved = auctionRepository.save(auction);
-        auctionSearchViewRepository.updateStatus(saved);
         log.info("경매 시작 처리: auctionId={}", saved.getId());
         return saved;
     }
@@ -48,7 +45,6 @@ public class AuctionScheduleService {
     private Auction closeWithWinner(final Auction auction) {
         auction.changeStatus(AuctionStatus.ENDED_WON);
         Auction saved = auctionRepository.save(auction);
-        auctionSearchViewRepository.updateStatus(saved);
         log.info("경매 낙찰: auctionId={}, winnerId={}", saved.getId(),
             saved.getHighestBid().getBidderId());
         return saved;
@@ -57,7 +53,6 @@ public class AuctionScheduleService {
     private Auction closeWithoutWinner(final Auction auction) {
         auction.changeStatus(AuctionStatus.ENDED_FAILED);
         Auction saved = auctionRepository.save(auction);
-        auctionSearchViewRepository.updateStatus(saved);
         log.info("경매 유찰: auctionId={}", saved.getId());
         return saved;
     }

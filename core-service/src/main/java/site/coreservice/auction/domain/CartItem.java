@@ -24,10 +24,10 @@ public class CartItem extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "member_id")
+    @Column(name = "member_id", nullable = false)
     private Long memberId;
 
-    @Column(name = "auction_id")
+    @Column(name = "auction_id", nullable = false)
     private Long auctionId;
 
     protected CartItem() {
