@@ -11,6 +11,7 @@ import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.application.dto.AddressDto;
+import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.presentation.request.RegisterRequest;
 
 @RequiredArgsConstructor
@@ -25,6 +26,13 @@ public class MemberApiController {
         memberService.register(request.toCommand());
 
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/members/me")
+    public ResponseEntity<ApiResponse<MemberProfileDto>> getMyProfile(@MemberId final Long memberId) {
+        final MemberProfileDto memberProfile = memberService.getMemberProfile(memberId);
+
+        return ResponseEntity.ok(ApiResponse.success(memberProfile));
     }
 
     @GetMapping("/members/address")
