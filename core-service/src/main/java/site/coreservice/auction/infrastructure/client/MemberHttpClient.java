@@ -14,7 +14,6 @@ import site.coreservice.auction.application.port.MemberPort;
  * 로컬에서는 MockMemberClient로 대체하고, 추후 실제 API 확정되면 이 클라이언트로 교체 예정.
  */
 @Component
-@Profile("!local")
 @RequiredArgsConstructor
 public class MemberHttpClient implements MemberPort {
 
@@ -24,7 +23,7 @@ public class MemberHttpClient implements MemberPort {
     @Override
     public String getNickname(Long memberId) {
         ApiResponse<NicknameResponse> body = auctionRestClient.get()
-                .uri("/internal/v1/members/{memberId}/nickname", memberId)
+                .uri("/internal/v1/members/{memberId}/profile", memberId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 

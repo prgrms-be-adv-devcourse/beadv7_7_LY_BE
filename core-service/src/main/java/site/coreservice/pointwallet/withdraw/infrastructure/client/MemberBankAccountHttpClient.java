@@ -17,7 +17,6 @@ import java.util.Optional;
  * 로컬에서는 MockMemberBankAccountClient로 대체.
  */
 @Component
-@Profile("!local")
 public class MemberBankAccountHttpClient implements MemberBankAccountPort {
 
     private final RestClient memberRestClient;
