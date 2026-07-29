@@ -32,7 +32,7 @@ class ProductSearchServiceTest {
     private ProductSearchService productSearchService;
 
     private static final ProductSearchHit HIT =
-            new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL);
+            new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK");
 
     @Test
     @DisplayName("검색어가 없거나 공백이면 검색어 필수 예외를 던진다")

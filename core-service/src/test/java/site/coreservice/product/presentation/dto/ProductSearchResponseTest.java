@@ -17,7 +17,7 @@ class ProductSearchResponseTest {
     void from_명세_필드명으로_매핑() {
         // given
         ProductSearchResult result = new ProductSearchResult(
-                List.of(new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL)),
+                List.of(new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK")),
                 0, 20, 1L, false);
 
         // when
