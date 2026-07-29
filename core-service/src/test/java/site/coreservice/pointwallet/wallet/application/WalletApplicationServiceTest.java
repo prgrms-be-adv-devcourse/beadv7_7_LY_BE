@@ -1,5 +1,4 @@
 package site.coreservice.pointwallet.wallet.application;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,8 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ class WalletApplicationServiceTest {
 
     private static final Long USER_ID = 1L;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUp() {
         sut = new WalletApplicationService(walletRepository);
     }
@@ -127,6 +126,38 @@ class WalletApplicationServiceTest {
                     .isInstanceOf(InsufficientBalanceException.class);
 
             verify(walletRepository, never()).save(any(Wallet.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("잔액 조회 (getBalance)")
+    class GetBalance {
+
+        @Test
+        @DisplayName("지갑이 있으면 현재 잔액을 반환한다")
+        void getBalance_지갑이_있으면_잔액_반환() {
+            // given
+            Wallet wallet = walletWithBalance(Money.of(7_000));
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            // when
+            Money balance = sut.getBalance(USER_ID);
+
+            // then
+            assertThat(balance).isEqualTo(Money.of(7_000));
+        }
+
+        @Test
+        @DisplayName("지갑이 없으면 예외 없이 0원을 반환한다")
+        void getBalance_지갑이_없으면_0원() {
+            // given
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+            // when
+            Money balance = sut.getBalance(USER_ID);
+
+            // then
+            assertThat(balance).isEqualTo(Money.zero());
         }
     }
 }

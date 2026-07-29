@@ -1,5 +1,4 @@
 package site.coreservice.pointwallet.wallet.application;
-
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -55,5 +54,13 @@ public class WalletApplicationService implements WalletService {
     @Transactional(readOnly = true)
     public Optional<Long> findWalletId(Long userId) {
         return walletRepository.findByUserId(userId).map(Wallet::getId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Money getBalance(Long userId) {
+        return walletRepository.findByUserId(userId)
+                .map(Wallet::getBalance)
+                .orElse(Money.zero());
     }
 }
