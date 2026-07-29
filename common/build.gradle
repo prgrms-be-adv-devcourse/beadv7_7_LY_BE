@@ -7,4 +7,6 @@ dependencies {
     // api: common을 쓰는 모듈에게도 이 의존성이 그대로 전파된다.
     api 'org.springframework.boot:spring-boot-starter-webmvc'
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
