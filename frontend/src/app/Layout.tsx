@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getMyProfile } from "../api/members";
 import { clearSession, loadSession } from "../auth/session";
 
 const TABS = [
@@ -10,9 +12,16 @@ const TABS = [
 
 export function Layout() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     useLocation(); // 라우트 이동 시 세션 표시(로그인/로그아웃 직후)를 다시 읽기 위한 리렌더 트리거
     const [mini, setMini] = useState("");
-    const user = loadSession()?.displayName ?? null;
+    const session = loadSession();
+
+    // 로그인 응답에는 토큰만 들어 있어서 세션 이름은 이메일 앞부분(test123@... → test123)이다.
+    // 헤더에는 회원 정보의 닉네임을 쓰되, 아직 못 받았거나 조회가 실패하면 세션 이름으로 대신한다.
+    // 마이페이지 프로필과 같은 키를 써서 요청이 두 번 나가지 않는다
+    const profile = useQuery({ queryKey: ["member", "me"], queryFn: getMyProfile, enabled: session !== null });
+    const user = session === null ? null : (profile.data?.nickname ?? session.displayName);
 
     function submitMiniSearch(e: React.FormEvent) {
         e.preventDefault();
@@ -21,6 +30,9 @@ export function Layout() {
 
     function logout() {
         clearSession();
+        // 주문·정산·지갑은 모두 로그인한 사람 기준이라, 캐시를 비우지 않으면
+        // 다른 계정으로 다시 로그인했을 때 이전 사람의 내역이 잠깐 보인다
+        queryClient.clear();
         navigate("/");
     }
 
