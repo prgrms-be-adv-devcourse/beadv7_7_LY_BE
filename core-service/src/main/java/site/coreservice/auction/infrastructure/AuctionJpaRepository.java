@@ -1,16 +1,27 @@
 package site.coreservice.auction.infrastructure;
 
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface AuctionJpaRepository extends JpaRepository<Auction, Long> {
+
+    // 비관적 쓰기 락(SELECT ... FOR UPDATE) + 3초 타임아웃
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")})
+    @Query("SELECT a FROM Auction a WHERE a.id = :id")
+    Optional<Auction> findByIdForUpdate(@Param("id") Long id);
 
     @Query("SELECT a FROM Auction a WHERE a.status = :status AND a.schedule.period.startAt <= :threshold")
     List<Auction> findAllByStatusAndStartAtLessThanEqual(@Param("status") AuctionStatus status,

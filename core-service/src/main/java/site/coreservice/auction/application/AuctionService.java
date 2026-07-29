@@ -60,7 +60,7 @@ public class AuctionService {
 
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
-        Auction auction = auctionRepository.findById(command.auctionId())
+        Auction auction = auctionRepository.findByIdForUpdate(command.auctionId())
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
@@ -82,7 +82,7 @@ public class AuctionService {
 
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
-        Auction auction = auctionRepository.findById(auctionId)
+        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
@@ -201,7 +201,7 @@ public class AuctionService {
     public PlaceBidResult placeBid(PlaceBidCommand command) {
         LocalDateTime now = LocalDateTime.now();
 
-        Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        Auction auction = auctionRepository.findByIdForUpdate(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         Money amount = Money.from(command.amount());
 
         // 예치금 호출 전 사전 검증

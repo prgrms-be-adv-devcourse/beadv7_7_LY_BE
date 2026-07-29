@@ -32,6 +32,11 @@ public class AuctionRepositoryImpl implements AuctionRepository {
     }
 
     @Override
+    public Optional<Auction> findByIdForUpdate(Long id) {
+        return jpaRepository.findByIdForUpdate(id);
+    }
+
+    @Override
     public List<Auction> findAllScheduledToStart(LocalDateTime threshold) {
         return jpaRepository.findAllByStatusAndStartAtLessThanEqual(AuctionStatus.SCHEDULED,
             threshold);
