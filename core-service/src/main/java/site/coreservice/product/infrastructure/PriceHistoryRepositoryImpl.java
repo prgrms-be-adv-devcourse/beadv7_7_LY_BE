@@ -34,4 +34,12 @@ public class PriceHistoryRepositoryImpl implements PriceHistoryRepository {
         return priceHistoryJpaRepository
                 .findByProductIdAndOutlierFalseOrderByTradedAtDescIdDesc(productId, Limit.of(limit));
     }
+
+    @Override
+    public List<PriceHistory> findLatestTrades(List<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return List.of();
+        }
+        return priceHistoryJpaRepository.findLatestTradesByProductIds(productIds);
+    }
 }
