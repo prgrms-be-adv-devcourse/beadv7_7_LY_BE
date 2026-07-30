@@ -4,10 +4,17 @@ import { confirmDeposit, DEPOSIT_ALREADY_PROCESSED, DEPOSIT_PG_ERROR } from "../
 import { ApiError } from "../api/client";
 import { formatWon } from "../components/AuctionCard";
 
-// 앱 승인이 끝나기를 기다리는 폭. 실제로 결제 생성부터 승인까지 1분 넘게 걸린 사례가 있어
-// 넉넉히 잡는다 (5초 × 12회 ≈ 1분)
-const CONFIRM_RETRIES = 12;
-const CONFIRM_RETRY_DELAY_MS = 5000;
+// 앱 승인이 끝나기를 기다리는 폭. 결제 생성부터 승인까지 77초가 걸린 사례가 있어 그보다 넉넉히 잡는다.
+// 간격을 두 배씩 늘리는 이유: 거절 사유가 "요청량이 초과되었습니다"일 수도 있는데,
+// 그때 짧은 간격으로 계속 두드리면 상황을 더 나쁘게 만든다.
+// 서버가 결제사 오류를 코드 하나로 묶어 보내서 프론트는 둘을 구분할 수 없다 — 그래서 어느 쪽이든
+// 안전한 간격을 쓴다. 5번 재시도로 95초를 덮는다 (요청은 모두 6번)
+const CONFIRM_RETRIES = 6;
+const CONFIRM_MAX_DELAY_MS = 30_000;
+
+function confirmRetryDelay(attempt: number): number {
+    return Math.min(5000 * 2 ** attempt, CONFIRM_MAX_DELAY_MS);
+}
 
 // 결제를 마치면 토스가 이 주소로 되돌려 보내면서 결제 정보를 쿼리 문자열에 붙여준다.
 // 이 시점엔 아직 승인 전이라, 여기서 승인 API를 불러야 잔액에 반영된다
@@ -42,7 +49,7 @@ export function PaymentSuccessPage() {
         enabled: hasParams,
         retry: (failureCount, error) =>
             error instanceof ApiError && error.code === DEPOSIT_PG_ERROR && failureCount < CONFIRM_RETRIES,
-        retryDelay: CONFIRM_RETRY_DELAY_MS,
+        retryDelay: confirmRetryDelay,
         staleTime: Infinity,
         gcTime: Infinity,
     });
