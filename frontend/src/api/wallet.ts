@@ -70,6 +70,12 @@ export function confirmDeposit(paymentKey: string, orderId: string, amount: numb
     return apiPost<void>("/api/v1/deposits/confirm", { paymentKey, orderId, amount });
 }
 
+// 이 충전은 이미 반영이 끝났다는 응답. 앞선 시도가 통과한 뒤 한 번 더 부르면 이게 온다
+export const DEPOSIT_ALREADY_PROCESSED = "DERR-3001";
+// 결제사가 승인을 거절했다는 응답. QR·앱 결제처럼 승인이 늦게 끝나는 흐름에서는
+// 아직 승인 전이라 거절된 것일 수 있어, 잠시 뒤 다시 물어보면 통과한다
+export const DEPOSIT_PG_ERROR = "DERR-3008";
+
 // POST /api/v1/deposits/{depositId}/cancel — 충전을 되돌린다.
 // 서버가 사유를 필수로 받고, 잔액이 충전액보다 적으면 거절한다
 export function cancelDeposit(depositId: number, reason: string): Promise<void> {
