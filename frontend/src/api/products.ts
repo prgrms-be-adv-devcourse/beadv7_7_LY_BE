@@ -71,20 +71,32 @@ export function searchProducts(q: string, page: number, size = 20): Promise<Prod
     return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`);
 }
 
-// 임시 트릭 — 전체 상품 목록 API가 없어서(검색은 q 필수), 모음 글자 브로드 검색 여러 번을 합쳐
-// 근사 전체 목록을 만든다. 제목·아티스트·별칭 어디든 해당 글자가 있으면 걸리는 LIKE 검색이라
-// 로마자 표기 별칭이 있는 시드 상품은 대부분 잡힌다. 목록 API가 생기면 이 함수를 교체할 것.
-const BROWSE_PROBES = ["a", "e", "i", "o", "u"];
+// GET /api/v1/products — 카탈로그 둘러보기 목록.
+// 검색(/search/products)과 달리 최근 낙찰가와 진행 중 경매 수까지 같이 내려준다.
+export interface ProductListCard {
+    productId: number;
+    title: string;
+    artistName: string;
+    coverImageUrl: string | null;
+    releaseYear: number;
+    pressType: string;
+    country: string | null;
+    // 낙찰된 적이 없으면 null. 경매 수는 경매 쪽 조회가 실패했을 때도 null로 온다
+    lastTradedPrice: number | null;
+    openAuctionCount: number | null;
+}
 
-export async function browseProducts(): Promise<ProductSearchCard[]> {
-    const pages = await Promise.all(BROWSE_PROBES.map((probe) => searchProducts(probe, 0, 100)));
-    const byId = new Map<number, ProductSearchCard>();
-    for (const page of pages) {
-        for (const card of page.content) {
-            byId.set(card.productId, card);
-        }
-    }
-    return [...byId.values()].sort((a, b) => a.title.localeCompare(b.title));
+export interface ProductListResponse {
+    content: ProductListCard[];
+    page: number;
+    size: number;
+    totalElements: number;
+    hasNext: boolean;
+}
+
+export function fetchProductList(page: number, size = 20): Promise<ProductListResponse> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return apiGet<ProductListResponse>(`/api/v1/products?${params}`);
 }
 
 export function getProductDetail(productId: string | number): Promise<ProductDetail> {

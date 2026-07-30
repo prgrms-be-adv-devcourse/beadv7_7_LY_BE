@@ -2,12 +2,15 @@ interface PaginationProps {
     page: number;
     hasNext: boolean;
     totalElements?: number;
+    // 총 개수 없이 페이지 수만 내려주는 API(지갑 거래 내역)용 — 있으면 totalElements 계산보다 우선한다
+    totalPageCount?: number;
     size: number;
     onPage: (page: number) => void;
 }
 
-export function Pagination({ page, hasNext, totalElements, size, onPage }: PaginationProps) {
-    const totalPages = totalElements !== undefined ? Math.max(1, Math.ceil(totalElements / size)) : null;
+export function Pagination({ page, hasNext, totalElements, totalPageCount, size, onPage }: PaginationProps) {
+    const totalPages =
+        totalPageCount ?? (totalElements !== undefined ? Math.max(1, Math.ceil(totalElements / size)) : null);
     return (
         <nav aria-label="페이지 이동" className="mt-8 flex items-center justify-center gap-4">
             <button
