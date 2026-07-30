@@ -64,6 +64,18 @@ export function requestDeposit(amount: number): Promise<DepositRequestResult> {
     return apiPost<DepositRequestResult>("/api/v1/deposits", { amount });
 }
 
+// POST /api/v1/deposits/{depositId}/cancel — 충전을 되돌린다.
+// 서버가 사유를 필수로 받고, 잔액이 충전액보다 적으면 거절한다
+export function cancelDeposit(depositId: number, reason: string): Promise<void> {
+    return apiPost<void>(`/api/v1/deposits/${depositId}/cancel`, { reason });
+}
+
+// 충전 요청 응답에는 취소에 쓸 id가 없다. 대신 충전이 반영될 때 남는 거래 기록에
+// 그 충전 건의 id가 함께 저장되므로, 충전 기록에서 되짚어 쓴다
+export function findDepositId(transaction: PointTransaction): number | null {
+    return transaction.type === "DEPOSIT" ? transaction.relatedAuctionId : null;
+}
+
 const TRANSACTION_TYPE_LABELS: Record<string, string> = {
     DEPOSIT: "충전",
     HOLD: "입찰 보증금 차감",

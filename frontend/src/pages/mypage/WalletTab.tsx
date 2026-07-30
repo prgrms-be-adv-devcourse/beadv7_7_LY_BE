@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+    cancelDeposit,
     fetchPointTransactions,
+    findDepositId,
     formatTransactionType,
     getWalletBalance,
     isIncomingTransaction,
     MIN_DEPOSIT_AMOUNT,
     requestDeposit,
     type DepositRequestResult,
+    type PointTransaction,
 } from "../../api/wallet";
 import { ApiError } from "../../api/client";
 import { formatWon } from "../../components/AuctionCard";
@@ -88,31 +91,9 @@ export function WalletTab() {
                 emptyMessage="조건에 맞는 거래 내역이 없습니다."
             >
                 <ul className={`flex flex-col gap-2 ${transactions.isFetching ? "opacity-60" : ""}`}>
-                    {transactions.data?.content.map((tx) => {
-                        const incoming = isIncomingTransaction(tx.type);
-                        return (
-                            <li
-                                key={tx.transactionId}
-                                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-surface px-4 py-3"
-                            >
-                                <span className="rounded-md bg-surface2 px-2 py-0.5 text-[11px] font-bold text-muted">
-                                    {formatTransactionType(tx.type)}
-                                </span>
-                                <span className="text-[13px] text-muted">{formatDateTime(tx.createdAt)}</span>
-                                {tx.relatedAuctionId !== null && (
-                                    <span className="font-mono text-[11px] text-faint">연관 {tx.relatedAuctionId}</span>
-                                )}
-                                <span
-                                    className={`ml-auto font-mono text-base font-bold tabular-nums ${
-                                        incoming ? "text-up" : "text-ink"
-                                    }`}
-                                >
-                                    {incoming ? "+" : "-"}
-                                    {formatWon(tx.amount)}
-                                </span>
-                            </li>
-                        );
-                    })}
+                    {transactions.data?.content.map((tx) => (
+                        <TransactionRow key={tx.transactionId} transaction={tx} />
+                    ))}
                 </ul>
                 {transactions.data && (
                     <Pagination
@@ -125,6 +106,94 @@ export function WalletTab() {
                 )}
             </QueryState>
         </div>
+    );
+}
+
+function TransactionRow({ transaction }: { transaction: PointTransaction }) {
+    const queryClient = useQueryClient();
+    const [reason, setReason] = useState("");
+    const [open, setOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const incoming = isIncomingTransaction(transaction.type);
+    const depositId = findDepositId(transaction);
+
+    const cancel = useMutation({
+        mutationFn: () => cancelDeposit(depositId as number, reason.trim()),
+        onSuccess: () => {
+            setError(null);
+            setOpen(false);
+            setReason("");
+            queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        },
+        onError: (e: unknown) => {
+            setError(e instanceof ApiError ? e.message : "충전 취소 중 문제가 생겼습니다.");
+        },
+    });
+
+    function submit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!reason.trim()) {
+            setError("취소 사유를 입력해야 합니다.");
+            return;
+        }
+        cancel.mutate();
+    }
+
+    return (
+        <li className="rounded-xl border border-line bg-surface px-4 py-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="rounded-md bg-surface2 px-2 py-0.5 text-[11px] font-bold text-muted">
+                    {formatTransactionType(transaction.type)}
+                </span>
+                <span className="text-[13px] text-muted">{formatDateTime(transaction.createdAt)}</span>
+                {transaction.relatedAuctionId !== null && (
+                    <span className="font-mono text-[11px] text-faint">연관 {transaction.relatedAuctionId}</span>
+                )}
+                {depositId !== null && (
+                    <button
+                        type="button"
+                        onClick={() => setOpen(!open)}
+                        aria-expanded={open}
+                        className="rounded-lg border border-line bg-paper px-2.5 py-1 text-[11px] font-semibold text-muted hover:border-line-strong hover:text-ink"
+                    >
+                        {open ? "취소 닫기" : "충전 취소"}
+                    </button>
+                )}
+                <span
+                    className={`ml-auto font-mono text-base font-bold tabular-nums ${
+                        incoming ? "text-up" : "text-ink"
+                    }`}
+                >
+                    {incoming ? "+" : "-"}
+                    {formatWon(transaction.amount)}
+                </span>
+            </div>
+            {open && depositId !== null && (
+                <form onSubmit={submit} className="mt-3 border-t border-line pt-3">
+                    <p className="mb-2 text-[12px] text-muted">
+                        충전한 {formatWon(transaction.amount)}을 결제사에서 되돌리고 잔액에서도 뺍니다. 잔액이 이보다
+                        적으면 취소할 수 없습니다.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="취소 사유 (예: 단순 변심)"
+                            aria-label="충전 취소 사유"
+                            className="w-56 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] outline-none focus:border-line-strong"
+                        />
+                        <button
+                            type="submit"
+                            disabled={cancel.isPending}
+                            className="rounded-lg bg-live px-3 py-1.5 text-xs font-semibold text-white hover:bg-live/90 disabled:opacity-50"
+                        >
+                            {cancel.isPending ? "처리 중…" : "충전 취소하기"}
+                        </button>
+                    </div>
+                    {error && <p className="mt-2 text-xs font-semibold text-live">{error}</p>}
+                </form>
+            )}
+        </li>
     );
 }
 
