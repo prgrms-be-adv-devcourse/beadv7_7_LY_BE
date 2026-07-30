@@ -4,6 +4,9 @@ interface ImportMetaEnv {
     // 토스 결제위젯 클라이언트 키. 브라우저에 실려 나가는 공개 키라 프론트에만 둔다.
     // 시크릿 키는 백엔드가 결제 승인에 쓰는 값이라 여기 오면 안 된다
     readonly VITE_TOSS_CLIENT_KEY?: string;
+
+    // 백엔드(게이트웨이) 주소. 비워두면 개발 서버의 중계 설정을 탄다
+    readonly VITE_API_BASE_URL?: string;
 }
 
 interface ImportMeta {
