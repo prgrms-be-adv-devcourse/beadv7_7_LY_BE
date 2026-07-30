@@ -203,6 +203,7 @@ jobs:
           
           if [ ! -f .core-service-secret ]; then
             touch .core-service-secret
+          fi
 
       - name: Start new server application
         id: start-new-server-application
