@@ -5,11 +5,13 @@ import { loadSession } from "../auth/session";
 import { OrdersTab } from "./mypage/OrdersTab";
 import { SettlementsTab } from "./mypage/SettlementsTab";
 import { WalletTab } from "./mypage/WalletTab";
+import { LikedProductsTab } from "./mypage/LikedProductsTab";
 
 const TABS = [
     { value: "orders", label: "주문" },
     { value: "settlements", label: "정산" },
     { value: "wallet", label: "지갑" },
+    { value: "liked", label: "찜한 상품" },
 ] as const;
 
 type TabValue = (typeof TABS)[number]["value"];
@@ -58,6 +60,7 @@ export function MyPage() {
             {tab === "orders" && <OrdersTab />}
             {tab === "settlements" && <SettlementsTab />}
             {tab === "wallet" && <WalletTab />}
+            {tab === "liked" && <LikedProductsTab />}
         </div>
     );
 }
