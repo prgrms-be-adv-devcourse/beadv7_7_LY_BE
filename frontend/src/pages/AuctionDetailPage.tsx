@@ -6,6 +6,7 @@ import { ApiError } from "../api/client";
 import { loadSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
+import { WatchButton } from "../components/WatchButton";
 import { formatWon } from "../components/AuctionCard";
 import { VuCountdown } from "./auction-detail/VuCountdown";
 import { BidLog } from "./auction-detail/BidLog";
@@ -131,13 +132,22 @@ export function AuctionDetailPage() {
                     <div className="grid items-start gap-7 md:grid-cols-[1fr_380px]">
                         <div>
                             <div className="grid items-start gap-6 sm:grid-cols-[220px_1fr]">
-                                <VinylCover
-                                    title={auction.product.title}
-                                    artist={auction.product.artistName}
-                                    imageUrl={auction.product.coverImageUrl}
-                                    spin={auction.status === "RUNNING"}
-                                    className="rounded-xl shadow"
-                                />
+                                <div>
+                                    <VinylCover
+                                        title={auction.product.title}
+                                        artist={auction.product.artistName}
+                                        imageUrl={auction.product.coverImageUrl}
+                                        spin={auction.status === "RUNNING"}
+                                        className="rounded-xl shadow"
+                                    />
+                                    <div className="mt-3">
+                                        <WatchButton
+                                            auctionId={auction.auctionId}
+                                            status={auction.status}
+                                            variant="inline"
+                                        />
+                                    </div>
+                                </div>
                                 <div>
                                     <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-balance">
                                         <Link to={`/products/${auction.product.productId}`} className="hover:underline">
