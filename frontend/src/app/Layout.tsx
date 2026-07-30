@@ -81,6 +81,12 @@ export function Layout() {
                     </form>
                     {user ? (
                         <div className="flex items-center gap-2 text-sm">
+                            <Link
+                                to="/auctions/new"
+                                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] font-semibold hover:border-line-strong"
+                            >
+                                경매 등록
+                            </Link>
                             <NavLink
                                 to="/mypage"
                                 className={({ isActive }) =>
