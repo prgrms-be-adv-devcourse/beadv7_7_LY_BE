@@ -124,6 +124,19 @@ export function formatCondition(condition: string): string {
     return CONDITION_LABELS[condition] ?? condition;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+    SCHEDULED: "시작 전",
+    RUNNING: "진행 중",
+    CLOSING: "낙찰 처리 중",
+    ENDED_WON: "낙찰 완료",
+    ENDED_FAILED: "유찰",
+    CANCELED: "취소됨",
+};
+
+export function formatAuctionStatus(status: string): string {
+    return STATUS_LABELS[status] ?? status;
+}
+
 export function parseServerTime(value: string): number {
     return new Date(value).getTime();
 }
