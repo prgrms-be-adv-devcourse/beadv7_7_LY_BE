@@ -9,10 +9,13 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import site.coreservice.auction.application.port.dto.ProductDetail;
 import site.coreservice.auction.application.port.dto.ProductSnapshot;
+import site.coreservice.auction.exception.UpstreamContractViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class ProductHttpClientTest {
@@ -79,6 +82,32 @@ class ProductHttpClientTest {
         ProductDetail detail = productHttpClient.getProductDetail(100L);
 
         assertThat(detail).isEqualTo(new ProductDetail(100L, "Test Album", "Test Artist", "http://image.example.com/1.png", 2020, "Rock", "LP", true));
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("product 서버가 404를 반환하면 계약 위반 예외를 던진다")
+    void testGetProduct_notFound_throwsContractViolation() {
+        server.expect(requestTo("http://localhost:8080/internal/v1/products/100/snapshot"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withResourceNotFound());
+
+        assertThatThrownBy(() -> productHttpClient.getProduct(100L))
+                .isInstanceOf(UpstreamContractViolationException.class);
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("product 서버 응답이 성공인데 data가 없으면 계약 위반 예외를 던진다")
+    void testGetProduct_emptyData_throwsContractViolation() {
+        server.expect(requestTo("http://localhost:8080/internal/v1/products/100/snapshot"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"success":true,"data":null,"error":{"code":null,"message":null}}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> productHttpClient.getProduct(100L))
+                .isInstanceOf(UpstreamContractViolationException.class);
         server.verify();
     }
 }

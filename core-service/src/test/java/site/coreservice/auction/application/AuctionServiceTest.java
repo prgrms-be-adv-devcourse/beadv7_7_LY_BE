@@ -181,6 +181,24 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("판매 중단된 상품이면 예외를 던지고 경매를 저장하지 않는다")
+    void testCreateAuction_productNotActive_throws() {
+        // given
+        ProductSnapshot inactiveProduct =
+                new ProductSnapshot(100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", false);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(productPort.getProduct(100L)).willReturn(inactiveProduct);
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.createAuction(validCommand("MINT"), 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.PRODUCT_NOT_ACTIVE);
+        verify(auctionRepository, never()).save(any());
+        verify(searchViewRepository, never()).save(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("SCHEDULED 상태여도 시작 시각이 지났으면 실제로는 RUNNING이라 경매를 수정할 수 없다")
     void testModifyAuction_scheduledStatus_afterStartTime_throws() {
         // given
@@ -266,6 +284,24 @@ class AuctionServiceTest {
         // then
         verify(productPort).getProduct(200L);
         verify(searchViewRepository).updateFromAuction(auction, productSnapshot);
+    }
+
+    @Test
+    @DisplayName("변경된 상품이 판매 중단 상태면 예외를 던지고 서치 뷰를 갱신하지 않는다")
+    void testModifyAuction_productIdChanged_productNotActive_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
+        ProductSnapshot inactiveProduct =
+                new ProductSnapshot(200L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", false);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProduct(200L)).willReturn(inactiveProduct);
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 200L, FUTURE_START, FUTURE_END), 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.PRODUCT_NOT_ACTIVE);
+        verify(searchViewRepository, never()).updateFromAuction(any(), any());
     }
 
     @Test
