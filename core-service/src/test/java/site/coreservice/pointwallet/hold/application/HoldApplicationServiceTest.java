@@ -102,7 +102,7 @@ class HoldApplicationServiceTest {
             assertThatThrownBy(() -> sut.hold(AUCTION_ID, BIDDER_ID, AMOUNT))
                     .isInstanceOf(HoldException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
-                    .isEqualTo(HoldErrorCode.WALLET_NOT_FOUND);
+                    .isEqualTo(HoldErrorCode.INSUFFICIENT_BALANCE);
 
             verify(holdRepository, never()).save(any(Hold.class));
             verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
