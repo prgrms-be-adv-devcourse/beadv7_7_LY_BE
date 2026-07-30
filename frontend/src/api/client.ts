@@ -22,7 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
         res = await fetch(path, init);
     } catch {
-        throw new ApiError("NETWORK", "서버에 연결할 수 없습니다. 백엔드가 켜져 있는지 확인하세요.", 0);
+        throw new ApiError("NETWORK", "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.", 0);
     }
     const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
     if (!res.ok || !body || !body.success) {
@@ -51,4 +51,24 @@ export function apiPost<T>(path: string, payload?: unknown): Promise<T> {
         headers: { "Content-Type": "application/json", ...memberHeaders() },
         body: payload === undefined ? undefined : JSON.stringify(payload),
     });
+}
+
+export function apiPut<T>(path: string, payload?: unknown): Promise<T> {
+    return request<T>(path, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...memberHeaders() },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+}
+
+export function apiPatch<T>(path: string, payload?: unknown): Promise<T> {
+    return request<T>(path, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...memberHeaders() },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+    return request<T>(path, { method: "DELETE", headers: memberHeaders() });
 }

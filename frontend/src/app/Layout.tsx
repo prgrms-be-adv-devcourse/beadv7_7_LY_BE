@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
@@ -14,7 +13,6 @@ export function Layout() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     useLocation(); // 라우트 이동 시 세션 표시(로그인/로그아웃 직후)를 다시 읽기 위한 리렌더 트리거
-    const [mini, setMini] = useState("");
     const session = loadSession();
 
     // 로그인 응답에는 토큰만 들어 있어서 세션 이름은 이메일 앞부분(test123@... → test123)이다.
@@ -22,11 +20,6 @@ export function Layout() {
     // 마이페이지 프로필과 같은 키를 써서 요청이 두 번 나가지 않는다
     const profile = useQuery({ queryKey: ["member", "me"], queryFn: getMyProfile, enabled: session !== null });
     const user = session === null ? null : (profile.data?.nickname ?? session.displayName);
-
-    function submitMiniSearch(e: React.FormEvent) {
-        e.preventDefault();
-        if (mini.trim()) navigate(`/catalog?q=${encodeURIComponent(mini.trim())}`);
-    }
 
     function logout() {
         clearSession();
@@ -49,7 +42,7 @@ export function Layout() {
                                     "radial-gradient(circle, var(--color-paper) 0 14%, var(--color-ink) 15% 17%, var(--color-ink) 18% 100%)",
                             }}
                         />
-                        <b className="text-base">Groove</b>
+                        <b className="text-base">Groovid</b>
                         <span className="text-[11px] font-semibold uppercase tracking-widest text-faint">LP Auction</span>
                     </Link>
                     <nav className="flex gap-0.5" aria-label="주요 화면">
@@ -69,18 +62,14 @@ export function Layout() {
                         ))}
                     </nav>
                     <div className="grow" />
-                    <form onSubmit={submitMiniSearch} className="hidden items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-faint sm:flex">
-                        <span aria-hidden="true">⌕</span>
-                        <input
-                            value={mini}
-                            onChange={(e) => setMini(e.target.value)}
-                            placeholder="릴리스·아티스트 검색"
-                            aria-label="검색"
-                            className="w-40 bg-transparent text-ink outline-none placeholder:text-faint"
-                        />
-                    </form>
                     {user ? (
                         <div className="flex items-center gap-2 text-sm">
+                            <Link
+                                to="/auctions/new"
+                                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] font-semibold hover:border-line-strong"
+                            >
+                                경매 등록
+                            </Link>
                             <NavLink
                                 to="/mypage"
                                 className={({ isActive }) =>
@@ -112,8 +101,9 @@ export function Layout() {
                 <Outlet />
             </main>
             <footer className="mx-auto max-w-[1180px] px-5 pb-12 text-xs text-faint">
-                <div className="rounded-lg border border-dashed border-line-strong bg-surface px-4 py-3">
-                    개인 확인용 프론트 — 검색·상품·시세는 core-service(8080), 경매·입찰은 core-service, 로그인은 member-service(8081) 실제 API입니다.
+                <div className="border-t border-line pt-5">
+                    <b className="text-[13px] text-muted">Groovid</b>
+                    <span className="ml-2">희귀 LP를 경매로 사고파는 곳</span>
                 </div>
             </footer>
         </div>

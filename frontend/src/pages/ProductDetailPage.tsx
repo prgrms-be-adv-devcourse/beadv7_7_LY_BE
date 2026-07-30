@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getPriceSummary, getPriceTrades, getProductDetail } from "../api/products";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
+import { LikeButton } from "../components/LikeButton";
 import { formatWon } from "../components/AuctionCard";
 import { GRADED_CONDITIONS, PriceSparkline } from "./product-detail/PriceSparkline";
+import { OpenAuctionList } from "./product-detail/OpenAuctionList";
 
 // 요약 카드 머리글용 짧은 컨디션 표기 (백엔드 MediaCondition enum 이름 기준)
 const CONDITION_SHORT: Record<string, string> = {
@@ -70,13 +72,18 @@ export function ProductDetailPage() {
                         ← 카탈로그로
                     </Link>
                     <div className="grid items-start gap-7 md:grid-cols-[260px_1fr]">
-                        <VinylCover
-                            title={detail.title}
-                            artist={detail.artist.name}
-                            imageUrl={detail.coverImageUrl}
-                            spin
-                            className="max-w-[260px] rounded-xl shadow"
-                        />
+                        <div className="max-w-[260px]">
+                            <VinylCover
+                                title={detail.title}
+                                artist={detail.artist.name}
+                                imageUrl={detail.coverImageUrl}
+                                spin
+                                className="rounded-xl shadow"
+                            />
+                            <div className="mt-3">
+                                <LikeButton productId={detail.productId} variant="inline" />
+                            </div>
+                        </div>
                         <div>
                             <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-balance">
                                 {detail.title}
@@ -118,6 +125,8 @@ export function ProductDetailPage() {
                             )}
                         </div>
                     </div>
+
+                    <OpenAuctionList productId={detail.productId} />
 
                     <section className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                         <div className="flex items-center justify-between border-b border-line px-5 py-4">

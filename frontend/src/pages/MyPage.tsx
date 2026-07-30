@@ -5,11 +5,19 @@ import { loadSession } from "../auth/session";
 import { OrdersTab } from "./mypage/OrdersTab";
 import { SettlementsTab } from "./mypage/SettlementsTab";
 import { WalletTab } from "./mypage/WalletTab";
+import { LikedProductsTab } from "./mypage/LikedProductsTab";
+import { WatchedAuctionsTab } from "./mypage/WatchedAuctionsTab";
+import { HostedAuctionsTab } from "./mypage/HostedAuctionsTab";
+import { ParticipatedAuctionsTab } from "./mypage/ParticipatedAuctionsTab";
 
 const TABS = [
     { value: "orders", label: "주문" },
     { value: "settlements", label: "정산" },
     { value: "wallet", label: "지갑" },
+    { value: "liked", label: "찜한 상품" },
+    { value: "watched", label: "관심 경매" },
+    { value: "hosted", label: "등록한 경매" },
+    { value: "participated", label: "참여한 경매" },
 ] as const;
 
 type TabValue = (typeof TABS)[number]["value"];
@@ -58,6 +66,10 @@ export function MyPage() {
             {tab === "orders" && <OrdersTab />}
             {tab === "settlements" && <SettlementsTab />}
             {tab === "wallet" && <WalletTab />}
+            {tab === "liked" && <LikedProductsTab />}
+            {tab === "watched" && <WatchedAuctionsTab />}
+            {tab === "hosted" && <HostedAuctionsTab />}
+            {tab === "participated" && <ParticipatedAuctionsTab />}
         </div>
     );
 }

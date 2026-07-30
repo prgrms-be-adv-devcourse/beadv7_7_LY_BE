@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { parseServerTime, type AuctionListItem } from "../api/auctions";
 import { Countdown } from "./Countdown";
 import { VinylCover } from "./VinylCover";
+import { WatchButton } from "./WatchButton";
 
 export function formatWon(n: number): string {
     return "₩" + n.toLocaleString("ko-KR");
@@ -33,6 +34,7 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                     </span>
                 )}
                 <VinylCover title={auction.title} artist={auction.artistName} imageUrl={auction.thumbnail} />
+                <WatchButton auctionId={auction.auctionId} status={auction.status} />
             </div>
             <div className="mt-2.5 truncate font-display text-sm font-bold">{auction.title}</div>
             <div className="truncate text-xs text-muted">

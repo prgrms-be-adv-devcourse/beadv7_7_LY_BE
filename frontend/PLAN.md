@@ -1,4 +1,4 @@
-# Groove 프론트엔드 구현 계획
+# Groovid 프론트엔드 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans로 태스크 단위 실행. 체크박스(`- [ ]`)로 진행 추적.
 

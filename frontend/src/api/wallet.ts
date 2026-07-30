@@ -64,6 +64,30 @@ export function requestDeposit(amount: number): Promise<DepositRequestResult> {
     return apiPost<DepositRequestResult>("/api/v1/deposits", { amount });
 }
 
+// POST /api/v1/deposits/confirm — 결제사에서 결제를 마치고 돌아왔을 때 부른다.
+// 이걸 불러야 백엔드가 결제사에 승인을 요청하고 잔액에 반영한다
+export function confirmDeposit(paymentKey: string, orderId: string, amount: number): Promise<void> {
+    return apiPost<void>("/api/v1/deposits/confirm", { paymentKey, orderId, amount });
+}
+
+// 이 충전은 이미 반영이 끝났다는 응답. 앞선 시도가 통과한 뒤 한 번 더 부르면 이게 온다
+export const DEPOSIT_ALREADY_PROCESSED = "DERR-3001";
+// 결제사가 승인을 거절했다는 응답. QR·앱 결제처럼 승인이 늦게 끝나는 흐름에서는
+// 아직 승인 전이라 거절된 것일 수 있어, 잠시 뒤 다시 물어보면 통과한다
+export const DEPOSIT_PG_ERROR = "DERR-3008";
+
+// POST /api/v1/deposits/{depositId}/cancel — 충전을 되돌린다.
+// 서버가 사유를 필수로 받고, 잔액이 충전액보다 적으면 거절한다
+export function cancelDeposit(depositId: number, reason: string): Promise<void> {
+    return apiPost<void>(`/api/v1/deposits/${depositId}/cancel`, { reason });
+}
+
+// 충전 요청 응답에는 취소에 쓸 id가 없다. 대신 충전이 반영될 때 남는 거래 기록에
+// 그 충전 건의 id가 함께 저장되므로, 충전 기록에서 되짚어 쓴다
+export function findDepositId(transaction: PointTransaction): number | null {
+    return transaction.type === "DEPOSIT" ? transaction.relatedAuctionId : null;
+}
+
 const TRANSACTION_TYPE_LABELS: Record<string, string> = {
     DEPOSIT: "충전",
     HOLD: "입찰 보증금 차감",

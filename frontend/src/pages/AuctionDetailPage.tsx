@@ -6,6 +6,7 @@ import { ApiError } from "../api/client";
 import { loadSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
+import { WatchButton } from "../components/WatchButton";
 import { formatWon } from "../components/AuctionCard";
 import { VuCountdown } from "./auction-detail/VuCountdown";
 import { BidLog } from "./auction-detail/BidLog";
@@ -96,6 +97,66 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
     );
 }
 
+// 판매자가 올린 이 판의 사진과 설명. 위쪽 커버는 음반 자체의 대표 이미지라
+// "내가 파는 판이 어떤 상태인가"는 알려주지 않는다 — 사는 사람이 실제로 보고 판단하는 곳이다
+function ItemNotes({ description, images }: { description: string | null; images: string[] | null }) {
+    const photos = images ?? [];
+    const [zoomed, setZoomed] = useState<string | null>(null);
+
+    return (
+        <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+                <h3 className="text-[15px] font-bold">판매자가 올린 매물 정보</h3>
+                {photos.length > 0 && (
+                    <span className="text-xs text-muted">
+                        사진 <span className="font-mono tabular-nums">{photos.length}</span>장
+                    </span>
+                )}
+            </div>
+            <div className="px-5 py-4">
+                {photos.length > 0 && (
+                    <div className="mb-4 flex flex-wrap gap-2.5">
+                        {photos.map((photo, index) => (
+                            <button
+                                key={`${index}-${photo.slice(0, 32)}`}
+                                type="button"
+                                onClick={() => setZoomed(photo)}
+                                className="overflow-hidden rounded-lg border border-line transition-colors hover:border-line-strong"
+                            >
+                                <img
+                                    src={photo}
+                                    alt={`매물 사진 ${index + 1}`}
+                                    loading="lazy"
+                                    className="h-32 w-32 object-cover"
+                                />
+                            </button>
+                        ))}
+                    </div>
+                )}
+                {description ? (
+                    // 판매자가 넣은 줄바꿈을 그대로 살린다
+                    <p className="max-w-[70ch] whitespace-pre-line text-[14px] leading-relaxed">{description}</p>
+                ) : (
+                    <p className="text-[13.5px] text-muted">판매자가 남긴 설명이 없습니다.</p>
+                )}
+                {photos.length === 0 && (
+                    <p className="mt-2 text-[13.5px] text-muted">올라온 매물 사진이 없습니다.</p>
+                )}
+            </div>
+
+            {zoomed && (
+                <div
+                    role="presentation"
+                    onClick={() => setZoomed(null)}
+                    className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6"
+                >
+                    <img src={zoomed} alt="매물 사진 크게 보기" className="max-h-full max-w-full rounded-lg" />
+                </div>
+            )}
+        </section>
+    );
+}
+
 export function AuctionDetailPage() {
     const { auctionId = "" } = useParams();
 
@@ -131,13 +192,22 @@ export function AuctionDetailPage() {
                     <div className="grid items-start gap-7 md:grid-cols-[1fr_380px]">
                         <div>
                             <div className="grid items-start gap-6 sm:grid-cols-[220px_1fr]">
-                                <VinylCover
-                                    title={auction.product.title}
-                                    artist={auction.product.artistName}
-                                    imageUrl={auction.product.coverImageUrl}
-                                    spin={auction.status === "RUNNING"}
-                                    className="rounded-xl shadow"
-                                />
+                                <div>
+                                    <VinylCover
+                                        title={auction.product.title}
+                                        artist={auction.product.artistName}
+                                        imageUrl={auction.product.coverImageUrl}
+                                        spin={auction.status === "RUNNING"}
+                                        className="rounded-xl shadow"
+                                    />
+                                    <div className="mt-3">
+                                        <WatchButton
+                                            auctionId={auction.auctionId}
+                                            status={auction.status}
+                                            variant="inline"
+                                        />
+                                    </div>
+                                </div>
                                 <div>
                                     <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-balance">
                                         <Link to={`/products/${auction.product.productId}`} className="hover:underline">
@@ -159,11 +229,11 @@ export function AuctionDetailPage() {
                                             </div>
                                         ))}
                                     </dl>
-                                    {auction.itemDescription && (
-                                        <p className="mt-4 max-w-[60ch] text-sm text-muted">{auction.itemDescription}</p>
-                                    )}
                                 </div>
                             </div>
+
+                            <ItemNotes description={auction.itemDescription} images={auction.itemImages} />
+
                             <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                                 <div className="flex items-center justify-between border-b border-line px-5 py-4">
                                     <h3 className="text-[15px] font-bold">호가 로그</h3>
