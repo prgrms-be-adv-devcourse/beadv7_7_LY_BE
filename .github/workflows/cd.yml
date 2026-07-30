@@ -221,10 +221,6 @@ jobs:
           done
           echo "❌ member-service가 60초 동안 정상 실행되지 않음..."
           exit 1
-          
-          sudo rm -rf .env
-          sudo rm -rf .member-service-secret
-          sudo rm -rf .core-service-secret
 
   core-service-deploy:
     needs: [ core-service-image-build ]
@@ -296,6 +292,15 @@ jobs:
           echo "❌ core-service가 60초 동안 정상 실행되지 않음..."
           exit 1
           
-          sudo rm -rf .env
-          sudo rm -rf .member-service-secret
-          sudo rm -rf .core-service-secret
+  cleanup-secret-files:
+    needs: [ member-service-deploy, core-service-deploy ]
+    if: |
+      always() &&
+      (needs.member-service-deploy.result != 'skipped' || needs.core-service-deploy.result != 'skipped')
+    runs-on: groovid-ec2-runner
+    steps:
+      - name: Remove secret files from EC2 host
+        run: |
+          cd ~/project
+          sudo rm -rf .env .member-service-secret .core-service-secret
+          echo "🧹 민감 정보 파일(.env, secret)이 깔끔하게 정리되었습니다."
