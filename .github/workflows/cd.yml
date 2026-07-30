@@ -1,0 +1,155 @@
+name: LP Auction CD (Test mode)
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+    branches: [ common/#141-ci-cd ]
+
+jobs:
+  check-deploy-condition:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      member_service_deploy: ${{ steps.check-deploy-label.outputs.member_service_deploy }}
+      core_service_deploy: ${{ steps.check-deploy-label.outputs.core_service_deploy }}
+    steps:
+      - name: Check deploy label
+        if: check-deploy-label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            const hasMemberServiceDeployLabel = pr.data.labels.map(label => label.name).includes("member-service-deploy");
+            core.setOutput("member_service_deploy", hasMemberServiceDeployLabel ? "true" : "false");
+            
+            const hasCoreServiceDeployLabel = pr.data.labels.map(label => label.name).includes("core-service-deploy");
+            core.setOutput("core_service_deploy", hasCoreServiceDeployLabel ? "true" : "false");
+
+      - name: Explain deploy decision
+        run: |
+          # member-service 배포 여부 체크
+          if [[ "${{ steps.check-deploy-label.outputs.member_service_deploy }}" == "true" ]]; then
+            echo "🚚 member-service 배포 작업을 진행합니다."
+          else
+            echo "✋ member-service 배포 작업을 진행하지 않습니다."
+          fi
+          
+          # core-service 배포 여부 체크
+          if [[ "${{ steps.check-deploy-label.outputs.core_service_deploy }}" == "true" ]]; then
+            echo "🚚 core-service 배포 작업을 진행합니다."
+          else
+            echo "✋ core-service 배포 작업을 진행하지 않습니다."
+          fi
+
+  member-service-image-build:
+    needs: [ check-deploy-condition ]
+    if: needs.check-deploy-condition.outputs.member_service_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      member_service_image_build_result: ${{ steps.image-build-result.outputs.member_service_image_build_result }}
+    continue-on-error: true
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Set up jdk
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./member-service
+        run: chmod +x gradlew\
+
+      - name: Build with gradle
+        working-directory: ./member-service
+        run: ./gradlew bootJar -Pspring.profiles.active=prod --info
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Docker build & push
+        id: docker-build-and-push
+        working-directory: ./member-service
+        run: |
+          docker build --no-cache -f docker/Dockerfile --build-arg SPRINGBOOT_APP_PROFILE=prod --platform linux/amd64 -t ${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}:${{ github.sha }} .
+          docker push ${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}:${{ github.sha }}
+
+      - name: Set Image build result
+        if: always()
+        id: image-build-result
+        run: |
+          echo "member_service_image_build_result=fail" >> $GITHUB_OUTPUT
+          if [[ ${{ steps.docker-build-and-push.outcome }} == "success" ]]; then
+          echo "member_service_image_build_result=success" >> $GITHUB_OUTPUT
+          fi
+
+  core-service-image-build:
+    needs: [ check-deploy-condition ]
+    if: needs.check-deploy-condition.outputs.core_service_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      core_service_image_build_result: ${{ steps.image-build-result.outputs.core_service_image_build_result }}
+    continue-on-error: true
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Set up jdk
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./core-service
+        run: chmod +x gradlew\
+
+      - name: Build with gradle
+        working-directory: ./core-service
+        run: ./gradlew bootJar -Pspring.profiles.active=prod --info
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Docker build & push
+        id: docker-build-and-push
+        working-directory: ./core-service
+        run: |
+          docker build --no-cache -f docker/Dockerfile --build-arg SPRINGBOOT_APP_PROFILE=prod --platform linux/amd64 -t ${{ secrets.CORE_SERVICE_GHCR_IMAGE }}:${{ github.sha }} .
+          docker push ${{ secrets.CORE_SERVICE_GHCR_IMAGE }}:${{ github.sha }}
+
+      - name: Set Image build result
+        if: always()
+        id: image-build-result
+        run: |
+          echo "core_service_image_build_result=fail" >> $GITHUB_OUTPUT
+          if [[ ${{ steps.docker-build-and-push.outcome }} == "success" ]]; then
+          echo "core_service_image_build_result=success" >> $GITHUB_OUTPUT
+          fi
