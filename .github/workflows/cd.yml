@@ -195,6 +195,8 @@ jobs:
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
           JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
           EOF
+          
+          touch .core-service-secret
 
       - name: Start new server application
         id: start-new-server-application
