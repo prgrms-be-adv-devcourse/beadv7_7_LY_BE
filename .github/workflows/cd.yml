@@ -7,7 +7,6 @@ on:
 
 jobs:
   check-deploy-condition:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       member_service_deploy: ${{ steps.check-deploy-label.outputs.member_service_deploy }}
