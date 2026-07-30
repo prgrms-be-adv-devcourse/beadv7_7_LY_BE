@@ -19,18 +19,20 @@ export interface AuctionListItem {
     endAt: string;
 }
 
-export interface AuctionPage {
+// 경매 도메인의 목록 API는 모두 이 봉투로 내려온다 (백엔드 PageResponse<T> 그대로)
+export interface AuctionPage<T = AuctionListItem> {
     page: number;
     size: number;
     totalElements: number;
     hasNext: boolean;
-    items: AuctionListItem[];
+    items: T[];
 }
 
 export type AuctionStatus = "SCHEDULED" | "RUNNING" | "CLOSING" | "ENDED_WON" | "ENDED_FAILED" | "CANCELED";
 export type AuctionSort = "ending_soon" | "price_asc" | "price_desc" | "most_bids";
 
 export interface AuctionListParams {
+    productId?: number;
     genre?: string;
     pressType?: string;
     status?: string;
@@ -41,6 +43,7 @@ export interface AuctionListParams {
 
 export function fetchAuctions(params: AuctionListParams): Promise<AuctionPage> {
     const query = new URLSearchParams();
+    if (params.productId !== undefined) query.set("productId", String(params.productId));
     if (params.genre) query.set("genre", params.genre);
     if (params.pressType) query.set("pressType", params.pressType);
     if (params.status) query.set("status", params.status);
@@ -122,6 +125,51 @@ const CONDITION_LABELS: Record<string, string> = {
 
 export function formatCondition(condition: string): string {
     return CONDITION_LABELS[condition] ?? condition;
+}
+
+// GET /api/v1/auctions/hosted — 내가 판매자로 등록한 경매.
+// 목록에는 시작 시각이 없어서 수정·취소 가능 시한은 여기서 판단할 수 없다
+export interface HostedAuction {
+    auctionId: number;
+    productId: number;
+    title: string;
+    artistName: string;
+    status: AuctionStatus;
+    highestBidAmount: number | null;
+    bidCount: number;
+}
+
+export function fetchHostedAuctions(page: number, size = 10): Promise<AuctionPage<HostedAuction>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) });
+    return apiGet<AuctionPage<HostedAuction>>(`/api/v1/auctions/hosted?${query}`);
+}
+
+// GET /api/v1/auctions/participated — 내가 입찰한 경매. 경매당 내 최신 입찰 한 건씩 내려온다
+export type BidOutcome = "ACTIVE" | "OUTBID" | "WON";
+
+export interface ParticipatedAuction {
+    auctionId: number;
+    productId: number;
+    title: string;
+    artistName: string;
+    status: AuctionStatus;
+    myBidAmount: number;
+    myOutcome: BidOutcome;
+}
+
+export function fetchParticipatedAuctions(page: number, size = 10): Promise<AuctionPage<ParticipatedAuction>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) });
+    return apiGet<AuctionPage<ParticipatedAuction>>(`/api/v1/auctions/participated?${query}`);
+}
+
+const OUTCOME_LABELS: Record<string, string> = {
+    ACTIVE: "최고 입찰 중",
+    OUTBID: "밀림",
+    WON: "낙찰",
+};
+
+export function formatBidOutcome(outcome: string): string {
+    return OUTCOME_LABELS[outcome] ?? outcome;
 }
 
 const STATUS_LABELS: Record<string, string> = {
