@@ -25,3 +25,15 @@ export interface MemberProfile {
 export function getMyProfile(): Promise<MemberProfile> {
     return apiGet<MemberProfile>("/api/v1/members/me");
 }
+
+// member-service GET /api/v1/members/address — 가입할 때 넣은 주소.
+// 주문 배송지 입력의 기본값으로 쓴다 (수령인 이름·연락처는 이 응답에 없다)
+export interface MemberAddress {
+    zipcode: string;
+    baseAddress: string;
+    detailAddress: string;
+}
+
+export function getMyAddress(): Promise<MemberAddress> {
+    return apiGet<MemberAddress>("/api/v1/members/address");
+}
