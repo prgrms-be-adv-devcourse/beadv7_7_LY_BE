@@ -39,7 +39,7 @@ public class HoldApplicationService implements HoldService {
         try {
             result = walletService.deduct(userId, amount);
         } catch (WalletNotFoundException e) {
-            throw new HoldException(HoldErrorCode.WALLET_NOT_FOUND);
+            throw new HoldException(HoldErrorCode.INSUFFICIENT_BALANCE);
         } catch (InsufficientBalanceException e) {
             throw new HoldException(HoldErrorCode.INSUFFICIENT_BALANCE);
         }
