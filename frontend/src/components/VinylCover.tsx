@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const FALLBACK_PALETTES: [string, string][] = [
     ["#4B6C8A", "#20313F"],
     ["#2C6E7F", "#123138"],
@@ -23,10 +25,20 @@ interface VinylCoverProps {
 }
 
 export function VinylCover({ title, artist, imageUrl, colors, spin = false, className = "" }: VinylCoverProps) {
-    if (imageUrl) {
+    // 참·거짓이 아니라 실패한 주소 자체를 기억한다. 목록에서 같은 자리에 다른 앨범이 들어오면
+    // 주소가 바뀌므로, 앞 앨범의 실패 때문에 새 커버까지 가려지는 일이 없다
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
+
+    if (imageUrl && imageUrl !== failedUrl) {
         return (
             <div className={`relative aspect-square overflow-hidden rounded-md ${className}`}>
-                <img src={imageUrl} alt={`${title} 커버`} className="h-full w-full object-cover" />
+                <img
+                    src={imageUrl}
+                    alt={`${title} 커버`}
+                    loading="lazy"
+                    onError={() => setFailedUrl(imageUrl)}
+                    className="h-full w-full object-cover"
+                />
             </div>
         );
     }
