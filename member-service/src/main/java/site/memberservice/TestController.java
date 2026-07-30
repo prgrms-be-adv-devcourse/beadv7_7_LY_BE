@@ -9,7 +9,7 @@ public class TestController {
 
     @GetMapping("/api/v1/members/white")
     public String white() {
-        return "member-service 인증 필요없는 white 호출 성공";
+        return "member-service 인증 필요없는 white 호출 성공!";
     }
 
     @GetMapping("/api/v1/members/black")
