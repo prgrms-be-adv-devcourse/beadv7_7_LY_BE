@@ -153,3 +153,77 @@ jobs:
           if [[ ${{ steps.docker-build-and-push.outcome }} == "success" ]]; then
           echo "core_service_image_build_result=success" >> $GITHUB_OUTPUT
           fi
+
+  member-service-deploy:
+    needs: [ member-service-image-build ]
+    if: needs.member-service-image-build.outputs.member_service_image_build_result == 'success'
+    runs-on: groovid-ec2-runner
+    continue-on-error: true
+    outputs:
+      member_service_deploy_result: ${{ steps.deploy-result.outputs.member_service_deploy_result }}
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Create secret file
+        run: |
+          cd ~/project
+          
+          cat <<EOF > .env
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_SCHEMA_NAME=${{ secrets.DB_SCHEMA_NAME }}
+          
+          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
+          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
+          
+          CORE_SERVICE_IMAGE_REPOSITORY=${{ secrets.CORE_SERVICE_GHCR_IMAGE }}
+          CORE_SERVICE_IMAGE_TAG=${{ github.sha }}
+          EOF
+          
+          cat <<EOF > .member-service-secret
+          PORT_NUMBER=8080
+          DB_URL=${{ secrets.DB_URL }}
+          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
+          EOF
+
+      - name: Start new server application
+        id: start-new-server-application
+        run: |
+          cd ~/project
+          sudo docker-compose stop member-service
+          sudo docker-compose rm -f member-service
+          sudo docker-compose up -d member-service
+          
+          echo "🔍 member-service 헬스 체크 확인 중..."
+          for i in {1..20}; do
+            response=$(curl -s http://localhost:8081/api/actuator/health || true)
+            if [[ "$response" == *'"status":"UP"'* ]]; then
+              echo "🍺 member-service 정상 실행 확인!"
+              exit 0
+            else
+              echo "⏳ member-service 실행 대기... ($i/20)"
+              sleep 3
+            fi
+          done
+          echo "❌ member-service가 60초 동안 정상 실행되지 않음..."
+          exit 1
+
+      - name: Set deploy result
+        if: always()
+        id: deploy-result
+        run: |
+          echo "member_service_deploy_result=fail" >> $GITHUB_OUTPUT
+          if [[ ${{ steps.start-new-server-application.outcome }} == "success" ]]; then
+          echo "member_service_deploy_result=success" >> $GITHUB_OUTPUT
+          fi
