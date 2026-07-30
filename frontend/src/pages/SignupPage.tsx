@@ -27,7 +27,7 @@ const PHONE_PATTERN = /^01[016789]-\d{3,4}-\d{4}$/;
 
 const FIELDS: Field[] = [
     { key: "email", label: "이메일", type: "email", placeholder: "you@example.com" },
-    { key: "password", label: "비밀번호 (8~16자, 영문+숫자+특수문자)", type: "password", placeholder: "예: groove1!" },
+    { key: "password", label: "비밀번호 (8~16자, 영문+숫자+특수문자)", type: "password", placeholder: "예: groovid1!" },
     { key: "nickName", label: "닉네임 (2~6자)", type: "text", placeholder: "그루버" },
     { key: "name", label: "이름", type: "text", placeholder: "홍길동" },
     { key: "phoneNumber", label: "전화번호 (하이픈 포함)", type: "tel", placeholder: "010-1234-5678" },
@@ -104,7 +104,7 @@ export function SignupPage() {
         <div className="mx-auto max-w-md">
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-sm">
                 <h1 className="font-display text-2xl font-semibold tracking-tight">회원가입</h1>
-                <p className="mt-1 text-[13px] text-muted">member-service에 계정을 만듭니다.</p>
+                <p className="mt-1 text-[13px] text-muted">몇 가지만 입력하면 바로 경매에 참여할 수 있습니다.</p>
                 <form onSubmit={submit} className="mt-5 flex flex-col gap-3">
                     {FIELDS.map((field) => (
                         <label key={field.key} className="text-[13px] font-semibold">

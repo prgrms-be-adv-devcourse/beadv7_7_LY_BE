@@ -103,7 +103,7 @@ function BrowseList({ page, onPage }: { page: number; onPage: (page: number) => 
             isLoading={query.isPending}
             error={query.error}
             isEmpty={!query.data || query.data.content.length === 0}
-            emptyMessage="등록된 상품이 없습니다. 시드 플래그(product.seed.enabled)를 켜고 core-service를 재기동했는지 확인하세요."
+            emptyMessage="등록된 릴리스가 아직 없습니다."
             loadingFallback={<SkeletonGrid />}
         >
             <p className="mb-3 text-[13px] text-muted">

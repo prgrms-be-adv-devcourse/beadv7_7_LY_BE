@@ -28,7 +28,7 @@ export function QueryState({ isLoading, error, isEmpty, emptyMessage, loadingFal
             <div className="rounded-xl border border-live/30 bg-live-bg px-5 py-8 text-center">
                 <p className="font-semibold text-live">{message}</p>
                 {code && <p className="mt-1 font-mono text-xs text-muted">{code}</p>}
-                <p className="mt-2 text-sm text-muted">잠시 후 새로고침하거나 백엔드 서버 상태를 확인하세요.</p>
+                <p className="mt-2 text-sm text-muted">잠시 후 새로고침해주세요.</p>
             </div>
         );
     }

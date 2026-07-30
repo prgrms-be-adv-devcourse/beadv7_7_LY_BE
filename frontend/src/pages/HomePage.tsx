@@ -100,7 +100,7 @@ export function HomePage() {
                     isLoading={live.isPending}
                     error={live.error}
                     isEmpty={!live.data || live.data.items.length === 0}
-                    emptyMessage="진행 중인 경매가 없습니다. 시드 플래그(auction.seed.enabled)를 켜고 재기동했는지 확인하세요."
+                    emptyMessage="진행 중인 경매가 없습니다."
                 >
                     <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
                         {live.data?.items.map((auction) => (

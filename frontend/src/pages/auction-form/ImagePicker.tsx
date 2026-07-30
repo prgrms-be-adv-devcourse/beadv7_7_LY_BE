@@ -138,7 +138,7 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
             />
 
             <p className="mt-2 text-[12px] text-muted">
-                최대 {MAX_ITEM_IMAGES}장 · 올려둘 서버가 없어 브라우저에서 긴 변 {MAX_EDGE_PX}px로 줄여 담습니다.
+                최대 {MAX_ITEM_IMAGES}장 · 큰 사진은 자동으로 줄여서 올라갑니다.
                 {images.length > 0 && ` (지금 ${images.length}장)`}
             </p>
             {report && <p className="mt-1 text-[12px] text-up">{report}</p>}

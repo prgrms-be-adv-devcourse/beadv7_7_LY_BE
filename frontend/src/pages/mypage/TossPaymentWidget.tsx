@@ -39,7 +39,9 @@ export function TossPaymentWidget({ orderId, amount, customerKey }: TossPaymentW
 
     useEffect(() => {
         if (!CLIENT_KEY) {
-            setError("토스 클라이언트 키가 없습니다. frontend/.env.local에 VITE_TOSS_CLIENT_KEY를 넣고 개발 서버를 다시 켜세요.");
+            // 설정 누락은 사용자가 할 수 있는 게 없다. 자세한 원인은 콘솔에만 남긴다
+            console.error("VITE_TOSS_CLIENT_KEY가 설정되지 않았습니다. frontend/.env.local을 확인하세요.");
+            setError("결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
             return;
         }
 

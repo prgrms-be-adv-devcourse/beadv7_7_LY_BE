@@ -22,7 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
         res = await fetch(path, init);
     } catch {
-        throw new ApiError("NETWORK", "서버에 연결할 수 없습니다. 백엔드가 켜져 있는지 확인하세요.", 0);
+        throw new ApiError("NETWORK", "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.", 0);
     }
     const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
     if (!res.ok || !body || !body.success) {

@@ -34,7 +34,7 @@ export function LoginPage() {
         <div className="mx-auto max-w-sm">
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-sm">
                 <h1 className="font-display text-2xl font-semibold tracking-tight">로그인</h1>
-                <p className="mt-1 text-[13px] text-muted">member-service 계정으로 로그인합니다.</p>
+                <p className="mt-1 text-[13px] text-muted">가입할 때 쓴 이메일로 로그인하세요.</p>
                 {signedUp && (
                     <p className="mt-3 rounded-lg bg-up/10 px-3 py-2 text-[13px] font-semibold text-up">
                         가입이 완료됐습니다. 로그인해주세요.

@@ -1,4 +1,4 @@
-# Groove 프론트엔드 (개인 확인용)
+# Groovid 프론트엔드
 
 LP 경매 서비스 확인용 프론트. 전 화면 실제 API 연동 — 검색·상품·시세·경매·입찰은 core-service, 로그인은 member-service.
 백엔드에 API가 없어서 뺀 기능은 [REMOVED-FEATURES.md](./REMOVED-FEATURES.md) 참고.
