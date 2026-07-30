@@ -7,6 +7,7 @@ import { QueryState } from "../components/QueryState";
 import { LikeButton } from "../components/LikeButton";
 import { formatWon } from "../components/AuctionCard";
 import { GRADED_CONDITIONS, PriceSparkline } from "./product-detail/PriceSparkline";
+import { OpenAuctionList } from "./product-detail/OpenAuctionList";
 
 // 요약 카드 머리글용 짧은 컨디션 표기 (백엔드 MediaCondition enum 이름 기준)
 const CONDITION_SHORT: Record<string, string> = {
@@ -124,6 +125,8 @@ export function ProductDetailPage() {
                             )}
                         </div>
                     </div>
+
+                    <OpenAuctionList productId={detail.productId} />
 
                     <section className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                         <div className="flex items-center justify-between border-b border-line px-5 py-4">

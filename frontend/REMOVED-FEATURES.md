@@ -4,12 +4,13 @@
 백엔드에 해당 API가 생기면 이 문서를 보고 복원한다. 목 구현 원본은 git 히스토리의
 `src/mocks/auctions.ts`, `src/pages/product-detail/OpenAuctionList.tsx`에 있다.
 
-## 1. 상품 상세 — "진행 중 경매" 목록 (통째로 제거)
+## 1. 상품 상세 — "진행 중 경매" 목록 (✅ 2026-07-30 복원, #147)
 
 - 있던 것: 상품 상세 하단에 이 상품의 열린 경매 리스트 (`OpenAuctionList.tsx`)
-- 뺀 이유: 경매 리스트 API(`GET /api/v1/auctions`)에 `productId` 필터 파라미터가 없다.
+- 뺐던 이유: 경매 리스트 API(`GET /api/v1/auctions`)에 `productId` 필터 파라미터가 없었다.
   응답 항목에 productId가 있어 클라이언트 필터링은 가능하지만 페이징 때문에 전 페이지를 긁어야 해서 부적합
-- 복원 조건: `GET /api/v1/auctions?productId={id}` 지원 (백엔드 `AuctionListQuery`에 productId 추가)
+- 복원: 백엔드 `AuctionListQuery`에 productId가 생겨 `GET /api/v1/auctions?productId={id}`로 다시 붙였다.
+  상태 필터가 값을 하나만 받아서 진행 중과 시작 예정을 따로 부른 뒤 이어 붙인다
 
 ## 2. 경매 피드 — 필터 3종 제거
 
