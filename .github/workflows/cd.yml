@@ -221,6 +221,11 @@ jobs:
           done
           echo "❌ member-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+          
+          sudo rm -rf .env
+          sudo rm -rf .member-service-secret
+          sudo rm -rf .core-service-secret
+
   core-service-deploy:
     needs: [ core-service-image-build ]
     if: needs.core-service-image-build.outputs.core_service_image_build_result == 'success'
@@ -290,3 +295,7 @@ jobs:
           done
           echo "❌ core-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+          
+          sudo rm -rf .env
+          sudo rm -rf .member-service-secret
+          sudo rm -rf .core-service-secret
