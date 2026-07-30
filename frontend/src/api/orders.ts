@@ -80,6 +80,19 @@ export function getOrderDetail(orderId: number): Promise<OrderDetail> {
     return apiGet<OrderDetail>(`/api/v1/orders/${orderId}`);
 }
 
+// POST /api/v1/orders/{orderId}/place — 낙찰 뒤 결제 대기 상태의 주문에 배송지를 넣어 주문을 확정한다.
+// 네 항목 모두 서버에서 필수라 하나라도 비면 요청이 거절된다
+export interface OrderPlacePayload {
+    recipientName: string;
+    phoneNumber: string;
+    baseAddress: string;
+    detailAddress: string;
+}
+
+export function placeOrder(orderId: number, payload: OrderPlacePayload): Promise<void> {
+    return apiPost<void>(`/api/v1/orders/${orderId}/place`, payload);
+}
+
 export function completeOrder(orderId: number): Promise<void> {
     return apiPost<void>(`/api/v1/orders/${orderId}/complete`);
 }
