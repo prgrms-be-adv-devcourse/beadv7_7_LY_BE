@@ -17,12 +17,12 @@ import site.coreservice.auction.application.port.MemberPort;
 @RequiredArgsConstructor
 public class MemberHttpClient implements MemberPort {
 
-    @Qualifier("auctionRestClient")
-    private final RestClient auctionRestClient;
+    @Qualifier("auctionMemberRestClient")
+    private final RestClient auctionMemberRestClient;
 
     @Override
     public String getNickname(Long memberId) {
-        ApiResponse<NicknameResponse> body = auctionRestClient.get()
+        ApiResponse<NicknameResponse> body = auctionMemberRestClient.get()
                 .uri("/internal/v1/members/{memberId}/profile", memberId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
