@@ -174,33 +174,28 @@ jobs:
       - name: Create secret file
         run: |
           cd ~/project
+          
+          cat <<EOF > .env
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_SCHEMA_NAME=${{ secrets.DB_SCHEMA_NAME }}
+          
+          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
+          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
+          
+          CORE_SERVICE_IMAGE_REPOSITORY=${{ secrets.CORE_SERVICE_GHCR_IMAGE }}
+          CORE_SERVICE_IMAGE_TAG=${{ github.sha }}
+          EOF
+          
+          cat <<EOF > .member-service-secret
+          PORT_NUMBER=8080
+          DB_URL=${{ secrets.DB_URL }}
+          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
+          EOF
 
-          if [ ! -f .env ]; then
-            echo "📝 .env 파일이 존재하지 않아 새로 생성합니다."
-            cat <<-EOF > .env
-              DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-              DB_SCHEMA_NAME=${{ secrets.DB_SCHEMA_NAME }}
-      
-              MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-              MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
-      
-              CORE_SERVICE_IMAGE_REPOSITORY=${{ secrets.CORE_SERVICE_GHCR_IMAGE }}
-              CORE_SERVICE_IMAGE_TAG=${{ github.sha }}
-              EOF
-          else
-            echo "✅ 이미 .env 파일이 존재하여 생성을 스킵합니다."
-          fi
-      
-          cat <<-EOF > .member-service-secret
-            PORT_NUMBER=8080
-            DB_URL=${{ secrets.DB_URL }}
-            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-      
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
-            EOF
-      
           if [ ! -f .core-service-secret ]; then
             touch .core-service-secret
           fi
