@@ -16,7 +16,9 @@ import { ApiError } from "../../api/client";
 import { formatWon } from "../../components/AuctionCard";
 import { QueryState } from "../../components/QueryState";
 import { Pagination } from "../../components/Pagination";
+import { loadSession } from "../../auth/session";
 import { DateRangeFilter } from "./DateRangeFilter";
+import { TossPaymentWidget } from "./TossPaymentWidget";
 import { formatDateTime, toRangeEnd, toRangeStart } from "./format";
 
 const PAGE_SIZE = 10;
@@ -223,6 +225,7 @@ function BalanceCard() {
 
 function DepositForm() {
     const queryClient = useQueryClient();
+    const session = loadSession();
     const [amount, setAmount] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [issued, setIssued] = useState<DepositRequestResult | null>(null);
@@ -275,16 +278,20 @@ function DepositForm() {
                 </button>
             </form>
             {error && <p className="mt-2 text-xs font-semibold text-live">{error}</p>}
-            {issued && (
+            {!issued && (
                 <p className="mt-2 text-[13px] text-muted">
-                    충전 요청이 생성됐습니다 — 주문번호{" "}
-                    <b className="font-mono text-ink">{issued.orderId}</b> · {formatWon(issued.amount)}
+                    충전을 요청하면 결제 수단을 고르는 화면이 아래에 열립니다. 결제를 마쳐야 잔액에 반영됩니다.
                 </p>
             )}
-            <p className="mt-2 text-[13px] text-muted">
-                요청을 만드는 데까지만 동작합니다. 실제 입금은 결제사 결제창을 거쳐야 반영되며, 결제 연동은 아직
-                붙지 않았습니다.
-            </p>
+            {issued && session && (
+                <TossPaymentWidget
+                    // 요청마다 위젯을 새로 그려야 금액·주문번호가 섞이지 않는다
+                    key={issued.orderId}
+                    orderId={issued.orderId}
+                    amount={issued.amount}
+                    customerKey={`member-${session.memberId}`}
+                />
+            )}
         </section>
     );
 }

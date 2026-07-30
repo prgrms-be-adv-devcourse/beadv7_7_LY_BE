@@ -13,9 +13,13 @@ cd docker/local && docker compose up -d     # MySQL
 
 # 2) 프론트
 cd frontend
-npm install        # 최초 1회
-npm run dev        # http://localhost:5173
+npm install                  # 최초 1회
+cp .env.example .env.local   # 최초 1회 — 토스 결제위젯 클라이언트 키를 넣는다
+npm run dev                  # http://localhost:5173
 ```
+
+`.env.local`에는 토스 **클라이언트 키만** 넣는다. 시크릿 키는 백엔드가 결제 승인에 쓰는 값이라
+core-service 실행 구성(`TOSS_CLIENT_KEY`, `TOSS_SECRET_KEY` 환경변수)에 둔다.
 
 백엔드가 꺼져 있으면 각 화면이 에러 상태로 표시된다 (목 폴백 없음).
 
@@ -30,6 +34,14 @@ npm run dev        # http://localhost:5173
 | 경매 상세 + 호가 로그 | `GET /api/v1/auctions/{id}` (`recentBids` 포함) |
 | 입찰 | `POST /api/v1/auctions/{id}/bids` (`X-Member-Id` 헤더) |
 | 로그인 | member-service `POST /api/v1/auth/login` → JWT subject(memberId)를 디코드해 세션 보관 |
+| 상품 상세의 열린 경매 | `GET /api/v1/auctions?productId=` (진행 중·시작 예정을 따로 조회) |
+| 찜 (상품 카드·상세, 마이페이지) | `PUT`·`DELETE`·`GET /api/v1/members/me/liked-products` |
+| 관심 경매 (경매 카드·상세, 마이페이지) | `PUT`·`DELETE`·`GET /api/v1/members/me/watched-auctions` |
+| 마이페이지 등록·참여 경매 | `GET /api/v1/auctions/hosted`, `GET /api/v1/auctions/participated` |
+| 경매 등록·수정·취소 | `POST`·`PATCH`·`DELETE /api/v1/auctions` |
+| 주문 확정(배송지 입력) | `POST /api/v1/orders/{orderId}/place` + member-service `GET /api/v1/members/address` |
+| 예치금 충전 | `POST /api/v1/deposits` → 토스 결제위젯 → `POST /api/v1/deposits/confirm` |
+| 충전 취소 | `POST /api/v1/deposits/{depositId}/cancel` |
 
 ## 구조·설계
 
