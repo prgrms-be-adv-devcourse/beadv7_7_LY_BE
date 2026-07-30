@@ -52,3 +52,23 @@ export function apiPost<T>(path: string, payload?: unknown): Promise<T> {
         body: payload === undefined ? undefined : JSON.stringify(payload),
     });
 }
+
+export function apiPut<T>(path: string, payload?: unknown): Promise<T> {
+    return request<T>(path, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...memberHeaders() },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+}
+
+export function apiPatch<T>(path: string, payload?: unknown): Promise<T> {
+    return request<T>(path, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...memberHeaders() },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+    return request<T>(path, { method: "DELETE", headers: memberHeaders() });
+}
