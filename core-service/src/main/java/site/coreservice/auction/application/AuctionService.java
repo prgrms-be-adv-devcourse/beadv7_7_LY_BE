@@ -42,6 +42,9 @@ public class AuctionService {
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
         String sellerNickname = memberPort.getNickname(sellerId);
         ProductSnapshot productSnapshot = productPort.getProduct(command.productId());
+        if (!productSnapshot.active()) {
+            throw new AuctionException(AuctionErrorCode.PRODUCT_NOT_ACTIVE);
+        }
         Auction auction = Auction.register(
             sellerId, command.productId(),
             ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(),
@@ -74,8 +77,13 @@ public class AuctionService {
             LocalDateTime.now()
         );
 
-        ProductSnapshot product =
-            productChanged ? productPort.getProduct(command.productId()) : null;
+        ProductSnapshot product = null;
+        if (productChanged) {
+            product = productPort.getProduct(command.productId());
+            if (!product.active()) {
+                throw new AuctionException(AuctionErrorCode.PRODUCT_NOT_ACTIVE);
+            }
+        }
         searchViewRepository.updateFromAuction(auction, product);
         return AuctionResult.from(auction);
     }
