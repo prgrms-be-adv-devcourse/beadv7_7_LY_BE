@@ -6,6 +6,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { Pagination } from "../components/Pagination";
+import { LikeButton } from "../components/LikeButton";
 import { formatWon } from "../components/AuctionCard";
 
 const PAGE_SIZE = 20;
@@ -47,7 +48,10 @@ function ProductCard({ card }: { card: CatalogCard }) {
             to={`/products/${card.productId}`}
             className="rounded-xl border border-line bg-surface p-3 shadow-sm transition-[transform,border-color] duration-150 hover:-translate-y-0.5 hover:border-line-strong"
         >
-            <VinylCover title={card.title} artist={card.artistName} imageUrl={card.coverImageUrl} />
+            <div className="relative">
+                <VinylCover title={card.title} artist={card.artistName} imageUrl={card.coverImageUrl} />
+                <LikeButton productId={card.productId} />
+            </div>
             <div className="mt-2.5 truncate font-display text-sm font-bold">{card.title}</div>
             <div className="truncate text-xs text-muted">{card.artistName}</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
