@@ -15,6 +15,7 @@ import { loadSession } from "../auth/session";
 import { QueryState } from "../components/QueryState";
 import { formatWon } from "../components/AuctionCard";
 import { ProductPicker, type PickedProduct } from "./auction-form/ProductPicker";
+import { ImagePicker } from "./auction-form/ImagePicker";
 import {
     addHours,
     earliestStartAt,
@@ -138,6 +139,7 @@ function AuctionForm({
     const queryClient = useQueryClient();
     const [values, setValues] = useState<AuctionFormValues>(() => initialValues ?? emptyValues(new Date()));
     const [product, setProduct] = useState<PickedProduct | null>(initialProduct ?? null);
+    const [images, setImages] = useState<string[]>(originalImages);
     const [errors, setErrors] = useState<string[]>([]);
     const [serverError, setServerError] = useState<string | null>(null);
 
@@ -191,19 +193,12 @@ function AuctionForm({
         if (found.length > 0) return;
 
         const description = values.itemDescription.trim();
-        // 이미지 업로드 창구가 없어서 고른 음반의 대표 커버 한 장을 매물 사진으로 쓴다.
-        // 음반을 바꾸지 않았다면 원래 걸려 있던 사진을 그대로 둔다 (서버가 null을 안 받아 최소 빈 배열)
-        const productUnchanged = editing && product?.productId === initialProduct?.productId;
-        const images = productUnchanged
-            ? originalImages
-            : product?.coverImageUrl
-              ? [product.coverImageUrl]
-              : [];
 
         submit.mutate({
             productId: values.productId as number,
             itemCondition: values.itemCondition,
             itemDescription: description === "" ? null : description,
+            // 사진을 안 넣었으면 빈 배열로 보낸다 — 서버가 이 항목을 빼거나 비우는 걸 허용하지 않는다
             itemImages: images.slice(0, AUCTION_POLICY.MAX_IMAGE_COUNT),
             startPrice: Number(values.startPrice),
             shippingFee: Number(values.shippingFee),
@@ -285,9 +280,12 @@ function AuctionForm({
                             <span className="font-mono tabular-nums">{description.length}</span>자
                         </span>
                     </label>
-                    <p className="mt-3 text-[12px] text-muted">
-                        사진은 따로 올릴 수 없어, 고른 음반의 대표 커버가 매물 사진으로 들어갑니다.
-                    </p>
+                    <div className="mt-4">
+                        <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-faint">
+                            매물 사진 (선택)
+                        </span>
+                        <ImagePicker images={images} onChange={setImages} />
+                    </div>
                 </Section>
 
                 <Section title="가격" hint="시작가·배송비·입찰 단위">
