@@ -19,12 +19,12 @@ import site.coreservice.auction.application.port.dto.ProductSnapshot;
 @RequiredArgsConstructor
 public class ProductHttpClient implements ProductPort {
 
-    @Qualifier("auctionRestClient")
-    private final RestClient auctionRestClient;
+    @Qualifier("auctionProductRestClient")
+    private final RestClient auctionProductRestClient;
 
     @Override
     public ProductSnapshot getProduct(Long productId) {
-        ApiResponse<ProductSnapshot> body = auctionRestClient.get()
+        ApiResponse<ProductSnapshot> body = auctionProductRestClient.get()
                 .uri("/internal/v1/products/{productId}/snapshot", productId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
@@ -34,7 +34,7 @@ public class ProductHttpClient implements ProductPort {
 
     @Override
     public ProductDetail getProductDetail(Long productId) {
-        ApiResponse<ProductDetail> body = auctionRestClient.get()
+        ApiResponse<ProductDetail> body = auctionProductRestClient.get()
                 .uri("/internal/v1/products/{productId}/snapshot", productId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});

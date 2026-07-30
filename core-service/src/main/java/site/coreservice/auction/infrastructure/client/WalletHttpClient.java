@@ -19,12 +19,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WalletHttpClient implements WalletPort {
 
-    @Qualifier("auctionRestClient")
-    private final RestClient auctionRestClient;
+    @Qualifier("auctionWalletRestClient")
+    private final RestClient auctionWalletRestClient;
 
     @Override
     public WalletHoldInfo hold(Long auctionId, Long memberId, Money amount) {
-        ApiResponse<WalletHoldInfo> body = auctionRestClient.put()
+        ApiResponse<WalletHoldInfo> body = auctionWalletRestClient.put()
                 .uri("/internal/v1/wallet/hold")
                 .body(Map.of(
                         "auctionId", auctionId,
