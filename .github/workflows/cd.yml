@@ -14,7 +14,7 @@ jobs:
       core_service_deploy: ${{ steps.check-deploy-label.outputs.core_service_deploy }}
     steps:
       - name: Check deploy label
-        if: check-deploy-label
+        id: check-deploy-label
         uses: actions/github-script@v7
         with:
           script: |
