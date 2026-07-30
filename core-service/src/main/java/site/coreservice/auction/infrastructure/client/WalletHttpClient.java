@@ -35,10 +35,10 @@ public class WalletHttpClient implements WalletPort {
                             "amount", amount.getValue()))
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
+        }  catch (HttpClientErrorException.UnprocessableContent | HttpClientErrorException.BadRequest e) {
+            throw new AuctionException(AuctionErrorCode.INSUFFICIENT_BALANCE);
         } catch (HttpClientErrorException.NotFound e) {
             throw new AuctionException(AuctionErrorCode.WALLET_NOT_FOUND);
-        } catch (HttpClientErrorException.UnprocessableContent e) {
-            throw new AuctionException(AuctionErrorCode.INSUFFICIENT_BALANCE);
         }
 
         if (body == null || !body.isSuccess() || body.getData() == null) {

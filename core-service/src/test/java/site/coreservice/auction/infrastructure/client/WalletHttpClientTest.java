@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -75,16 +74,16 @@ class WalletHttpClientTest {
     }
 
     @Test
-    @DisplayName("지갑 서버가 404를 반환하면 WALLET_NOT_FOUND 예외를 던진다")
-    void testHold_walletNotFound_throwsAuctionException() {
+    @DisplayName("지갑 서버가 400(Bad Request)을 반환하면 INSUFFICIENT_BALANCE 예외를 던진다")
+    void testHold_badRequest_throwsAuctionException() {
         server.expect(requestTo("http://localhost:8080/internal/v1/wallet/hold"))
                 .andExpect(method(HttpMethod.PUT))
-                .andRespond(withResourceNotFound());
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         assertThatThrownBy(() -> walletHttpClient.hold(1L, 2L, Money.of(13_000L)))
                 .isInstanceOf(AuctionException.class)
                 .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.WALLET_NOT_FOUND);
+                .isEqualTo(AuctionErrorCode.INSUFFICIENT_BALANCE);
         server.verify();
     }
 
