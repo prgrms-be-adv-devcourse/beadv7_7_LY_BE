@@ -41,3 +41,7 @@ toss:
 member:
   service:
     base-url: ${MEMBER_SERVICE_BASE_URL}
+
+core:
+  service:
+    base-url: ${CORE_SERVICE_BASE_URL}
