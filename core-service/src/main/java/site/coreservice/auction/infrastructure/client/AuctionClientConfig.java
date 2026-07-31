@@ -9,17 +9,17 @@ import org.springframework.web.client.RestClient;
 public class AuctionClientConfig {
 
     @Bean
-    RestClient auctionProductRestClient(@Value("${auction.product-api.base-url:http://localhost:8080}") String baseUrl) {
+    RestClient auctionProductRestClient(@Value("${core.service.base-url}") String baseUrl) {
         return RestClient.builder().baseUrl(baseUrl).build();
     }
 
     @Bean
-    RestClient auctionWalletRestClient(@Value("${auction.wallet-api.base-url:http://localhost:8080}") String baseUrl) {
+    RestClient auctionWalletRestClient(@Value("${core.service.base-url}") String baseUrl) {
         return RestClient.builder().baseUrl(baseUrl).build();
     }
 
     @Bean
-    RestClient auctionMemberRestClient(@Value("${auction.member-api.base-url:http://localhost:8081}") String baseUrl) {
+    RestClient auctionMemberRestClient(@Value("${member.service.base-url}") String baseUrl) {
         return RestClient.builder().baseUrl(baseUrl).build();
     }
 }

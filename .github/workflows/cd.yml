@@ -265,6 +265,7 @@ jobs:
           TOSS_SECRET_KEY=${{ secrets.TOSS_CLIENT_KEY }}
           TOSS_CLIENT_KEY=${{ secrets.TOSS_CLIENT_KEY }}
           MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
+          CORE_SERVICE_BASE_URL=${{ secrets.CORE_SERVICE_BASE_URL }}
           EOF
 
           if [ ! -f .member-service-secret ]; then
