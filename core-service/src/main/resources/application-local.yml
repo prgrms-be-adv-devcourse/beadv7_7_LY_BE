@@ -12,6 +12,25 @@ spring:
     hibernate:
       ddl-auto: none
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: site.common.event.contract
+
+# 리스너가 @KafkaListener만 남아서(Spring Event 경로 제거) 이게 없으면 로컬에서 이벤트가 전혀
+# 처리되지 않는다 — docker/local의 kafka 컨테이너가 떠 있어야 한다.
+event:
+  publisher:
+    type: kafka
+
 member:
   service:
     base-url: http://localhost:8081

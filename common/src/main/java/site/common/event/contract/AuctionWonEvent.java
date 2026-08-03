@@ -1,6 +1,10 @@
 package site.common.event.contract;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
 import site.common.event.Event;
@@ -17,15 +21,19 @@ public class AuctionWonEvent extends Event {
     private final BigDecimal winningPrice;
 
     @Builder
+    @JsonCreator
     private AuctionWonEvent(
-        final Long auctionId,
-        final Long productId,
-        final Long winnerId,
-        final Long sellerId,
-        final String itemCondition,
-        final String firstImageUrl,
-        final BigDecimal winningPrice
+        @JsonProperty("eventId") final UUID eventId,
+        @JsonProperty("occurredAt") final LocalDateTime occurredAt,
+        @JsonProperty("auctionId") final Long auctionId,
+        @JsonProperty("productId") final Long productId,
+        @JsonProperty("winnerId") final Long winnerId,
+        @JsonProperty("sellerId") final Long sellerId,
+        @JsonProperty("itemCondition") final String itemCondition,
+        @JsonProperty("firstImageUrl") final String firstImageUrl,
+        @JsonProperty("winningPrice") final BigDecimal winningPrice
     ) {
+        super(eventId, occurredAt);
         this.auctionId = auctionId;
         this.productId = productId;
         this.winnerId = winnerId;
