@@ -62,8 +62,7 @@ import site.coreservice.product.domain.PriceHistoryRepository;
 @Tag("integration")
 @SpringBootTest(properties = {
         "product.seed.enabled=false",
-        "product.price-seed.enabled=false",
-        "event.publisher.type=kafka"
+        "product.price-seed.enabled=false"
 })
 @ActiveProfiles("local")
 class PriceHistoryIntegrationTest {
