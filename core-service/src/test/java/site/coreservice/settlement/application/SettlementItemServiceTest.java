@@ -20,7 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.settlement.domain.CommissionPolicy;
 import site.coreservice.settlement.domain.CommissionPolicyRepository;
 import site.coreservice.settlement.domain.SettlementItem;
@@ -46,8 +46,14 @@ class SettlementItemServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderCompletedEvent = new OrderCompletedEvent(
-                1001L, 5001L, 301L, 302L, BigDecimal.valueOf(85_000), LocalDateTime.now());
+        orderCompletedEvent = OrderCompletedEvent.builder()
+                .orderId(1001L)
+                .auctionId(5001L)
+                .buyerId(301L)
+                .sellerId(302L)
+                .finalBidPrice(BigDecimal.valueOf(85_000))
+                .completedAt(LocalDateTime.now())
+                .build();
     }
 
     @Nested

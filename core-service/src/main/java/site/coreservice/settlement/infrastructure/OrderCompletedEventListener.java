@@ -3,7 +3,7 @@ package site.coreservice.settlement.infrastructure;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.settlement.application.OrderCompletedEventHandler;
 
 @Component("settlementOrderCompletedEventListener")

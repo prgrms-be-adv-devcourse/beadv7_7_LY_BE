@@ -1,7 +1,8 @@
-package site.coreservice.global.event;
+package site.common.event.contract;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.Builder;
 import lombok.Getter;
 import site.common.event.Event;
 
@@ -13,7 +14,8 @@ public class SettlementConfirmedEvent extends Event {
     private final BigDecimal totalAmount;
     private final LocalDateTime confirmedAt;
 
-    public SettlementConfirmedEvent(
+    @Builder
+    private SettlementConfirmedEvent(
         final Long settlementBatchId,
         final Long sellerId,
         final BigDecimal totalAmount,

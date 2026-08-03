@@ -1,5 +1,6 @@
-package site.coreservice.global.event;
+package site.common.event.contract;
 
+import lombok.Builder;
 import lombok.Getter;
 import site.common.event.Event;
 
@@ -10,7 +11,8 @@ public class OrderCancelledEvent extends Event {
     private final Long auctionId;
     private final Long buyerId;
 
-    public OrderCancelledEvent(
+    @Builder
+    private OrderCancelledEvent(
         final Long orderId,
         final Long auctionId,
         final Long buyerId

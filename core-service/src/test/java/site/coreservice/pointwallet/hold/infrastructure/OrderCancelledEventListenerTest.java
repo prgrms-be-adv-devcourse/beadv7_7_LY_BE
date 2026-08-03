@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.global.event.OrderCancelledEvent;
+import site.common.event.contract.OrderCancelledEvent;
 import site.coreservice.pointwallet.hold.application.HoldService;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +29,11 @@ class OrderCancelledEventListenerTest {
     @DisplayName("이벤트를 받으면 auctionId로 release를 호출한다")
     void handle_release_위임() {
         // given
-        OrderCancelledEvent event = new OrderCancelledEvent(1L, AUCTION_ID, 456L);
+        OrderCancelledEvent event = OrderCancelledEvent.builder()
+                .orderId(1L)
+                .auctionId(AUCTION_ID)
+                .buyerId(456L)
+                .build();
 
         // when
         sut.handle(event);

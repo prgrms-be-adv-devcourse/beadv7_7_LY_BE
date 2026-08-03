@@ -11,7 +11,7 @@ import site.common.event.EventPublisher;
 import site.coreservice.auction.domain.Auction;
 import site.coreservice.auction.domain.AuctionSchedule;
 import site.coreservice.auction.domain.AuctionStatus;
-import site.coreservice.global.event.AuctionWonEvent;
+import site.common.event.contract.AuctionWonEvent;
 import site.coreservice.auction.domain.HighestBid;
 import site.coreservice.auction.domain.ItemCondition;
 import site.coreservice.auction.domain.ItemInfo;

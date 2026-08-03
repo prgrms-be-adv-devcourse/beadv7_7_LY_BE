@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.pointwallet.hold.application.HoldService;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +31,14 @@ class OrderCompletedEventListenerTest {
     @DisplayName("이벤트를 받으면 auctionId로 consume을 호출한다")
     void handle_consume_위임() {
         // given
-        OrderCompletedEvent event = new OrderCompletedEvent(1L, AUCTION_ID, 456L, 789L, BigDecimal.valueOf(15_000), LocalDateTime.now());
+        OrderCompletedEvent event = OrderCompletedEvent.builder()
+                .orderId(1L)
+                .auctionId(AUCTION_ID)
+                .buyerId(456L)
+                .sellerId(789L)
+                .finalBidPrice(BigDecimal.valueOf(15_000))
+                .completedAt(LocalDateTime.now())
+                .build();
 
         // when
         sut.handle(event);

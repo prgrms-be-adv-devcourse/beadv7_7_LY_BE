@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.common.event.EventPublisher;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 
 /**
  * 주문 완료 발행을 흉내 내는 local 전용 도구. 실경로 전체(경매 낙찰 → 주문 생성 → 구매자 확정)를
@@ -36,7 +36,14 @@ public class FakeTradePublishService {
     @Transactional
     public void publishFakeTradeConfirmed(Long auctionId, LocalDateTime confirmedAt) {
         LocalDateTime effectiveConfirmedAt = (confirmedAt != null) ? confirmedAt : LocalDateTime.now();
-        eventPublisher.publish(new OrderCompletedEvent(UNUSED_ID, auctionId, UNUSED_ID, UNUSED_ID,
-                BigDecimal.ZERO, effectiveConfirmedAt));
+        eventPublisher.publish(
+                OrderCompletedEvent.builder()
+                        .orderId(UNUSED_ID)
+                        .auctionId(auctionId)
+                        .buyerId(UNUSED_ID)
+                        .sellerId(UNUSED_ID)
+                        .finalBidPrice(BigDecimal.ZERO)
+                        .completedAt(effectiveConfirmedAt)
+                        .build());
     }
 }

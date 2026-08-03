@@ -22,7 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.common.event.EventPublisher;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.pointwallet.hold.application.HoldService;
 import site.coreservice.product.domain.AuctionSnapshotPort;
 import site.coreservice.product.domain.ClosedAuction;
@@ -94,7 +94,14 @@ class PriceHistoryIntegrationTest {
     }
 
     private OrderCompletedEvent orderCompleted(Long auctionId) {
-        return new OrderCompletedEvent(1L, auctionId, 2L, 3L, BigDecimal.valueOf(15_000), LocalDateTime.now());
+        return OrderCompletedEvent.builder()
+                .orderId(1L)
+                .auctionId(auctionId)
+                .buyerId(2L)
+                .sellerId(3L)
+                .finalBidPrice(BigDecimal.valueOf(15_000))
+                .completedAt(LocalDateTime.now())
+                .build();
     }
 
     private void publishInTransaction(OrderCompletedEvent event, boolean rollback) {

@@ -1,6 +1,7 @@
-package site.coreservice.global.event;
+package site.common.event.contract;
 
 import java.math.BigDecimal;
+import lombok.Builder;
 import lombok.Getter;
 import site.common.event.Event;
 
@@ -15,7 +16,8 @@ public class AuctionWonEvent extends Event {
     private final String firstImageUrl;
     private final BigDecimal winningPrice;
 
-    public AuctionWonEvent(
+    @Builder
+    private AuctionWonEvent(
         final Long auctionId,
         final Long productId,
         final Long winnerId,

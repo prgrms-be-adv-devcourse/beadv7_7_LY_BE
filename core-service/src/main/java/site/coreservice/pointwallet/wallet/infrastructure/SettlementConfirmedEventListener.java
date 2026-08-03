@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import site.coreservice.global.event.SettlementConfirmedEvent;
+import site.common.event.contract.SettlementConfirmedEvent;
 import site.coreservice.pointwallet.wallet.application.SettlementConfirmedEventHandler;
 
 @Slf4j

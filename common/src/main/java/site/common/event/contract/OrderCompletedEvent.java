@@ -1,7 +1,8 @@
-package site.coreservice.global.event;
+package site.common.event.contract;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.Builder;
 import lombok.Getter;
 import site.common.event.Event;
 
@@ -15,7 +16,8 @@ public class OrderCompletedEvent extends Event {
     private final BigDecimal finalBidPrice;
     private final LocalDateTime completedAt;
 
-    public OrderCompletedEvent(
+    @Builder
+    private OrderCompletedEvent(
         final Long orderId,
         final Long auctionId,
         final Long buyerId,
