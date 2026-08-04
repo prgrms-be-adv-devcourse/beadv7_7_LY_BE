@@ -37,7 +37,7 @@ class DepositTest {
             assertThat(deposit.getRequestedAmount()).isEqualTo(REQUESTED_AMOUNT);
             assertThat(deposit.getStatus()).isEqualTo(DepositStatus.REQUESTED);
             assertThat(deposit.getRequestedAt()).isNotNull();
-            assertThat(deposit.getPaymentKey()).isNull();
+            assertThat(deposit.getProviderTransactionId()).isNull();
             assertThat(deposit.getApprovedAt()).isNull();
         }
     }
@@ -51,14 +51,14 @@ class DepositTest {
         void confirm_일치하면_DONE으로_확정된다() {
             // given
             Deposit deposit = createRequestedDeposit();
-            String paymentKey = "toss-payment-key-1";
+            String providerTxId = "toss-payment-key-1";
 
             // when
-            deposit.confirm(paymentKey, ORDER_ID, REQUESTED_AMOUNT);
+            deposit.confirm(providerTxId, ORDER_ID, REQUESTED_AMOUNT);
 
             // then
             assertThat(deposit.getStatus()).isEqualTo(DepositStatus.DONE);
-            assertThat(deposit.getPaymentKey()).isEqualTo(paymentKey);
+            assertThat(deposit.getProviderTransactionId()).isEqualTo(providerTxId);
             assertThat(deposit.getApprovedAt()).isNotNull();
         }
 
@@ -67,10 +67,10 @@ class DepositTest {
         void confirm_이미_처리된_건이면_예외() {
             // given
             Deposit deposit = createRequestedDeposit();
-            deposit.confirm("first-payment-key", ORDER_ID, REQUESTED_AMOUNT);
+            deposit.confirm("first-provider-tx-id", ORDER_ID, REQUESTED_AMOUNT);
 
             // when & then
-            assertThatThrownBy(() -> deposit.confirm("second-payment-key", ORDER_ID, REQUESTED_AMOUNT))
+            assertThatThrownBy(() -> deposit.confirm("second-provider-tx-id", ORDER_ID, REQUESTED_AMOUNT))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
                     .isEqualTo(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
@@ -84,7 +84,7 @@ class DepositTest {
             deposit.fail();
 
             // when & then
-            assertThatThrownBy(() -> deposit.confirm("payment-key", ORDER_ID, REQUESTED_AMOUNT))
+            assertThatThrownBy(() -> deposit.confirm("provider-tx-id", ORDER_ID, REQUESTED_AMOUNT))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
                     .isEqualTo(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
@@ -97,7 +97,7 @@ class DepositTest {
             Deposit deposit = createRequestedDeposit();
 
             // when & then
-            assertThatThrownBy(() -> deposit.confirm("payment-key", "다른-주문번호", REQUESTED_AMOUNT))
+            assertThatThrownBy(() -> deposit.confirm("provider-tx-id", "다른-주문번호", REQUESTED_AMOUNT))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
                     .isEqualTo(DepositErrorCode.ORDER_ID_MISMATCH);
@@ -111,7 +111,7 @@ class DepositTest {
             Money differentAmount = Money.of(5_000);
 
             // when & then
-            assertThatThrownBy(() -> deposit.confirm("payment-key", ORDER_ID, differentAmount))
+            assertThatThrownBy(() -> deposit.confirm("provider-tx-id", ORDER_ID, differentAmount))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
                     .isEqualTo(DepositErrorCode.AMOUNT_MISMATCH);
@@ -140,7 +140,7 @@ class DepositTest {
         void fail_이미_DONE인_건이면_예외() {
             // given
             Deposit deposit = createRequestedDeposit();
-            deposit.confirm("payment-key", ORDER_ID, REQUESTED_AMOUNT);
+            deposit.confirm("provider-tx-id", ORDER_ID, REQUESTED_AMOUNT);
 
             // when & then
             assertThatThrownBy(deposit::fail)
