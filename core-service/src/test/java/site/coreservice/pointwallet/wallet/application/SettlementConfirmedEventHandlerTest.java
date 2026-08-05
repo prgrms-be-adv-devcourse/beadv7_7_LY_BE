@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.global.event.SettlementConfirmedEvent;
+import site.common.event.contract.SettlementConfirmedEvent;
 import site.coreservice.pointwallet.ledger.application.PointTransactionService;
 import site.coreservice.pointwallet.ledger.domain.PointTransactionType;
 import site.coreservice.pointwallet.shared.Money;
@@ -41,9 +41,12 @@ class SettlementConfirmedEventHandlerTest {
     @DisplayName("정산 확정 이벤트를 받으면 판매자 지갑에 정산금을 입금하고 원장에 기록한다")
     void handle_정산확정시_판매자지갑에_입금되고_원장에_기록된다() {
         // given
-        SettlementConfirmedEvent event = new SettlementConfirmedEvent(
-                SETTLEMENT_BATCH_ID, SELLER_ID, BigDecimal.valueOf(50_000), LocalDateTime.now()
-        );
+        SettlementConfirmedEvent event = SettlementConfirmedEvent.builder()
+                .settlementBatchId(SETTLEMENT_BATCH_ID)
+                .sellerId(SELLER_ID)
+                .totalAmount(BigDecimal.valueOf(50_000))
+                .confirmedAt(LocalDateTime.now())
+                .build();
         WalletBalanceResult result = new WalletBalanceResult(WALLET_ID, Money.of(50_000));
         when(walletService.charge(eq(SELLER_ID), any(Money.class))).thenReturn(result);
 
@@ -62,9 +65,12 @@ class SettlementConfirmedEventHandlerTest {
     @DisplayName("판매자가 지갑을 개설한 적 없어도 charge()로 자동 개설되어 입금된다")
     void handle_지갑이_없던_판매자도_자동개설되어_입금된다() {
         // given
-        SettlementConfirmedEvent event = new SettlementConfirmedEvent(
-                SETTLEMENT_BATCH_ID, SELLER_ID, BigDecimal.valueOf(30_000), LocalDateTime.now()
-        );
+        SettlementConfirmedEvent event = SettlementConfirmedEvent.builder()
+                .settlementBatchId(SETTLEMENT_BATCH_ID)
+                .sellerId(SELLER_ID)
+                .totalAmount(BigDecimal.valueOf(30_000))
+                .confirmedAt(LocalDateTime.now())
+                .build();
         WalletBalanceResult result = new WalletBalanceResult(WALLET_ID, Money.of(30_000));
         when(walletService.charge(eq(SELLER_ID), any(Money.class))).thenReturn(result);
 

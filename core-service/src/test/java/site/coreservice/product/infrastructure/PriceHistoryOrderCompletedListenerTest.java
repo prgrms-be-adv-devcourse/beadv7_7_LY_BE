@@ -22,7 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.product.application.PriceHistoryRecordService;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
@@ -54,7 +54,14 @@ class PriceHistoryOrderCompletedListenerTest {
     }
 
     private OrderCompletedEvent event(Long auctionId, LocalDateTime completedAt) {
-        return new OrderCompletedEvent(1L, auctionId, 2L, 3L, BigDecimal.valueOf(15_000), completedAt);
+        return OrderCompletedEvent.builder()
+                .orderId(1L)
+                .auctionId(auctionId)
+                .buyerId(2L)
+                .sellerId(3L)
+                .finalBidPrice(BigDecimal.valueOf(15_000))
+                .completedAt(completedAt)
+                .build();
     }
 
     private boolean hasMarker(String marker) {

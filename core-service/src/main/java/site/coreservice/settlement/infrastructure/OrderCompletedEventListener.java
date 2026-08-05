@@ -1,9 +1,9 @@
 package site.coreservice.settlement.infrastructure;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.event.EventListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.settlement.application.OrderCompletedEventHandler;
 
 @Component("settlementOrderCompletedEventListener")
@@ -12,7 +12,8 @@ public class OrderCompletedEventListener {
 
     private final OrderCompletedEventHandler orderCompletedEventHandler;
 
-    @EventListener
+    @KafkaListener(topics = "#{T(site.common.event.contract.EventType).ORDER_COMPLETED_EVENT.getValue()}",
+            groupId = "settlement-service")
     public void handle(final OrderCompletedEvent event) {
         orderCompletedEventHandler.handle(event);
     }

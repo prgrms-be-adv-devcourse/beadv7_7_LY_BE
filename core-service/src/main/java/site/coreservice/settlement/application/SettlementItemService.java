@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.settlement.domain.CommissionPolicy;
 import site.coreservice.settlement.domain.CommissionPolicyRepository;
 import site.coreservice.settlement.domain.Money;

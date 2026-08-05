@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.common.event.EventHandler;
-import site.coreservice.global.event.SettlementConfirmedEvent;
+import site.common.event.contract.SettlementConfirmedEvent;
 import site.coreservice.pointwallet.ledger.application.PointTransactionService;
 import site.coreservice.pointwallet.ledger.domain.PointTransactionType;
 import site.coreservice.pointwallet.shared.Money;

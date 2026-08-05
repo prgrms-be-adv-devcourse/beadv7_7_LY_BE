@@ -45,6 +45,10 @@ subprojects {
         // Prometheus
         implementation 'io.micrometer:micrometer-registry-prometheus'
 
+        // Kafka
+        implementation 'org.springframework.boot:spring-boot-starter-kafka'
+        testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
+
         // Junit
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }

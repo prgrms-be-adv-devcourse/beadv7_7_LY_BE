@@ -2,8 +2,8 @@ package site.coreservice.order.application;
 
 import org.springframework.stereotype.Component;
 import site.common.event.EventPublisher;
-import site.coreservice.global.event.OrderCancelledEvent;
-import site.coreservice.global.event.OrderCompletedEvent;
+import site.common.event.contract.OrderCancelledEvent;
+import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.order.domain.Order;
 
 @Component
@@ -17,12 +17,22 @@ public class OrderEventPublisher {
 
     public void publishCancelled(final Order order) {
         eventPublisher.publish(
-            new OrderCancelledEvent(order.getId(), order.getAuctionId(), order.getBuyerId()));
+            OrderCancelledEvent.builder()
+                .orderId(order.getId())
+                .auctionId(order.getAuctionId())
+                .buyerId(order.getBuyerId())
+                .build());
     }
 
     public void publishCompleted(final Order order) {
         eventPublisher.publish(
-            new OrderCompletedEvent(order.getId(), order.getAuctionId(), order.getBuyerId(),
-                order.getSellerId(), order.getFinalBidPrice(), order.getCompletedAt()));
+            OrderCompletedEvent.builder()
+                .orderId(order.getId())
+                .auctionId(order.getAuctionId())
+                .buyerId(order.getBuyerId())
+                .sellerId(order.getSellerId())
+                .finalBidPrice(order.getFinalBidPrice())
+                .completedAt(order.getCompletedAt())
+                .build());
     }
 }

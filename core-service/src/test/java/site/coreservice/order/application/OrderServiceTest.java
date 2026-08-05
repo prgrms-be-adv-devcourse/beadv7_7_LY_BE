@@ -26,7 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import site.coreservice.global.event.AuctionWonEvent;
+import site.common.event.contract.AuctionWonEvent;
 import site.coreservice.order.application.dto.OrderDetailResult;
 import site.coreservice.order.application.dto.OrderSearchResult;
 import site.coreservice.order.domain.CancelReason;
@@ -64,9 +64,15 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        auctionWonEvent = new AuctionWonEvent(
-                5001L, 1201L, 301L, 302L, "VERY_GOOD_PLUS",
-                "https://cdn.example.com/listings/5001/photo1.jpg", BigDecimal.valueOf(85_000));
+        auctionWonEvent = AuctionWonEvent.builder()
+                .auctionId(5001L)
+                .productId(1201L)
+                .winnerId(301L)
+                .sellerId(302L)
+                .itemCondition("VERY_GOOD_PLUS")
+                .firstImageUrl("https://cdn.example.com/listings/5001/photo1.jpg")
+                .winningPrice(BigDecimal.valueOf(85_000))
+                .build();
 
         productInfo = new ProductInfo("Abbey Road", "비틀즈", 1969, "ORIGINAL");
     }

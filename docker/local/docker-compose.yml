@@ -27,5 +27,41 @@ services:
     volumes:
       - ./volumes/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
+  kafka:
+    image: apache/kafka:4.2.1
+    ports:
+      - "9092:9092"
+    environment:
+      TZ: Asia/Seoul
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # PLAINTEXT: 호스트(core-service 등 컨테이너 밖)용, INTERNAL: 같은 도커 네트워크 안
+      # 컨테이너(kafka-ui 등)용 — "localhost" advertise는 컨테이너 안에서는 자기 자신을
+      # 가리켜서 안 통하기 때문에 리스너를 나눴다.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    ports:
+      - "8089:8080"
+    environment:
+      TZ: Asia/Seoul
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
 volumes:
   mysql-data:
+  kafka-data:
