@@ -38,7 +38,7 @@ public class Deposit {
     private String orderId;
 
     @Column(name = "payment_key")
-    private String paymentKey;
+   private String providerTransactionId;
 
     @Embedded
     private Money requestedAmount;
@@ -71,11 +71,11 @@ public class Deposit {
         return new Deposit(userId, orderId, requestedAmount);
     }
 
-    public void confirm(String paymentKey, String orderId, Money approvedAmount) {
+    public void confirm(String providerTransactionId, String orderId, Money approvedAmount) {
         validateStatus(DepositStatus.REQUESTED);
         validateRequestConsistency(orderId, approvedAmount);
 
-        this.paymentKey = paymentKey;
+        this.providerTransactionId = providerTransactionId;
         this.status = DepositStatus.DONE;
         this.approvedAt = LocalDateTime.now();
     }

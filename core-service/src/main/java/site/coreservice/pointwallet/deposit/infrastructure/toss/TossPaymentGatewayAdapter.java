@@ -7,14 +7,14 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import site.coreservice.pointwallet.deposit.domain.TossCancelResult;
-import site.coreservice.pointwallet.deposit.domain.TossConfirmResult;
-import site.coreservice.pointwallet.deposit.domain.TossPaymentsClient;
+import site.coreservice.pointwallet.deposit.domain.PaymentGatewayClient;
+import site.coreservice.pointwallet.deposit.domain.PgApproveResult;
+import site.coreservice.pointwallet.deposit.domain.PgCancelResult;
 import site.coreservice.pointwallet.shared.Money;
 
 @Component
 @RequiredArgsConstructor
-public class TossPaymentsHttpClient implements TossPaymentsClient {
+public class TossPaymentGatewayAdapter implements PaymentGatewayClient {
 
     private static final String CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
     private static final String CANCEL_URL = "https://api.tosspayments.com/v1/payments/%s/cancel";
@@ -23,13 +23,13 @@ public class TossPaymentsHttpClient implements TossPaymentsClient {
     private final TossPaymentsProperties properties;
 
     @Override
-    public TossConfirmResult confirmPayment(String paymentKey, String orderId, Money amount) {
+    public PgApproveResult approve(String providerTxId, String orderId, Money amount) {
         TossConfirmApiResponse response = restClient.post()
                 .uri(CONFIRM_URL)
                 .header("Authorization", basicAuthHeader())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
-                        "paymentKey", paymentKey,
+                        "paymentKey", providerTxId,
                         "orderId", orderId,
                         "amount", amount.getValue()
                 ))
@@ -40,7 +40,7 @@ public class TossPaymentsHttpClient implements TossPaymentsClient {
                     return response1.bodyTo(TossConfirmApiResponse.class);
                 });
 
-        return new TossConfirmResult(
+        return new PgApproveResult(
                 response.paymentKey(),
                 response.orderId(),
                 Money.of(response.totalAmount())
@@ -48,11 +48,11 @@ public class TossPaymentsHttpClient implements TossPaymentsClient {
     }
 
     @Override
-    public TossCancelResult cancelPayment(String paymentKey, String cancelReason, Money cancelAmount) {
+    public PgCancelResult cancel(String providerTxId, String cancelReason, Money cancelAmount) {
         TossCancelApiResponse response = restClient.post()
-                .uri(CANCEL_URL.formatted(paymentKey))
+                .uri(CANCEL_URL.formatted(providerTxId))
                 .header("Authorization", basicAuthHeader())
-                .header("Idempotency-Key", "DEPOSIT-CANCEL-" + paymentKey)
+                .header("Idempotency-Key", "DEPOSIT-CANCEL-" + providerTxId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
                         "cancelReason", cancelReason,
@@ -68,7 +68,7 @@ public class TossPaymentsHttpClient implements TossPaymentsClient {
         TossCancelApiResponse.CancelDetail latestCancel = response.cancels()
                 .get(response.cancels().size() - 1);
 
-        return new TossCancelResult(
+        return new PgCancelResult(
                 response.paymentKey(),
                 latestCancel.transactionKey(),
                 Money.of(latestCancel.cancelAmount())
