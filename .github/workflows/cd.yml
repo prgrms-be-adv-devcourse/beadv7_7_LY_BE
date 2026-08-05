@@ -266,6 +266,7 @@ jobs:
           TOSS_CLIENT_KEY=${{ secrets.TOSS_CLIENT_KEY }}
           MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
           CORE_SERVICE_BASE_URL=${{ secrets.CORE_SERVICE_BASE_URL }}
+          KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
           EOF
 
           if [ ! -f .member-service-secret ]; then
