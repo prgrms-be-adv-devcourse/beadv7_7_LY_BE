@@ -33,3 +33,5 @@ spring:
 product:
   auction-api:
     base-url: http://localhost:8080
+  fake-trade:
+    enabled: true
