@@ -1,4 +1,4 @@
-package site.coreservice.pointwallet.deposit.infrastructure.toss;
+package site.coreservice.pointwallet.deposit.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
