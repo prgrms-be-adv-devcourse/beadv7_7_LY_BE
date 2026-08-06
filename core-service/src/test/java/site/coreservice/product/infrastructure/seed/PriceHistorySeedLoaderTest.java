@@ -21,10 +21,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.MediaCondition;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.PriceHistory;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.domain.price.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductRepository;
 

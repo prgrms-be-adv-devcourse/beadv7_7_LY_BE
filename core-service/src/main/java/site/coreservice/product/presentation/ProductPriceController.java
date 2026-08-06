@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
-import site.coreservice.product.application.PriceQueryService;
-import site.coreservice.product.presentation.dto.PriceSummaryResponse;
-import site.coreservice.product.presentation.dto.PriceTradesResponse;
+import site.coreservice.product.application.price.PriceQueryService;
+import site.coreservice.product.presentation.dto.price.PriceSummaryResponse;
+import site.coreservice.product.presentation.dto.price.PriceTradesResponse;
 
 /** 시세 조회 API (요약 3-1 · 추이 3-2). 카탈로그(ProductController)와 관심사를 분리한 시세 전용 컨트롤러. */
 @RestController

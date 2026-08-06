@@ -16,8 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import tools.jackson.databind.json.JsonMapper;
 

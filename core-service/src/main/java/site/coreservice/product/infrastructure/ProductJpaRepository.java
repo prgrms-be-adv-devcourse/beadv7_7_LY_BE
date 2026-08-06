@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
-import site.coreservice.product.domain.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchHit;
 
 public interface ProductJpaRepository extends JpaRepository<Product, Long> {
 
@@ -32,7 +32,7 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
 
     // 주의: 검색 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
     @Query("""
-            select new site.coreservice.product.domain.ProductSearchHit(
+            select new site.coreservice.product.domain.search.ProductSearchHit(
                     p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType, p.releaseCountry)
             from Product p join Artist a on a.id = p.artistId
             where p.active = true
@@ -62,7 +62,7 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
     // 주의: 목록 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
     // (지금은 조건이 active 하나뿐이지만, 아티스트 조인이 양쪽에 다 있어야 수가 맞는다)
     @Query("""
-            select new site.coreservice.product.domain.ProductSearchHit(
+            select new site.coreservice.product.domain.search.ProductSearchHit(
                     p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType, p.releaseCountry)
             from Product p join Artist a on a.id = p.artistId
             where p.active = true
