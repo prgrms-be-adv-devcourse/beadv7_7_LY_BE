@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
-import site.coreservice.product.application.ProductSearchService;
-import site.coreservice.product.presentation.dto.ProductSearchResponse;
+import site.coreservice.product.application.search.ProductSearchService;
+import site.coreservice.product.presentation.dto.search.ProductSearchResponse;
 
 @RestController
 @RequestMapping("/api/v1/search")

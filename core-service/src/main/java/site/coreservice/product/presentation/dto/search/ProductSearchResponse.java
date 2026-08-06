@@ -1,7 +1,7 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.search;
 
 import java.util.List;
-import site.coreservice.product.application.dto.ProductSearchResult;
+import site.coreservice.product.application.dto.search.ProductSearchResult;
 
 /** 검색 응답(명세 1-1). openAuctionCount·lastTradedPrice는 아직 없다 — 각각 경매 연동(D7)·시세(D5) 후 추가. */
 public record ProductSearchResponse(List<Card> content, int page, int size, long totalElements, boolean hasNext) {

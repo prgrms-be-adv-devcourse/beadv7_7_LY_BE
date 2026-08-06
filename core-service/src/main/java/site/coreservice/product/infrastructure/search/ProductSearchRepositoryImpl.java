@@ -1,12 +1,13 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.search;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
-import site.coreservice.product.domain.ProductSearchHit;
-import site.coreservice.product.domain.ProductSearchPage;
-import site.coreservice.product.domain.ProductSearchRepository;
+import site.coreservice.product.domain.search.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchRepository;
+import site.coreservice.product.infrastructure.ProductJpaRepository;
 
 /**
  * LIKE 기반 검색 구현. Spring Data의 Pageable·Page는 이 클래스 안에서만 쓰고,

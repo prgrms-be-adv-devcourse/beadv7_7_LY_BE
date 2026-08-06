@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.search;
 
 /**
  * 상품 검색 저장소. 지금은 DB LIKE 검색이지만, 파이널에 검색엔진(Elasticsearch)으로 갈아끼울 때

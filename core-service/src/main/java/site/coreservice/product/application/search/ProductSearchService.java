@@ -1,11 +1,11 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.search;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.coreservice.product.application.dto.ProductSearchResult;
-import site.coreservice.product.domain.ProductSearchPage;
-import site.coreservice.product.domain.ProductSearchRepository;
+import site.coreservice.product.application.dto.search.ProductSearchResult;
+import site.coreservice.product.domain.search.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchRepository;
 import site.coreservice.product.domain.TextNormalizer;
 import site.coreservice.product.exception.SearchKeywordRequiredException;
 

@@ -1,4 +1,4 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,9 +11,13 @@ import site.coreservice.product.domain.ArtistAlias;
 import site.coreservice.product.domain.PressType;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductAlias;
-import site.coreservice.product.domain.ProductSearchHit;
-import site.coreservice.product.domain.ProductSearchPage;
-import site.coreservice.product.domain.ProductSearchRepository;
+import site.coreservice.product.domain.search.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchRepository;
+import site.coreservice.product.infrastructure.ArtistAliasJpaRepository;
+import site.coreservice.product.infrastructure.ArtistJpaRepository;
+import site.coreservice.product.infrastructure.ProductAliasJpaRepository;
+import site.coreservice.product.infrastructure.ProductJpaRepository;
 import site.coreservice.support.RepositoryTest;
 
 @RepositoryTest

@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,11 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.product.application.dto.ProductSearchResult;
+import site.coreservice.product.application.dto.search.ProductSearchResult;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.ProductSearchHit;
-import site.coreservice.product.domain.ProductSearchPage;
-import site.coreservice.product.domain.ProductSearchRepository;
+import site.coreservice.product.domain.search.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchRepository;
 import site.coreservice.product.exception.SearchKeywordRequiredException;
 
 @ExtendWith(MockitoExtension.class)

@@ -1,13 +1,13 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.product.application.dto.ProductSearchResult;
+import site.coreservice.product.application.dto.search.ProductSearchResult;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchHit;
 
 /** 응답 record의 필드명 = JSON 필드명 = 다른 팀이 보는 API 명세. 필드명·enum→문자열 변환이 어긋나는 걸 막는다. */
 class ProductSearchResponseTest {

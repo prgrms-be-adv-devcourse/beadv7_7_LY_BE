@@ -1,8 +1,8 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.search;
 
 import java.util.List;
-import site.coreservice.product.domain.ProductSearchHit;
-import site.coreservice.product.domain.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchPage;
 
 /** 상품 검색 결과(명세 1-1). page·size는 보정된 값이다. */
 public record ProductSearchResult(List<ProductSearchHit> content, int page, int size, long totalElements,

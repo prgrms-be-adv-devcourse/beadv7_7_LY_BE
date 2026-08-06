@@ -1,11 +1,11 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.product.domain.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchPage;
 
 /** hasNext 계산의 경계 — 곱셈이 int로 넘치면 극단 page 값에서 부호가 뒤집혀 잘못된 hasNext가 나온다. */
 class ProductSearchResultTest {
