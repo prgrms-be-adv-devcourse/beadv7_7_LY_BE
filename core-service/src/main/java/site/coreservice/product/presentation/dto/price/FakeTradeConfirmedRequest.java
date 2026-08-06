@@ -1,4 +1,4 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.price;
 
 import java.time.LocalDateTime;
 

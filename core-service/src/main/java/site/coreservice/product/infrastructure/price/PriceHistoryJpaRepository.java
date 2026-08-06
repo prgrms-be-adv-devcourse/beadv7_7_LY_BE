@@ -1,4 +1,4 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.price;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import site.coreservice.product.domain.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistory;
 
 public interface PriceHistoryJpaRepository extends JpaRepository<PriceHistory, Long> {
 

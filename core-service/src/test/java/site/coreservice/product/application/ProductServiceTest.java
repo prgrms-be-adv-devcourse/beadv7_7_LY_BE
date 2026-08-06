@@ -25,12 +25,12 @@ import site.coreservice.product.application.port.AuctionOpenCountPort;
 import site.coreservice.product.domain.Artist;
 import site.coreservice.product.domain.ArtistRepository;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.PriceHistory;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.domain.price.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 import site.coreservice.product.domain.Product;
-import site.coreservice.product.domain.ProductSearchHit;
-import site.coreservice.product.domain.ProductSearchPage;
-import site.coreservice.product.domain.ProductSearchRepository;
+import site.coreservice.product.domain.search.ProductSearchHit;
+import site.coreservice.product.domain.search.ProductSearchPage;
+import site.coreservice.product.domain.search.ProductSearchRepository;
 import site.coreservice.product.exception.ProductNotFoundException;
 import site.coreservice.product.domain.ProductRepository;
 

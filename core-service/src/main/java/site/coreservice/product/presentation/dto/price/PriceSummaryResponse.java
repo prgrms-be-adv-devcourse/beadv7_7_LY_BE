@@ -1,7 +1,7 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.price;
 
 import java.util.List;
-import site.coreservice.product.application.dto.PriceSummaryResult;
+import site.coreservice.product.application.dto.price.PriceSummaryResult;
 
 /** 시세 요약 응답(스펙 3-1). 컨디션은 풀네임 문자열 — 축약 표기(M/NM)는 화면 표시 계층의 몫. */
 public record PriceSummaryResponse(Long productId, List<ConditionSummary> conditions) {

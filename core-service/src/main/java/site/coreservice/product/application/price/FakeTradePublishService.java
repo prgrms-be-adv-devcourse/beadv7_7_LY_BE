@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.price;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

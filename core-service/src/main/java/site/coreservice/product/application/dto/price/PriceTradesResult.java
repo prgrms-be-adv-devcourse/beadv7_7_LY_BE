@@ -1,9 +1,9 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.price;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import site.coreservice.product.domain.MediaCondition;
-import site.coreservice.product.domain.PriceHistory;
+import site.coreservice.product.domain.price.MediaCondition;
+import site.coreservice.product.domain.price.PriceHistory;
 
 /**
  * 시세 추이 결과(스펙 3-2). 거래 1건 = 차트의 점 1개. 시간축은 낙찰시각(tradedAt)이다.

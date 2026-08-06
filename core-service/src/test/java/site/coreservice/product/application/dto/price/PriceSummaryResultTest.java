@@ -1,12 +1,12 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.product.domain.ConditionPriceStat;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.ConditionPriceStat;
+import site.coreservice.product.domain.price.MediaCondition;
 
 class PriceSummaryResultTest {
 

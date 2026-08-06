@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
-import site.coreservice.product.application.FakeTradePublishService;
-import site.coreservice.product.presentation.dto.FakeTradeConfirmedRequest;
+import site.coreservice.product.application.price.FakeTradePublishService;
+import site.coreservice.product.presentation.dto.price.FakeTradeConfirmedRequest;
 
 /**
  * 가짜 거래확정 발행 트리거 (local 전용 — 프로파일 밖에서는 빈이 뜨지 않아 경로 자체가 없다).

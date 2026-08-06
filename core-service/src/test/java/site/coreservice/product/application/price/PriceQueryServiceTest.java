@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,13 +14,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.coreservice.product.application.dto.PriceSummaryResult;
-import site.coreservice.product.application.dto.PriceTradesResult;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.application.dto.price.PriceSummaryResult;
+import site.coreservice.product.application.dto.price.PriceTradesResult;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.PriceHistory;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.domain.price.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 import site.coreservice.product.domain.Product;
 import site.coreservice.product.domain.ProductRepository;
 import site.coreservice.product.exception.ProductNotFoundException;

@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.price;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

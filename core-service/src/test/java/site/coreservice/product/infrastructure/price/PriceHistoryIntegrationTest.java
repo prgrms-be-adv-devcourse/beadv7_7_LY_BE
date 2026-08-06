@@ -1,4 +1,4 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -26,10 +26,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import site.common.event.EventPublisher;
 import site.common.event.contract.OrderCompletedEvent;
 import site.coreservice.pointwallet.hold.application.HoldService;
-import site.coreservice.product.domain.AuctionSnapshotPort;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.application.port.AuctionSnapshotPort;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 
 /**
  * Kafka 배선(리스너 등록·역직렬화·컨슈머 처리)을 실 브로커+DB로 검증한다. 단위 테스트로는 잡히지 않는 영역.

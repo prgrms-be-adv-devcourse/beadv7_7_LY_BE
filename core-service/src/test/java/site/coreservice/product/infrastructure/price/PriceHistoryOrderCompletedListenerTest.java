@@ -1,4 +1,4 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -23,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import site.common.event.contract.OrderCompletedEvent;
-import site.coreservice.product.application.PriceHistoryRecordService;
+import site.coreservice.product.application.price.PriceHistoryRecordService;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;

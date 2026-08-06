@@ -1,8 +1,8 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.price;
 
 import java.util.List;
-import site.coreservice.product.domain.ConditionPriceStat;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.ConditionPriceStat;
+import site.coreservice.product.domain.price.MediaCondition;
 
 /**
  * 시세 요약 결과(스펙 3-1). 평균은 여기서 원 단위 반올림한 정수가 된다 — 도메인 통계는

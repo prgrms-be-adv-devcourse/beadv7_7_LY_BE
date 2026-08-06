@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.price;
 
 import java.util.List;
 import java.util.Optional;

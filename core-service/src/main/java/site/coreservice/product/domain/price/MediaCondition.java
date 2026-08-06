@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.price;
 
 /**
  * 미디어(음반 자체) 컨디션 6등급. 경매·주문 도메인의 등급 체계와 같은 값을 쓴다 —

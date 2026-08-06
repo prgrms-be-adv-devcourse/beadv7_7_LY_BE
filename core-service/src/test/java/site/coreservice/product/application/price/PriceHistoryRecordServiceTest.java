@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.price;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,11 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
-import site.coreservice.product.domain.AuctionSnapshotPort;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
-import site.coreservice.product.domain.PriceHistory;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.application.port.AuctionSnapshotPort;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
+import site.coreservice.product.domain.price.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;

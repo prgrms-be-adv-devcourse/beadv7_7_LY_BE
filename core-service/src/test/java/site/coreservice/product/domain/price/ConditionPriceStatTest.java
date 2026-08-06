@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -7,8 +7,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
 import site.coreservice.product.exception.AuctionContractViolationException;
 
 class AuctionSummaryPayloadTest {

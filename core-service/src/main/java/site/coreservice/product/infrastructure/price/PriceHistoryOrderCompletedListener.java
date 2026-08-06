@@ -1,11 +1,11 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.price;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import site.common.event.contract.OrderCompletedEvent;
-import site.coreservice.product.application.PriceHistoryRecordService;
+import site.coreservice.product.application.price.PriceHistoryRecordService;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;

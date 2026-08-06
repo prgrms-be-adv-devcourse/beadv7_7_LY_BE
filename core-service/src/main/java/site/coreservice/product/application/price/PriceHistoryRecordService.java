@@ -1,4 +1,4 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.price;
 
 import java.time.LocalDateTime;
 import lombok.extern.slf4j.Slf4j;
@@ -7,10 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.coreservice.product.domain.AuctionSnapshotPort;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.PriceHistory;
-import site.coreservice.product.domain.PriceHistoryRepository;
+import site.coreservice.product.application.port.AuctionSnapshotPort;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.PriceHistory;
+import site.coreservice.product.domain.price.PriceHistoryRepository;
 import site.coreservice.product.exception.AuctionContractViolationException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotClosedException;
 import site.coreservice.product.exception.PriceHistoryAuctionNotFoundException;

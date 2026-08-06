@@ -2,8 +2,8 @@ package site.coreservice.product.infrastructure.client.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import site.coreservice.product.domain.ClosedAuction;
-import site.coreservice.product.domain.MediaCondition;
+import site.coreservice.product.domain.price.ClosedAuction;
+import site.coreservice.product.domain.price.MediaCondition;
 import site.coreservice.product.exception.AuctionContractViolationException;
 
 /**

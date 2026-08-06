@@ -1,8 +1,8 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.price;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import site.coreservice.product.application.dto.PriceTradesResult;
+import site.coreservice.product.application.dto.price.PriceTradesResult;
 
 /** 시세 추이 응답(스펙 3-2). 최신순 최대 100건 — 거래 1건이 차트의 점 1개다. */
 public record PriceTradesResponse(Long productId, List<TradePoint> trades) {
