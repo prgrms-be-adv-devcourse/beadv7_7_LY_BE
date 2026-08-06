@@ -1,6 +1,6 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.wishlist;
 
-import site.coreservice.product.application.dto.WishlistItemResult;
+import site.coreservice.product.application.dto.wishlist.WishlistItemResult;
 
 public record WishlistItemDetailResponse(
     Long id,

@@ -1,10 +1,10 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.wishlist;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
-import site.coreservice.product.domain.WishlistItem;
-import site.coreservice.product.domain.WishlistItemRepository;
+import site.coreservice.product.domain.wishlist.WishlistItem;
+import site.coreservice.product.domain.wishlist.WishlistItemRepository;
 
 import java.util.List;
 

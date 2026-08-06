@@ -1,6 +1,7 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.wishlist;
 
-import site.coreservice.product.domain.WishlistItem;
+import site.coreservice.product.application.dto.ProductSnapshotResult;
+import site.coreservice.product.domain.wishlist.WishlistItem;
 
 public record WishlistItemResult(
     Long id,

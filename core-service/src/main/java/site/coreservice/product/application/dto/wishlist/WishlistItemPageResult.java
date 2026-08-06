@@ -1,4 +1,4 @@
-package site.coreservice.product.application.dto;
+package site.coreservice.product.application.dto.wishlist;
 
 import java.util.List;
 

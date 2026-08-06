@@ -1,7 +1,7 @@
-package site.coreservice.product.presentation.dto;
+package site.coreservice.product.presentation.dto.wishlist;
 
 import java.util.List;
-import site.coreservice.product.application.dto.WishlistItemPageResult;
+import site.coreservice.product.application.dto.wishlist.WishlistItemPageResult;
 
 public record WishlistItemPageResponse(List<WishlistItemDetailResponse> content, Long nextCursor,
                                        boolean hasNext) {

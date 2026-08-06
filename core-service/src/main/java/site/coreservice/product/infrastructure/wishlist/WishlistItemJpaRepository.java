@@ -1,10 +1,10 @@
-package site.coreservice.product.infrastructure;
+package site.coreservice.product.infrastructure.wishlist;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import site.coreservice.product.domain.WishlistItem;
+import site.coreservice.product.domain.wishlist.WishlistItem;
 
 import java.util.List;
 

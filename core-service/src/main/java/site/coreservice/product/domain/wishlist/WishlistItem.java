@@ -1,4 +1,4 @@
-package site.coreservice.product.domain;
+package site.coreservice.product.domain.wishlist;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

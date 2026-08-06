@@ -1,14 +1,15 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.wishlist;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.coreservice.product.application.ProductService;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
-import site.coreservice.product.application.dto.WishlistItemPageResult;
-import site.coreservice.product.application.dto.WishlistItemResult;
-import site.coreservice.product.domain.WishlistItem;
-import site.coreservice.product.domain.WishlistItemRepository;
+import site.coreservice.product.application.dto.wishlist.WishlistItemPageResult;
+import site.coreservice.product.application.dto.wishlist.WishlistItemResult;
+import site.coreservice.product.domain.wishlist.WishlistItem;
+import site.coreservice.product.domain.wishlist.WishlistItemRepository;
 import site.coreservice.product.exception.ProductNotFoundException;
 
 import java.util.List;

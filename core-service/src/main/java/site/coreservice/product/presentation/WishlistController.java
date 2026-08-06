@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
-import site.coreservice.product.application.WishlistService;
-import site.coreservice.product.domain.WishlistItem;
-import site.coreservice.product.presentation.dto.WishlistItemPageResponse;
+import site.coreservice.product.application.wishlist.WishlistService;
+import site.coreservice.product.domain.wishlist.WishlistItem;
+import site.coreservice.product.presentation.dto.wishlist.WishlistItemPageResponse;
 
 @RestController
 @RequestMapping("/api/v1/members/me/liked-products")

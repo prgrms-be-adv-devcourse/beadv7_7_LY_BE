@@ -1,15 +1,16 @@
-package site.coreservice.product.application;
+package site.coreservice.product.application.wishlist;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.coreservice.product.application.ProductService;
 import site.coreservice.product.application.dto.ProductSnapshotResult;
-import site.coreservice.product.application.dto.WishlistItemPageResult;
+import site.coreservice.product.application.dto.wishlist.WishlistItemPageResult;
 import site.coreservice.product.domain.PressType;
-import site.coreservice.product.domain.WishlistItem;
-import site.coreservice.product.domain.WishlistItemRepository;
+import site.coreservice.product.domain.wishlist.WishlistItem;
+import site.coreservice.product.domain.wishlist.WishlistItemRepository;
 import site.coreservice.product.exception.ProductNotFoundException;
 
 import java.util.List;
