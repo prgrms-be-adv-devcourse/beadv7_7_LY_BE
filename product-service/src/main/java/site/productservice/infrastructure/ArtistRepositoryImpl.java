@@ -1,0 +1,36 @@
+package site.productservice.infrastructure;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+import site.productservice.domain.Artist;
+import site.productservice.domain.ArtistRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+@RequiredArgsConstructor
+public class ArtistRepositoryImpl implements ArtistRepository {
+
+    private final ArtistJpaRepository artistJpaRepository;
+
+    @Override
+    public Artist save(Artist artist) {
+        return artistJpaRepository.save(artist);
+    }
+
+    @Override
+    public Optional<Artist> findByNormalizedName(String normalizedName) {
+        return artistJpaRepository.findByNormalizedName(normalizedName);
+    }
+
+    @Override
+    public Optional<Artist> findById(Long id) {
+        return artistJpaRepository.findById(id);
+    }
+
+    @Override
+    public List<Artist> findAllByIds(List<Long> ids) {
+        return artistJpaRepository.findAllById(ids);
+    }
+}
