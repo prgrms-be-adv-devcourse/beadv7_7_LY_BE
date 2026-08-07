@@ -62,6 +62,42 @@ services:
     depends_on:
       - kafka
 
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+    image: lp-auction-elasticsearch:9.4.2
+    ports:
+      - "9200:9200"
+    environment:
+      TZ: Asia/Seoul
+      # 단일 노드라 다른 노드를 찾는 클러스터 구성 단계를 건너뛴다.
+      discovery.type: single-node
+      # ES 8부터 인증이 기본 켜짐이라, 로컬에서 http://localhost:9200 에 그냥 붙으려면
+      # 명시적으로 꺼야 한다. 운영에 이 설정을 그대로 가져가면 안 된다.
+      xpack.security.enabled: "false"
+      # heap 기본값은 컨테이너 가용 메모리에 맞춰 자동 산정된다. mysql·kafka와 같이 뜨는
+      # 로컬 환경이라 작게 고정한다.
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.2
+    ports:
+      - "5601:5601"
+    environment:
+      TZ: Asia/Seoul
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
 volumes:
   mysql-data:
   kafka-data:
+  elasticsearch-data:

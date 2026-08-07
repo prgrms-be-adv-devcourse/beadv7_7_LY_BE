@@ -1,0 +1,22 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':common')
+
+    // Web
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // Elasticsearch
+    implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+bootJar {
+    archiveFileName = 'discovery-service.jar'
+}
