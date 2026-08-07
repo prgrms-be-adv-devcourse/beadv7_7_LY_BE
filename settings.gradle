@@ -4,5 +4,4 @@ include 'common'
 include 'member-service'
 include 'core-service'
 include 'pointwallet-service'
-include 'pointwallet-service'
 
