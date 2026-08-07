@@ -1,0 +1,25 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':common')
+
+    // Web
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // Elasticsearch
+    // 버전을 적지 않는다 — Boot 4.1 BOM이 관리하는 co.elastic.clients:elasticsearch-java 9.4.2가
+    // Spring Data Elasticsearch 6.1.x가 공식 타겟하는 서버 버전과 같아서, 서버/클라이언트/SDE가
+    // 전부 검증된 조합 안에 들어온다. 버전을 명시하면 그 조합 밖으로 나가게 된다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+bootJar {
+    archiveFileName = 'discovery-service.jar'
+}
