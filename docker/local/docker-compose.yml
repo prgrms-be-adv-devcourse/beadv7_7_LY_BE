@@ -63,7 +63,9 @@ services:
       - kafka
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    build:
+      context: ./elasticsearch
+    image: lp-auction-elasticsearch:9.4.2
     ports:
       - "9200:9200"
     environment:
@@ -83,6 +85,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.2
+    ports:
+      - "5601:5601"
+    environment:
+      TZ: Asia/Seoul
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
 volumes:
   mysql-data:
