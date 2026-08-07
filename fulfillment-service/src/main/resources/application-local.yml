@@ -30,6 +30,6 @@ spring:
     listener:
       ack-mode: batch
 
-core:
+product:
   service:
-    base-url: http://localhost:8080
+    base-url: http://localhost:8084

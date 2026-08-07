@@ -10,7 +10,7 @@ public class OrderClientConfig {
 
     @Bean
     public RestClient productRestClient(
-            @Value("${core-service.product.base-url:http://localhost:8080}") final String baseUrl
+            @Value("${product.service.base-url}") final String baseUrl
     ) {
         return RestClient.builder()
                 .baseUrl(baseUrl)
