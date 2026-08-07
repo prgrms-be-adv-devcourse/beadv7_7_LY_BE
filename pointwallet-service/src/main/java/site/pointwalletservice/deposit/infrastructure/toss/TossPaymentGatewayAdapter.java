@@ -3,6 +3,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -17,9 +18,8 @@ import site.pointwalletservice.shared.Money;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class TossPaymentGatewayAdapter implements PaymentGatewayClient {
-
-    private static final Logger log = LoggerFactory.getLogger(TossPaymentGatewayAdapter.class);
 
     private static final String CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
     private static final String CANCEL_URL = "https://api.tosspayments.com/v1/payments/%s/cancel";

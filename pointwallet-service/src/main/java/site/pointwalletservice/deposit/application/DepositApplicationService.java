@@ -1,6 +1,7 @@
 package site.pointwalletservice.deposit.application;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,8 @@ import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DepositApplicationService implements DepositService {
-
-    private static final Logger log = LoggerFactory.getLogger(DepositApplicationService.class);
 
     private final DepositRepository depositRepository;
     private final WalletService walletService;
