@@ -31,16 +31,13 @@ public class HoldApplicationService implements HoldService {
                 .map(Hold::getUserId)
                 .orElse(null);
 
-        // 데드락 방지: 이 트랜잭션에서 건드릴 지갑이 두 개(이전 입찰자/신규 입찰자)일 수 있는데,
-        // "이전 → 신규" 순서로 고정해서 잠그면 다른 경매가 반대 조합으로 동시에 들어올 때
-        // 서로 상대방 락을 기다리는 데드락이 날 수 있다. userId 오름차순으로 고정해서 방지한다.
-        lockWalletsInDeterministicOrder(userId, previousUserId);
+        // 데드락 방지: 지갑 두 개를 건드릴 수 있으니, WalletService가 정해둔 고정 순서로 미리 잠근다.
+        walletService.lockForUpdate(userId, previousUserId);
 
         // 1) 이 경매에 기존 활성 홀드가 있으면(보통 다른 유저) 먼저 해제 — 그 사람 지갑에 환원.
         Long releasedHoldId = holdRepository.findByAuctionId(auctionId)
                 .map(this::releasePreviousHold)
                 .orElse(null);
-
         // 2) 새 최고 입찰자 지갑에서 차감. 지갑 조회·차감 검증은 전부 WalletService(→Wallet) 책임이고,
         // 여기서는 그 결과로 온 예외를 Hold 컨텍스트의 비즈니스 예외로 번역만 한다.
         WalletBalanceResult result;
@@ -58,18 +55,6 @@ public class HoldApplicationService implements HoldService {
         );
 
         return new HoldResult(newHold.getId(), releasedHoldId, result.balanceAfter());
-    }
-
-    /** 두 지갑(신규 입찰자, 이전 입찰자)을 항상 같은 순서로 미리 잠가서 데드락을 방지한다. */
-    private void lockWalletsInDeterministicOrder(Long userId, Long previousUserId) {
-        if (previousUserId == null || previousUserId.equals(userId)) {
-            walletService.lockForUpdate(userId);
-            return;
-        }
-        Long smaller = Math.min(userId, previousUserId);
-        Long larger = Math.max(userId, previousUserId);
-        walletService.lockForUpdate(smaller);
-        walletService.lockForUpdate(larger);
     }
 
     /** 이전 최고 입찰자(새 입찰자와 다른 유저일 수 있음)의 홀드를 해제한다: 그 사람 지갑에 환원 + 원장 기록 + 홀드 레코드 삭제. */

@@ -195,4 +195,68 @@ class WalletApplicationServiceTest {
             assertThat(balance).isEqualTo(Money.zero());
         }
     }
+
+    @Nested
+    @DisplayName("지갑 사전 락 (lockForUpdate)")
+    class LockForUpdate {
+
+        @Test
+        @DisplayName("단일 인자 - 해당 유저 지갑에 락 조회를 1번 건다")
+        void lockForUpdate_단일인자_해당유저만_락조회() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+            // when
+            sut.lockForUpdate(USER_ID);
+
+            // then
+            verify(walletRepository, times(1)).findByUserIdForUpdate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("두 번째 유저가 null이면 첫 번째 유저만 락을 건다")
+        void lockForUpdate_두번째유저가_null이면_하나만_잠근다() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+            // when
+            sut.lockForUpdate(USER_ID, null);
+
+            // then
+            verify(walletRepository, times(1)).findByUserIdForUpdate(USER_ID);
+            verify(walletRepository, times(1)).findByUserIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("두 유저가 동일하면 중복으로 잠그지 않고 한 번만 잠근다")
+        void lockForUpdate_두유저가_같으면_한번만_잠근다() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+            // when
+            sut.lockForUpdate(USER_ID, USER_ID);
+
+            // then
+            verify(walletRepository, times(1)).findByUserIdForUpdate(USER_ID);
+            verify(walletRepository, times(1)).findByUserIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("두 유저가 다르면 데드락 방지를 위해 작은 ID를 먼저 잠근다 - 인자 순서(큰→작은)로 넣어도 동일하다")
+        void lockForUpdate_서로다른유저면_작은ID부터_순서대로_잠근다() {
+            // given
+            Long smallerId = 100L;
+            Long largerId = 200L;
+            when(walletRepository.findByUserIdForUpdate(smallerId)).thenReturn(Optional.empty());
+            when(walletRepository.findByUserIdForUpdate(largerId)).thenReturn(Optional.empty());
+
+            // when: 일부러 큰 ID를 첫 인자로 넘겨도
+            sut.lockForUpdate(largerId, smallerId);
+
+            // then: 실제 잠그는 순서는 작은 ID가 먼저여야 한다
+            var inOrder = org.mockito.Mockito.inOrder(walletRepository);
+            inOrder.verify(walletRepository).findByUserIdForUpdate(smallerId);
+            inOrder.verify(walletRepository).findByUserIdForUpdate(largerId);
+        }
+    }
 }

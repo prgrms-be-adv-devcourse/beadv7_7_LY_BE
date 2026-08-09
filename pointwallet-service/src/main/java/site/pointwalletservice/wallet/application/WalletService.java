@@ -19,6 +19,14 @@ public interface WalletService {
      */
     void lockForUpdate(Long userId);
 
+    /**
+     * 지갑 두 개를 한 트랜잭션에서 같이 건드려야 할 때 쓴다.
+     * userId 오름차순으로 고정해서 잠그기 때문에, 호출부가 어떤 순서로 넘기든
+     * (또는 두 값이 반대로 뒤바뀐 다른 호출과 동시에 실행되든) 데드락이 나지 않는다.
+     * secondUserId가 null이거나 userId와 같으면 하나만 잠근다.
+     */
+    void lockForUpdate(Long userId, Long secondUserId);
+
     /** 거래내역 조회처럼 지갑 존재 자체가 불확실한(자동 개설하면 안 되는) 읽기 전용 조회용. */
     Optional<Long> findWalletId(Long userId);
 

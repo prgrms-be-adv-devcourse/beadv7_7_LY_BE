@@ -51,12 +51,6 @@ public class WalletApplicationService implements WalletService {
     }
 
     @Override
-    @Transactional
-    public void lockForUpdate(Long userId) {
-        walletRepository.findByUserIdForUpdate(userId);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public Optional<Long> findWalletId(Long userId) {
         return walletRepository.findByUserId(userId).map(Wallet::getId);
@@ -68,5 +62,24 @@ public class WalletApplicationService implements WalletService {
         return walletRepository.findByUserId(userId)
                 .map(Wallet::getBalance)
                 .orElse(Money.zero());
+    }
+
+    @Override
+    @Transactional
+    public void lockForUpdate(Long userId) {
+        walletRepository.findByUserIdForUpdate(userId);
+    }
+
+    @Override
+    @Transactional
+    public void lockForUpdate(Long userId, Long secondUserId) {
+        if (secondUserId == null || secondUserId.equals(userId)) {
+            lockForUpdate(userId);
+            return;
+        }
+        Long smaller = Math.min(userId, secondUserId);
+        Long larger = Math.max(userId, secondUserId);
+        walletRepository.findByUserIdForUpdate(smaller);
+        walletRepository.findByUserIdForUpdate(larger);
     }
 }
