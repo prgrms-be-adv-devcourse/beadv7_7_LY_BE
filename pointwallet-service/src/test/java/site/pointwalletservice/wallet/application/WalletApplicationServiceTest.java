@@ -54,7 +54,7 @@ class WalletApplicationServiceTest {
         void charge_기존지갑이_있으면_그대로_충전() {
             // given
             Wallet wallet = walletWithBalance(Money.of(5_000));
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
 
             // when
             WalletBalanceResult result = sut.charge(USER_ID, Money.of(10_000));
@@ -69,7 +69,7 @@ class WalletApplicationServiceTest {
         @DisplayName("지갑이 없으면 새로 개설한 뒤 충전한다")
         void charge_지갑이_없으면_새로_개설() {
             // given
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
             when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // when
@@ -83,6 +83,40 @@ class WalletApplicationServiceTest {
     }
 
     @Nested
+    @DisplayName("환입 (credit)")
+    class Credit {
+
+        @Test
+        @DisplayName("기존 지갑이 있으면 그 지갑에 환입한다")
+        void credit_기존지갑이_있으면_환입된다() {
+            // given
+            Wallet wallet = walletWithBalance(Money.of(5_000));
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
+
+            // when
+            WalletBalanceResult result = sut.credit(USER_ID, Money.of(10_000));
+
+            // then
+            assertThat(result.walletId()).isEqualTo(100L);
+            assertThat(result.balanceAfter()).isEqualTo(Money.of(15_000));
+            verify(walletRepository).save(wallet);
+        }
+
+        @Test
+        @DisplayName("지갑이 없으면 charge()와 달리 자동 개설하지 않고 WalletNotFoundException을 던진다")
+        void credit_지갑이_없으면_자동개설하지_않고_예외() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.credit(USER_ID, Money.of(10_000)))
+                    .isInstanceOf(WalletNotFoundException.class);
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
+    }
+
+    @Nested
     @DisplayName("차감 (deduct)")
     class Deduct {
 
@@ -91,7 +125,7 @@ class WalletApplicationServiceTest {
         void deduct_잔액이_충분하면_차감된다() {
             // given
             Wallet wallet = walletWithBalance(Money.of(10_000));
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
 
             // when
             WalletBalanceResult result = sut.deduct(USER_ID, Money.of(4_000));
@@ -106,7 +140,7 @@ class WalletApplicationServiceTest {
         @DisplayName("지갑이 없으면 WalletNotFoundException을 던진다")
         void deduct_지갑이_없으면_예외() {
             // given
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> sut.deduct(USER_ID, Money.of(1_000)))
@@ -120,7 +154,7 @@ class WalletApplicationServiceTest {
         void deduct_잔액부족이면_InsufficientBalanceException_전파() {
             // given
             Wallet wallet = walletWithBalance(Money.of(1_000));
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
 
             // when & then
             assertThatThrownBy(() -> sut.deduct(USER_ID, Money.of(10_000)))

@@ -3,7 +3,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.wallet.domain.Wallet;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
@@ -18,7 +17,7 @@ public class WalletApplicationService implements WalletService {
     @Override
     @Transactional
     public WalletBalanceResult charge(Long userId, Money amount) {
-        Wallet wallet = walletRepository.findByUserId(userId)
+        Wallet wallet = walletRepository.findByUserIdForUpdate(userId)
                 .orElseGet(() -> walletRepository.save(Wallet.open(userId)));
 
         wallet.charge(amount);
@@ -30,7 +29,7 @@ public class WalletApplicationService implements WalletService {
     @Override
     @Transactional
     public WalletBalanceResult credit(Long userId, Money amount) {
-        Wallet wallet = walletRepository.findByUserId(userId)
+        Wallet wallet = walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(WalletNotFoundException::new);
 
         wallet.charge(amount);
@@ -42,13 +41,19 @@ public class WalletApplicationService implements WalletService {
     @Override
     @Transactional
     public WalletBalanceResult deduct(Long userId, Money amount) {
-        Wallet wallet = walletRepository.findByUserId(userId)
+        Wallet wallet = walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(WalletNotFoundException::new);
 
         wallet.deduct(amount);
         walletRepository.save(wallet);
 
         return new WalletBalanceResult(wallet.getId(), wallet.getBalance());
+    }
+
+    @Override
+    @Transactional
+    public void lockForUpdate(Long userId) {
+        walletRepository.findByUserIdForUpdate(userId);
     }
 
     @Override

@@ -22,4 +22,9 @@ public class WalletRepositoryImpl implements WalletRepository {
     public Optional<Wallet> findByUserId(Long userId) {
         return walletJpaRepository.findByUserId(userId);
     }
+
+    @Override
+    public Optional<Wallet> findByUserIdForUpdate(Long userId) {
+        return walletJpaRepository.findByUserIdForUpdate(userId);
+    }
 }

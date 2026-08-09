@@ -1,5 +1,4 @@
 package site.pointwalletservice.hold.application;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +27,15 @@ public class HoldApplicationService implements HoldService {
     @Override
     @Transactional
     public HoldResult hold(Long auctionId, Long userId, Money amount) {
+        Long previousUserId = holdRepository.findByAuctionId(auctionId)
+                .map(Hold::getUserId)
+                .orElse(null);
+
+        // 데드락 방지: 이 트랜잭션에서 건드릴 지갑이 두 개(이전 입찰자/신규 입찰자)일 수 있는데,
+        // "이전 → 신규" 순서로 고정해서 잠그면 다른 경매가 반대 조합으로 동시에 들어올 때
+        // 서로 상대방 락을 기다리는 데드락이 날 수 있다. userId 오름차순으로 고정해서 방지한다.
+        lockWalletsInDeterministicOrder(userId, previousUserId);
+
         // 1) 이 경매에 기존 활성 홀드가 있으면(보통 다른 유저) 먼저 해제 — 그 사람 지갑에 환원.
         Long releasedHoldId = holdRepository.findByAuctionId(auctionId)
                 .map(this::releasePreviousHold)
@@ -50,6 +58,18 @@ public class HoldApplicationService implements HoldService {
         );
 
         return new HoldResult(newHold.getId(), releasedHoldId, result.balanceAfter());
+    }
+
+    /** 두 지갑(신규 입찰자, 이전 입찰자)을 항상 같은 순서로 미리 잠가서 데드락을 방지한다. */
+    private void lockWalletsInDeterministicOrder(Long userId, Long previousUserId) {
+        if (previousUserId == null || previousUserId.equals(userId)) {
+            walletService.lockForUpdate(userId);
+            return;
+        }
+        Long smaller = Math.min(userId, previousUserId);
+        Long larger = Math.max(userId, previousUserId);
+        walletService.lockForUpdate(smaller);
+        walletService.lockForUpdate(larger);
     }
 
     /** 이전 최고 입찰자(새 입찰자와 다른 유저일 수 있음)의 홀드를 해제한다: 그 사람 지갑에 환원 + 원장 기록 + 홀드 레코드 삭제. */
