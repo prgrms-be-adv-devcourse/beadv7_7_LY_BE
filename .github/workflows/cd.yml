@@ -180,7 +180,7 @@ jobs:
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_SCHEMA_NAME=${{ secrets.DB_SCHEMA_NAME }}
           
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.CORE_SERVICE_GHCR_IMAGE }}
+          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
           GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
           
           MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
@@ -255,8 +255,8 @@ jobs:
           MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
           MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
           
-          CORE_SERVICE_IMAGE_REPOSITORY=${{ secrets.CORE_SERVICE_GHCR_IMAGE }}
-          CORE_SERVICE_IMAGE_TAG=${{ github.sha }}
+          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
+          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
           EOF
           
           cat <<EOF > .member-service-secret
@@ -295,15 +295,15 @@ jobs:
           echo "❌ member-service가 60초 동안 정상 실행되지 않음..."
           exit 1
 
-  cleanup-secret-files:
-    needs: [ gateway-service-deploy, member-service-deploy ]
-    if: |
-      always() &&
-      (needs.gateway-service-deploy.result != 'skipped' || needs.member-service-deploy.result != 'skipped')
-    runs-on: groovid-ec2-runner
-    steps:
-      - name: Remove secret files from EC2 host
-        run: |
-          cd ~/project
-          sudo rm -rf .env .gateway-service-secret .member-service-secret
-          echo "🧹 민감 정보 파일(.env, secret)이 깔끔하게 정리되었습니다."
+#  cleanup-secret-files:
+#    needs: [ gateway-service-deploy, member-service-deploy ]
+#    if: |
+#      always() &&
+#      (needs.gateway-service-deploy.result != 'skipped' || needs.member-service-deploy.result != 'skipped')
+#    runs-on: groovid-ec2-runner
+#    steps:
+#      - name: Remove secret files from EC2 host
+#        run: |
+#          cd ~/project
+#          sudo rm -rf .env .gateway-service-secret .member-service-secret
+#          echo "🧹 민감 정보 파일(.env, secret)이 깔끔하게 정리되었습니다."
