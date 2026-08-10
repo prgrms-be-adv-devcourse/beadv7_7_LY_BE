@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
 import site.pointwalletservice.wallet.domain.Wallet;
+import site.pointwalletservice.wallet.exception.WalletLockFailedException;
 import site.pointwalletservice.wallet.domain.WalletRepository;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 
@@ -80,6 +82,20 @@ class WalletApplicationServiceTest {
             // 개설 시 1번 + 충전 반영 후 1번
             verify(walletRepository, times(2)).save(any(Wallet.class));
         }
+
+        @Test
+        @DisplayName("락 획득에 실패하면(NOWAIT 경합) WalletLockFailedException으로 번역해서 던진다")
+        void charge_락획득실패시_WalletLockFailedException() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID))
+                    .thenThrow(new PessimisticLockingFailureException("lock not available"));
+
+            // when & then
+            assertThatThrownBy(() -> sut.charge(USER_ID, Money.of(10_000)))
+                    .isInstanceOf(WalletLockFailedException.class);
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
     }
 
     @Nested
@@ -111,6 +127,20 @@ class WalletApplicationServiceTest {
             // when & then
             assertThatThrownBy(() -> sut.credit(USER_ID, Money.of(10_000)))
                     .isInstanceOf(WalletNotFoundException.class);
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
+
+        @Test
+        @DisplayName("락 획득에 실패하면(NOWAIT 경합) WalletLockFailedException으로 번역해서 던진다")
+        void credit_락획득실패시_WalletLockFailedException() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID))
+                    .thenThrow(new PessimisticLockingFailureException("lock not available"));
+
+            // when & then
+            assertThatThrownBy(() -> sut.credit(USER_ID, Money.of(10_000)))
+                    .isInstanceOf(WalletLockFailedException.class);
 
             verify(walletRepository, never()).save(any(Wallet.class));
         }
@@ -159,6 +189,20 @@ class WalletApplicationServiceTest {
             // when & then
             assertThatThrownBy(() -> sut.deduct(USER_ID, Money.of(10_000)))
                     .isInstanceOf(InsufficientBalanceException.class);
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
+
+        @Test
+        @DisplayName("락 획득에 실패하면(NOWAIT 경합) WalletLockFailedException으로 번역해서 던진다")
+        void deduct_락획득실패시_WalletLockFailedException() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID))
+                    .thenThrow(new PessimisticLockingFailureException("lock not available"));
+
+            // when & then
+            assertThatThrownBy(() -> sut.deduct(USER_ID, Money.of(10_000)))
+                    .isInstanceOf(WalletLockFailedException.class);
 
             verify(walletRepository, never()).save(any(Wallet.class));
         }
@@ -257,6 +301,34 @@ class WalletApplicationServiceTest {
             var inOrder = org.mockito.Mockito.inOrder(walletRepository);
             inOrder.verify(walletRepository).findByUserIdForUpdate(smallerId);
             inOrder.verify(walletRepository).findByUserIdForUpdate(largerId);
+        }
+
+        @Test
+        @DisplayName("단일 인자 - 락 획득에 실패하면 WalletLockFailedException으로 번역해서 던진다")
+        void lockForUpdate_단일인자_락획득실패시_WalletLockFailedException() {
+            // given
+            when(walletRepository.findByUserIdForUpdate(USER_ID))
+                    .thenThrow(new PessimisticLockingFailureException("lock not available"));
+
+            // when & then
+            assertThatThrownBy(() -> sut.lockForUpdate(USER_ID))
+                    .isInstanceOf(WalletLockFailedException.class);
+        }
+
+        @Test
+        @DisplayName("두 인자 - 먼저 잠그는 지갑에서 실패하면 나머지는 시도하지 않고 바로 던진다")
+        void lockForUpdate_두인자_먼저잠그는지갑에서_실패하면_바로_던진다() {
+            // given
+            Long smallerId = 100L;
+            Long largerId = 200L;
+            when(walletRepository.findByUserIdForUpdate(smallerId))
+                    .thenThrow(new PessimisticLockingFailureException("lock not available"));
+
+            // when & then
+            assertThatThrownBy(() -> sut.lockForUpdate(largerId, smallerId))
+                    .isInstanceOf(WalletLockFailedException.class);
+
+            verify(walletRepository, never()).findByUserIdForUpdate(largerId);
         }
     }
 }

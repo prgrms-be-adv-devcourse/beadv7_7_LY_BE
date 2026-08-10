@@ -1,8 +1,6 @@
 package site.pointwalletservice.hold.infrastructure;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +37,16 @@ class HoldRepositoryImplTest {
         Optional<Hold> result = holdRepository.findByAuctionId(9999L);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findByAuctionIdForUpdate는_해당_경매의_활성_홀드를_반환한다() {
+        holdJpaRepository.save(Hold.place(5001L, 456L, Money.of(15_000)));
+
+        Optional<Hold> result = holdRepository.findByAuctionIdForUpdate(5001L);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getUserId()).isEqualTo(456L);
     }
 
     @Test

@@ -9,4 +9,6 @@ public interface HoldRepository {
     Optional<Hold> findByAuctionId(Long auctionId);
 
     void delete(Hold hold);
+
+    Optional<Hold> findByAuctionIdForUpdate(Long auctionId);
 }

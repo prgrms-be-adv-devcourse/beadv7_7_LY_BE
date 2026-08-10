@@ -26,4 +26,9 @@ public class HoldRepositoryImpl implements HoldRepository {
     public void delete(Hold hold) {
         holdJpaRepository.delete(hold);
     }
+
+    @Override
+    public Optional<Hold> findByAuctionIdForUpdate(Long auctionId) {
+        return holdJpaRepository.findByAuctionIdForUpdate(auctionId);
+    }
 }
