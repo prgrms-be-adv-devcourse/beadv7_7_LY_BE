@@ -1,6 +1,7 @@
 package site.explorationservice.ai.embedding.application;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -21,22 +22,11 @@ import site.explorationservice.ai.embedding.application.dto.EmbeddingResult;
  * 배치 메서드를 처음부터 두는 이유는, OpenAI 임베딩 API가 원래 텍스트 배열을 받아 한 번의 호출로 벡터 배열을 반환하기 때문이다 — 위시리스트 클러스터를 여러 개
  * 임베딩할 때 호출 횟수를 늘리지 않아도 된다.
  */
+@RequiredArgsConstructor
 @Service
 public class EmbeddingService {
 
     private final EmbeddingModel embeddingModel;
-
-    public EmbeddingService(final EmbeddingModel embeddingModel) {
-        this.embeddingModel = embeddingModel;
-    }
-
-    public EmbeddingResult embed(final String text) {
-        return embed(List.of(text));
-    }
-
-    public EmbeddingResult embed(final List<String> texts) {
-        return embed(texts, null, null);
-    }
 
     /**
      * 모델·차원을 호출 시점에 덮어쓴다. 어떤 조합을 쓸지 확정하기 전에 재기동 없이 비교하기 위한 경로다 (예: text-embedding-3-small의 1536 vs
@@ -61,8 +51,6 @@ public class EmbeddingService {
 
     private EmbeddingResponse call(final List<String> texts, final String model,
         final Integer dimensions) {
-        // 덮어쓸 게 없으면 공급자 중립적인 기본 경로를 그대로 탄다. 아래 분기만 OpenAI 전용 옵션을 쓰는데,
-        // 모델 비교용이라 상시 경로가 특정 공급자에 묶이지는 않는다.
         if (model == null && dimensions == null) {
             return embeddingModel.embedForResponse(texts);
         }
