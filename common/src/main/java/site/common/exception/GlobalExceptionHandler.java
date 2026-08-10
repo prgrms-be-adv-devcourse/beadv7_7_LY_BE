@@ -1,5 +1,4 @@
 package site.common.exception;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -8,7 +7,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import site.common.response.ApiResponse;
-
 import static site.common.exception.GlobalErrorCode.INTERNAL_SERVER_APPLICATION_ERROR;
 import static site.common.exception.GlobalErrorCode.RESOURCE_NOT_FOUND;
 import static site.common.response.ApiResponse.fail;

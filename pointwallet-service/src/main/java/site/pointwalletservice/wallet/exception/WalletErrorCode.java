@@ -12,6 +12,7 @@ public enum WalletErrorCode implements ErrorCode {
 
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "WALLET-3001", "잔액이 부족합니다."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "WALLET-3002", "지갑을 찾을 수 없습니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "WALLET-3003", "지갑 접근이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
     ;
 
     private final HttpStatus status;

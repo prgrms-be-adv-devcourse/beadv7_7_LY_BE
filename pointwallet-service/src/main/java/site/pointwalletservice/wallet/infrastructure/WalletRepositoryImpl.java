@@ -1,5 +1,4 @@
 package site.pointwalletservice.wallet.infrastructure;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.pointwalletservice.wallet.domain.Wallet;
@@ -21,5 +20,15 @@ public class WalletRepositoryImpl implements WalletRepository {
     @Override
     public Optional<Wallet> findByUserId(Long userId) {
         return walletJpaRepository.findByUserId(userId);
+    }
+
+    @Override
+    public Optional<Wallet> findByUserIdForUpdate(Long userId) {
+        return walletJpaRepository.findByUserIdForUpdate(userId);
+    }
+
+    @Override
+    public void setLockWaitTimeout(int seconds) {
+        walletJpaRepository.setLockWaitTimeout(seconds);
     }
 }
