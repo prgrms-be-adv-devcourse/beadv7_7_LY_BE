@@ -124,12 +124,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Grant execute permission for gradlew
-        working-directory: ./member-service
         run: chmod +x gradlew\
 
       - name: Build with gradle
-        working-directory: ./member-service
-        run: ./gradlew bootJar -Pspring.profiles.active=prod --info
+        run: ./gradlew :member-service:bootJar -Pspring.profiles.active=prod --info
 
       - name: Login to Github Container Registry
         uses: docker/login-action@v3.2.0
@@ -157,7 +155,7 @@ jobs:
   gateway-service-deploy:
     needs: [ gateway-service-image-build ]
     if: needs.gateway-service-image-build.outputs.gateway_service_image_build_result == 'success'
-    runs-on: groovid-ec2-runner
+    runs-on: groovid-app-ec2-runner
     continue-on-error: true
     outputs:
       gateway_service_deploy_result: ${{ steps.deploy-result.outputs.gateway_service_deploy_result }}
@@ -226,7 +224,7 @@ jobs:
   member-service-deploy:
     needs: [ member-service-image-build ]
     if: needs.member-service-image-build.outputs.member_service_image_build_result == 'success'
-    runs-on: groovid-ec2-runner
+    runs-on: groovid-app-ec2-runner
     continue-on-error: true
     outputs:
       member_service_deploy_result: ${{ steps.deploy-result.outputs.member_service_deploy_result }}
@@ -294,7 +292,7 @@ jobs:
     if: |
       always() &&
       (needs.gateway-service-deploy.result != 'skipped' || needs.member-service-deploy.result != 'skipped')
-    runs-on: groovid-ec2-runner
+    runs-on: groovid-app-ec2-runner
     steps:
       - name: Remove secret files from EC2 host
         run: |
