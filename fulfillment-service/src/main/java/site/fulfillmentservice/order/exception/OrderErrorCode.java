@@ -19,6 +19,8 @@ public enum OrderErrorCode implements ErrorCode {
     ORDER_NOT_ORDERED(HttpStatus.CONFLICT, "OERR-2007", "ORDERED 상태의 주문만 거래 확정할 수 있습니다"),
     INVALID_PERSPECTIVE(HttpStatus.BAD_REQUEST, "OERR-2008", "perspective는 buyer 또는 seller여야 합니다"),
     INVALID_STATUS(HttpStatus.BAD_REQUEST, "OERR-2009", "유효하지 않은 주문 상태입니다"),
+    ORDER_NOT_REFUNDABLE(HttpStatus.CONFLICT, "OERR-2010", "ORDERED 상태의 주문만 환불 신청할 수 있습니다"),
+    REFUND_NOT_REQUESTED(HttpStatus.CONFLICT, "OERR-2011", "REFUND_REQUESTED 상태의 주문만 처리할 수 있습니다"),
     ;
 
     private final HttpStatus status;

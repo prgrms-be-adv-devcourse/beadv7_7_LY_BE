@@ -19,6 +19,7 @@ import site.fulfillmentservice.order.exception.OrderException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -74,6 +75,9 @@ public class Order extends BaseEntity {
 
     @Embedded
     private OrderItemSnapshot itemSnapshot;
+
+    @Embedded
+    private RefundInfo refundInfo;
 
     private Order(Long auctionId, Long productId, Long buyerId, Long sellerId, BigDecimal finalBidPrice,
             LocalDateTime orderDeadline, OrderItemSnapshot itemSnapshot) {
@@ -137,6 +141,33 @@ public class Order extends BaseEntity {
         Objects.requireNonNull(now, "now는 null일 수 없습니다.");
         if (status != OrderStatus.ORDERED) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_ORDERED);
+        }
+        this.status = OrderStatus.COMPLETED;
+        this.completedAt = now;
+    }
+
+    public void requestRefund(RefundReason reason, String description, List<String> imageUrls, LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
+        if (status != OrderStatus.ORDERED) {
+            throw new OrderException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
+        }
+        this.status = OrderStatus.REFUND_REQUESTED;
+        this.refundInfo = RefundInfo.request(reason, description, imageUrls, now);
+    }
+
+    public void approveRefund(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
+        if (status != OrderStatus.REFUND_REQUESTED) {
+            throw new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED);
+        }
+        this.status = OrderStatus.REFUND;
+        this.refundInfo = this.refundInfo.refund(now);
+    }
+
+    public void rejectRefund(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
+        if (status != OrderStatus.REFUND_REQUESTED) {
+            throw new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED);
         }
         this.status = OrderStatus.COMPLETED;
         this.completedAt = now;
