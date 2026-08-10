@@ -209,7 +209,7 @@ jobs:
           
           echo "🔍 gateway-service 헬스 체크 확인 중..."
           for i in {1..20}; do
-            response=$(curl -s http://localhost:8080/gateway-servcie/actuator/health || true)
+            response=$(curl -s http://localhost:8080/gateway-service/actuator/health || true)
             if [[ "$response" == *'"status":"UP"'* ]]; then
               echo "🍺 gateway-service 정상 실행 확인!"
               exit 0
@@ -275,7 +275,7 @@ jobs:
           
           echo "🔍 member-service 헬스 체크 확인 중..."
           for i in {1..20}; do
-            response=$(curl -s http://localhost:8081/api/actuator/health || true)
+            response=$(curl -s http://localhost:8081/member-service/actuator/health || true)
             if [[ "$response" == *'"status":"UP"'* ]]; then
               echo "🍺 member-service 정상 실행 확인!"
               exit 0
