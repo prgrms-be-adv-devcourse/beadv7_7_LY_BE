@@ -1,0 +1,26 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation(project(':common')) {
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-webmvc'
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-data-jpa'
+    }
+
+    // Web flux
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // JUnit
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+bootJar {
+    archiveFileName = 'gateway-service.jar'
+}

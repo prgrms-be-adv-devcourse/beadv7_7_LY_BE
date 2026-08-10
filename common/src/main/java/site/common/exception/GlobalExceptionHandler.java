@@ -1,6 +1,7 @@
 package site.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import static site.common.response.ApiResponse.fail;
 
 @Slf4j
 @Order(Ordered.LOWEST_PRECEDENCE)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

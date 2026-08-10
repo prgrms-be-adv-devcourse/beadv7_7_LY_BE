@@ -1,0 +1,23 @@
+server:
+  port: ${PORT_NUMBER}
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+spring:
+  application:
+    name: gateway-service
+
+  profiles:
+    active: local
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: prometheus, health
+        base-path: /api/actuator
+
+  Jackson:
+    mapper:
+      SORT_PROPERTIES_ALPHABETICALLY: false
