@@ -9,6 +9,7 @@ import site.pointwalletservice.hold.domain.Hold;
 import site.pointwalletservice.hold.domain.HoldRepository;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.exception.HoldException;
+import site.pointwalletservice.hold.exception.HoldLockContentionException;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.shared.Money;
@@ -36,7 +37,7 @@ public class HoldApplicationService implements HoldService {
         try {
             return holdRepository.findByAuctionIdForUpdate(auctionId);
         } catch (PessimisticLockingFailureException e) {
-            throw new HoldException(HoldErrorCode.LOCK_ACQUISITION_FAILED);
+            throw new HoldLockContentionException();
         }
     }
 
@@ -55,7 +56,7 @@ public class HoldApplicationService implements HoldService {
         try {
             walletService.lockForUpdate(userId, previousUserId);
         } catch (WalletLockFailedException e) {
-            throw new HoldException(HoldErrorCode.LOCK_ACQUISITION_FAILED);
+            throw new HoldLockContentionException();
         }
 
         // 1) 이 경매에 기존 활성 홀드가 있으면(보통 다른 유저) 먼저 해제 — 그 사람 지갑에 환원.
@@ -93,7 +94,7 @@ public class HoldApplicationService implements HoldService {
         } catch (WalletNotFoundException e) {
             throw new HoldException(HoldErrorCode.WALLET_NOT_FOUND);
         } catch (WalletLockFailedException e) {
-            throw new HoldException(HoldErrorCode.LOCK_ACQUISITION_FAILED);
+            throw new HoldLockContentionException();
         }
 
         pointTransactionService.record(

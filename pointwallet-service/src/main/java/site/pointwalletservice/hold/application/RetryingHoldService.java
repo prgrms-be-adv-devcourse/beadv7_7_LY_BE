@@ -31,7 +31,7 @@ import site.pointwalletservice.shared.Money;
  * @Primary로 등록해서 HoldController 등 HoldService를 주입받는 곳은 코드 변경 없이 이 데코레이터를
  * 먼저 타게 한다. 실제 로직은 HoldApplicationService에 그대로 있다.
  */
-@Primary
+
 @Service
 @RequiredArgsConstructor
 public class RetryingHoldService implements HoldService {
