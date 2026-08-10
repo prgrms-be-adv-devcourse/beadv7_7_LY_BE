@@ -1,15 +1,15 @@
-package site.discoveryservice;
+package site.explorationservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication(scanBasePackages = {
-    "site.discoveryservice",
+    "site.explorationservice",
     "site.common"
 })
-public class DiscoveryServiceApplication {
+public class ExplorationServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DiscoveryServiceApplication.class, args);
+        SpringApplication.run(ExplorationServiceApplication.class, args);
     }
 }
