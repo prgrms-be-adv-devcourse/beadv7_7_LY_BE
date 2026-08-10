@@ -10,6 +10,7 @@ import site.pointwalletservice.hold.domain.HoldRepository;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.exception.HoldException;
 import site.pointwalletservice.hold.exception.HoldLockContentionException;
+import site.pointwalletservice.hold.exception.HoldRowLockContentionException;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.shared.Money;
@@ -32,12 +33,16 @@ public class HoldApplicationService implements HoldService {
      * NOWAIT 락 조회 시 이미 다른 트랜잭션이 이 auction의 Hold를 잠그고 있으면 Spring이
      * PessimisticLockingFailureException으로 던진다 - 그대로 두면 GlobalExceptionHandler의
      * catch-all(GERR-0001)로 뭉개지니, 여기서 Hold 컨텍스트의 에러코드로 번역한다.
+     * <p>
+     * HoldLockContentionException(지갑 락 경합)이 아니라 HoldRowLockContentionException을 던진다 -
+     * 이건 auction-service가 즉시 알아야 하는 신호라 RetryingHoldService가 재시도하지 않는다
+     * (HoldRowLockContentionException 클래스 주석 참고).
      */
     private Optional<Hold> findByAuctionIdForUpdate(Long auctionId) {
         try {
             return holdRepository.findByAuctionIdForUpdate(auctionId);
         } catch (PessimisticLockingFailureException e) {
-            throw new HoldLockContentionException();
+            throw new HoldRowLockContentionException();
         }
     }
 

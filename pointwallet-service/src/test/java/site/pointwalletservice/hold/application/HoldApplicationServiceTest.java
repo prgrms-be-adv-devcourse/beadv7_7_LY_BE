@@ -1,5 +1,4 @@
 package site.pointwalletservice.hold.application;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
@@ -8,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +22,8 @@ import site.pointwalletservice.hold.domain.Hold;
 import site.pointwalletservice.hold.domain.HoldRepository;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.exception.HoldException;
+import site.pointwalletservice.hold.exception.HoldLockContentionException;
+import site.pointwalletservice.hold.exception.HoldRowLockContentionException;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.shared.Money;
@@ -134,15 +134,17 @@ class HoldApplicationServiceTest {
     class LockContention {
 
         @Test
-        @DisplayName("Hold 행 락 획득에 실패하면(동시 입찰 경합) LOCK_ACQUISITION_FAILED로 번역된다 - 지갑은 건드리지 않는다")
-        void hold_Hold행_락획득실패시_LOCK_ACQUISITION_FAILED() {
+        @DisplayName("Hold 행 락 획득에 실패하면(동시 입찰 경합) HoldRowLockContentionException으로 번역된다 - 지갑은 건드리지 않는다")
+        void hold_Hold행_락획득실패시_HoldRowLockContentionException() {
             // given
             when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID))
                     .thenThrow(new PessimisticLockingFailureException("lock not available"));
 
-            // when & then
+            // when & then: HoldLockContentionException(지갑 락 경합, 재시도 대상)이 아니라
+            // HoldRowLockContentionException(auction 단위, 재시도 대상 아님)이어야 한다.
             assertThatThrownBy(() -> sut.hold(AUCTION_ID, BIDDER_ID, AMOUNT))
-                    .isInstanceOf(HoldException.class)
+                    .isInstanceOf(HoldRowLockContentionException.class)
+                    .isNotInstanceOf(HoldLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 
@@ -151,16 +153,16 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("지갑 락 획득에 실패하면 LOCK_ACQUISITION_FAILED로 번역된다 - 차감까지 가지 않는다")
-        void hold_지갑락_획득실패시_LOCK_ACQUISITION_FAILED() {
+        @DisplayName("지갑 락 획득에 실패하면 HoldLockContentionException으로 번역된다 - 차감까지 가지 않는다")
+        void hold_지갑락_획득실패시_HoldLockContentionException() {
             // given
             when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.empty());
             org.mockito.Mockito.doThrow(new WalletLockFailedException())
                     .when(walletService).lockForUpdate(BIDDER_ID, null);
 
-            // when & then
+            // when & then: 이건 RetryingHoldService가 재시도하는 타입 그대로여야 한다.
             assertThatThrownBy(() -> sut.hold(AUCTION_ID, BIDDER_ID, AMOUNT))
-                    .isInstanceOf(HoldException.class)
+                    .isInstanceOf(HoldLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 
@@ -239,17 +241,17 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("이전 입찰자 지갑 환입 중 락 획득에 실패하면 LOCK_ACQUISITION_FAILED로 번역된다")
-        void hold_이전홀드_환입중_락획득실패시_LOCK_ACQUISITION_FAILED() {
+        @DisplayName("이전 입찰자 지갑 환입 중 락 획득에 실패하면 HoldLockContentionException으로 번역된다")
+        void hold_이전홀드_환입중_락획득실패시_HoldLockContentionException() {
             // given
             Hold previousHold = Hold.place(AUCTION_ID, PREVIOUS_BIDDER_ID, PREVIOUS_AMOUNT);
             when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(previousHold));
             when(walletService.credit(PREVIOUS_BIDDER_ID, PREVIOUS_AMOUNT))
                     .thenThrow(new WalletLockFailedException());
 
-            // when & then
+            // when & then: 지갑 락 경합이라 RetryingHoldService가 재시도하는 타입 그대로여야 한다.
             assertThatThrownBy(() -> sut.hold(AUCTION_ID, BIDDER_ID, AMOUNT))
-                    .isInstanceOf(HoldException.class)
+                    .isInstanceOf(HoldLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 
@@ -299,15 +301,15 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("Hold 행 락 획득에 실패하면 LOCK_ACQUISITION_FAILED로 번역된다")
-        void release_락획득실패시_LOCK_ACQUISITION_FAILED() {
+        @DisplayName("Hold 행 락 획득에 실패하면 HoldRowLockContentionException으로 번역된다")
+        void release_락획득실패시_HoldRowLockContentionException() {
             // given
             when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID))
                     .thenThrow(new PessimisticLockingFailureException("lock not available"));
 
             // when & then
             assertThatThrownBy(() -> sut.release(AUCTION_ID))
-                    .isInstanceOf(HoldException.class)
+                    .isInstanceOf(HoldRowLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 
@@ -349,15 +351,15 @@ class HoldApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("Hold 행 락 획득에 실패하면 LOCK_ACQUISITION_FAILED로 번역된다")
-        void consume_락획득실패시_LOCK_ACQUISITION_FAILED() {
+        @DisplayName("Hold 행 락 획득에 실패하면 HoldRowLockContentionException으로 번역된다")
+        void consume_락획득실패시_HoldRowLockContentionException() {
             // given
             when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID))
                     .thenThrow(new PessimisticLockingFailureException("lock not available"));
 
             // when & then
             assertThatThrownBy(() -> sut.consume(AUCTION_ID))
-                    .isInstanceOf(HoldException.class)
+                    .isInstanceOf(HoldRowLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 

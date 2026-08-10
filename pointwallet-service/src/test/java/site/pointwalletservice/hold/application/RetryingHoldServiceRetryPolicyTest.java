@@ -17,6 +17,7 @@ import org.springframework.core.retry.RetryTemplate;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.exception.HoldException;
 import site.pointwalletservice.hold.exception.HoldLockContentionException;
+import site.pointwalletservice.hold.exception.HoldRowLockContentionException;
 import site.pointwalletservice.shared.Money;
 
 /**
@@ -27,8 +28,8 @@ import site.pointwalletservice.shared.Money;
  * 포기하는지"를 검증한다.
  * <p>
  * 주의: RetryTemplate.execute()는 재시도가 소진되면 원래 예외를 그대로 던지지 않고 RetryException으로
- * 감싸서 던진다(cause에 마지막 예외가 담김) - GlobalExceptionHandler.handleRetryException()이
- * 이걸 다시 풀어주는 부분과 같이 봐야 한다.
+ * 감싸서 던진다(cause에 마지막 예외가 담김) - HoldServiceFacade가 이걸 다시 풀어주는 부분과 같이
+ * 봐야 한다.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RetryingHoldService의 재시도 정책 (hold() 자체를 처음부터 재시도)")
@@ -45,8 +46,9 @@ class RetryingHoldServiceRetryPolicyTest {
 
     @BeforeEach
     void setUp() {
-        // RetryingHoldService.hold()의 @Retryable(maxRetries=5, delay=50, multiplier=2, maxDelay=800)와
-        // 동일한 정책. 테스트에서는 delay를 0으로 둬서 빠르게 돈다(정책의 "몇 번 재시도하는가"만 검증).
+        // RetryingHoldService.hold()의 @Retryable(includes=HoldLockContentionException.class,
+        // maxRetries=5, delay=50, multiplier=2, maxDelay=800)와 동일한 정책. 테스트에서는 delay를
+        // 0으로 둬서 빠르게 돈다(정책의 "몇 번 재시도하는가"만 검증).
         RetryPolicy retryPolicy = RetryPolicy.builder()
                 .includes(HoldLockContentionException.class)
                 .maxRetries(5)
@@ -106,8 +108,27 @@ class RetryingHoldServiceRetryPolicyTest {
         // when & then: RetryPolicy에 includes(HoldLockContentionException) 외 타입이라 재시도가 안 걸린다.
         // RetryTemplate이 이걸 원본 그대로 던지는지 RetryException으로 한 번 감싸는지는 실행해보기 전엔
         // 단정할 수 없어서(문서상 명시 안 됨) 둘 다 허용하되, 핵심은 "결국 notRetryable로 귀결되고
-        // 딱 한 번만 시도됐는지"다 - 둘 중 어느 쪽이든 GlobalExceptionHandler.handleRetryException()이
-        // cause를 풀어주므로 실제 응답 결과는 동일하다.
+        // 딱 한 번만 시도됐는지"다 - 둘 중 어느 쪽이든 HoldServiceFacade가 cause를 풀어주므로
+        // 실제 응답 결과는 동일하다.
+        assertThatThrownBy(() -> retryTemplate.execute(() ->
+                holdApplicationService.hold(AUCTION_ID, BIDDER_ID, AMOUNT)))
+                .satisfiesAnyOf(
+                        ex -> assertThat(ex).isSameAs(notRetryable),
+                        ex -> assertThat(ex).isInstanceOf(RetryException.class).cause().isSameAs(notRetryable)
+                );
+
+        verify(holdApplicationService, times(1)).hold(AUCTION_ID, BIDDER_ID, AMOUNT);
+    }
+
+    @Test
+    @DisplayName("Hold 행 락 경합(HoldRowLockContentionException)도 재시도 대상이 아니라 첫 시도에서 끝난다")
+    void Hold행_락_경합은_재시도하지_않는다() {
+        // given: auction-service가 즉시 알아야 하는 신호라 일부러 includes에서 뺐다
+        // (HoldRowLockContentionException 클래스 주석 참고).
+        HoldRowLockContentionException notRetryable = new HoldRowLockContentionException();
+        when(holdApplicationService.hold(AUCTION_ID, BIDDER_ID, AMOUNT)).thenThrow(notRetryable);
+
+        // when & then
         assertThatThrownBy(() -> retryTemplate.execute(() ->
                 holdApplicationService.hold(AUCTION_ID, BIDDER_ID, AMOUNT)))
                 .satisfiesAnyOf(

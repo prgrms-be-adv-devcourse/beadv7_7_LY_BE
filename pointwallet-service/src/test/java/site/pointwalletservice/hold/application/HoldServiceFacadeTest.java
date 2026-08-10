@@ -11,6 +11,7 @@ import org.springframework.core.retry.RetryException;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.exception.HoldException;
 import site.pointwalletservice.hold.exception.HoldLockContentionException;
+import site.pointwalletservice.hold.exception.HoldRowLockContentionException;
 import site.pointwalletservice.shared.Money;
 
 @DisplayName("HoldServiceFacade - 재시도 소진 시 예외 언래핑")
@@ -63,6 +64,20 @@ class HoldServiceFacadeTest {
     void 경합과_무관한_예외는_그대로_전파된다() {
         // given
         HoldException notRetried = new HoldException(HoldErrorCode.INSUFFICIENT_BALANCE);
+        when(retryingHoldService.hold(AUCTION_ID, BIDDER_ID, AMOUNT)).thenThrow(notRetried);
+
+        // when & then
+        assertThatThrownBy(() -> sut.hold(AUCTION_ID, BIDDER_ID, AMOUNT))
+                .isSameAs(notRetried);
+    }
+
+    @Test
+    @DisplayName("Hold 행 락 경합(HoldRowLockContentionException)도 재시도 대상이 아니라 UndeclaredThrowableException 없이 그대로 전파된다")
+    void Hold행_락_경합은_재시도_대상이_아니라_그대로_전파된다() {
+        // given: auction-service가 즉시 알아야 하는 신호라 RetryingHoldService의 @Retryable(includes=...)
+        // 대상에서 제외돼 있다 - 그래서 재시도가 아예 안 걸리고, RetryException/UndeclaredThrowableException으로
+        // 감싸지지도 않고 첫 시도에서 바로 전파돼야 한다.
+        HoldRowLockContentionException notRetried = new HoldRowLockContentionException();
         when(retryingHoldService.hold(AUCTION_ID, BIDDER_ID, AMOUNT)).thenThrow(notRetried);
 
         // when & then

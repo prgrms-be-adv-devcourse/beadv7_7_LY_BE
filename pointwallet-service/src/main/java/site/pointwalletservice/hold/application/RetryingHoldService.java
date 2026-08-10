@@ -1,15 +1,15 @@
 package site.pointwalletservice.hold.application;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Primary;
 import org.springframework.resilience.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import site.pointwalletservice.hold.exception.HoldLockContentionException;
 import site.pointwalletservice.shared.Money;
 
 /**
- * hold()에서 Hold 행 락/지갑 락이 경합(NOWAIT 즉시실패)으로 막히면, hold() 호출 자체를 처음부터
- * 다시 시도한다.
+ * hold()에서 지갑 락 경합(HoldLockContentionException)이 나면, hold() 호출 자체를 처음부터 다시
+ * 시도한다. Hold 행(auction_id) 락 경합(HoldRowLockContentionException)은 대상이 아니다 - 그건
+ * auction-service가 즉시 알아야 하는 신호라 여기서 흡수하지 않는다(HoldRowLockContentionException
+ * 클래스 주석 참고).
  * <p>
  * 재시도를 HoldApplicationService.hold() 안(예: catch 블록에서 Thread.sleep 후 재조회)이 아니라
  * 이 바깥 레이어에서 하는 이유 - 안에서 하면 이미 열려있는 트랜잭션(그리고 그 트랜잭션이 쥔 DB
@@ -21,17 +21,17 @@ import site.pointwalletservice.shared.Money;
  * @Retryable은 스프링 부트 4 / 프레임워크 7의 core 내장 재시도 기능이다(org.springframework.resilience) -
  * 구 spring-retry 라이브러리(org.springframework.retry)는 스프링 부트 4부터 BOM 버전 관리 대상에서
  * 빠지고 core 기능으로 흡수됐다. 재시도가 다 소진되면 원래 예외를 그대로 던지지 않고
- * org.springframework.core.retry.RetryException으로 감싸서 던지므로,
- * site.common.exception.GlobalExceptionHandler에서 그 예외를 풀어서(getCause) 원래
- * BusinessException으로 처리하도록 같이 손봐뒀다 - 안 그러면 HERR-3005 대신 GERR-0001로 뭉개진다.
+ * org.springframework.core.retry.RetryException으로 감싸는데, 그 언래핑은 이 클래스가 아니라
+ * HoldServiceFacade가 한다 - AOP 프록시 특성상 이 예외는 hold() 메서드 몸체 실행 도중이 아니라
+ * "이 메서드를 호출한 쪽"에서 던져지므로, 같은 클래스 안에서는(자기 자신을 감싼 프록시 예외를
+ * 자기가 볼 수 없어서) 잡을 수가 없다.
  * <p>
  * release()/consume()은 재시도하지 않는다 - Kafka 리스너가 이미 at-least-once 재전송으로
  * 재시도를 보장하고, 멱등하게 처리되므로 여기서 추가로 감쌀 필요가 없다(HoldApplicationService 참고).
  * <p>
- * @Primary로 등록해서 HoldController 등 HoldService를 주입받는 곳은 코드 변경 없이 이 데코레이터를
- * 먼저 타게 한다. 실제 로직은 HoldApplicationService에 그대로 있다.
+ * @Primary는 HoldServiceFacade 쪽에 있다 - 이 클래스는 재시도 로직만 담당하는 내부 구현 세부사항이고,
+ * 실제로 주입받아 쓰이는 건 그 파사드다.
  */
-
 @Service
 @RequiredArgsConstructor
 public class RetryingHoldService implements HoldService {
