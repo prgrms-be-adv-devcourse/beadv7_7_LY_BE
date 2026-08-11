@@ -2,10 +2,8 @@ name: LP Auction CD
 
 on:
   pull_request:
-    types: [ opened, synchronize ] # PR 생성 시 및 test 브랜치에 새 커밋 푸시 시 실행
-    branches: [ "common/feature/#191-cd_modify" ] # PR의 Target 브랜치
-#    types: [ closed ]
-#    branches: [ dev ]
+    types: [ closed ]
+    branches: [ dev ]
 
 # 같은 브랜치의 배포가 겹치지 않게 직렬화한다.
 # 배포 잡들은 EC2의 같은 디렉터리(~/project)에서 .env와 시크릿 파일을 쓰고
@@ -31,7 +29,7 @@ env:
 jobs:
   check-deploy-condition:
     runs-on: ubuntu-latest
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     outputs:
       gateway_service_deploy: ${{ steps.check-deploy-label.outputs.gateway_service_deploy }}
       member_service_deploy: ${{ steps.check-deploy-label.outputs.member_service_deploy }}
@@ -662,6 +660,7 @@ jobs:
 
             KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
+            MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
             PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
             WALLET_SERVICE_BASE_URL=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}
 
