@@ -38,10 +38,20 @@ spring:
               predicates:
                 - Path=/api/v*/products, /api/v*/products/**, /api/v*/search/products
                 - Method=GET
-            - id: product-service
+
+            # product-service-liked-products
+            - id: product-service-liked-products
               uri: ${PRODUCT_SERVICE_URI}
               predicates:
                 - Path=/api/v*/members/me/liked-products/**
+              filters:
+                - JwtAuthenticationFilter
+
+            # auction-service-watched-auctions
+            - id: auction-service-watched-auctions
+              uri: ${AUCTION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/members/me/watched-auctions/**
               filters:
                 - JwtAuthenticationFilter
 
