@@ -9,11 +9,11 @@ spring:
 
   jpa:
     hibernate:
-      # core-service와 같은 DB(lp_auction)를 쓰므로, create로 두면 이쪽을 띄우는 것만으로
-      # 상품·시세 데이터까지 전부 지워진다
       ddl-auto: none
 
 app:
   jwt:
-    secret-key: c2VjcmV0LWtleS1mb3ItbG9jYWwtZGV2ZWxvcG1lbnQtZW52aXJvbm1lbnQxMjM0NTY3ODkw
-    token-expiration-time: 3600000  # 1시간 (밀리초 단위)
+    access-token-secret-key: YWNjZXNzLXRva2VuLXNlY3JldC1rZXktZm9yLWxvY2FsLWRldmVsb3BtZW50LWVudmlyb25tZW50MTIzNA==
+    refresh-token-secret-key: cmVmcmVzaC10b2tlbi1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1lbnZpcm9ubWVudDEyMzQ=
+    access-token-expiration-time: 1200000 # 20분
+    refresh-token-expiration-time: 604800000 # 7일

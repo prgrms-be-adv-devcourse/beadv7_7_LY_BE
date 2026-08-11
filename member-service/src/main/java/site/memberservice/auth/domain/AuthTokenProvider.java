@@ -2,7 +2,11 @@ package site.memberservice.auth.domain;
 
 public interface AuthTokenProvider {
 
-    AuthToken createToken(Long memberId);
+    AuthToken createAccessToken(Long memberId);
 
-    Long validateToken(AuthToken token);
+    Long validateAccessToken(AuthToken token);
+
+    AuthToken createRefreshToken(Long memberId);
+
+    Long validateRefreshToken(AuthToken token);
 }

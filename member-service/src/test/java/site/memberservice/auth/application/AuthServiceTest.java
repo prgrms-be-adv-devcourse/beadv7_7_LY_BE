@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import site.memberservice.auth.application.dto.LoginCommand;
 import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.domain.AuthTokenProvider;
+import site.memberservice.auth.domain.RefreshToken;
+import site.memberservice.auth.domain.repository.RefreshTokenRepository;
 import site.memberservice.auth.exception.AuthException;
 import site.memberservice.auth.infrastructure.jwt.AuthTokenProviderImpl;
 import site.memberservice.member.application.MemberService;
@@ -36,14 +38,21 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     private MemberService memberService;
     private AuthService authService;
+    private RefreshTokenRepository refreshTokenRepository;
 
     @BeforeEach
     void setUp() {
         this.memberService = Mockito.mock(MemberService.class);
         this.passwordEncoder = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
-        AuthTokenProvider authTokenProvider = new AuthTokenProviderImpl("testSecretKey12345678901234567890", 3600000L);
+        AuthTokenProvider authTokenProvider = new AuthTokenProviderImpl(
+            "testSecretKey12345678901234567890",
+            "testSecretKey12345678901234567890",
+            3600000L,
+            3600000L
+        );
+        this.refreshTokenRepository = Mockito.mock(RefreshTokenRepository.class);
 
-        authService = new AuthService(memberService, passwordEncoder, authTokenProvider);
+        authService = new AuthService(memberService, passwordEncoder, authTokenProvider, refreshTokenRepository);
     }
 
     @DisplayName("유효한 이메일, 비밀번호로 로그인하면 인증 객체를 생성해 반환한다.")
@@ -59,9 +68,12 @@ class AuthServiceTest {
             new PhoneNumber("010-1234-5678"),
             new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)")
         );
+        final RefreshToken refreshToken = new RefreshToken(1L, "REFRESH_TOKEN_VALUE", member.getId());
 
         given(memberService.findMember(any()))
             .willReturn(Optional.of(member));
+        given(refreshTokenRepository.save(any()))
+            .willReturn(refreshToken);
 
         final LoginCommand command = new LoginCommand(
             new Email("tester@email.com"),
@@ -74,7 +86,8 @@ class AuthServiceTest {
         // Then
         assertSoftly(softly -> {
             assertThat(loginResult).isNotNull();
-            assertThat(loginResult.authToken()).isNotBlank();
+            assertThat(loginResult.accessToken()).isNotBlank();
+            assertThat(loginResult.refreshToken()).isNotBlank();
         });
     }
 

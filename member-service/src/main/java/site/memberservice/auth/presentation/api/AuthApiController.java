@@ -1,6 +1,9 @@
 package site.memberservice.auth.presentation.api;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +14,8 @@ import site.memberservice.auth.application.AuthService;
 import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.presentation.request.LoginRequest;
 
+import java.time.Duration;
+
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth")
 @RestController
@@ -18,10 +23,23 @@ public class AuthApiController {
 
     private final AuthService authService;
 
+    @Value("${app.jwt.refresh-token-expiration-time}")
+    private long refreshTokenValidTime;
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResult>> login(@RequestBody LoginRequest request) {
         final LoginResult loginResult = authService.login(request.toCommand());
 
-        return ResponseEntity.ok(ApiResponse.success(loginResult));
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResult.refreshToken())
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .maxAge(Duration.ofMillis(refreshTokenValidTime))
+            .sameSite("Lax")
+            .build();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(ApiResponse.success(loginResult));
     }
 }

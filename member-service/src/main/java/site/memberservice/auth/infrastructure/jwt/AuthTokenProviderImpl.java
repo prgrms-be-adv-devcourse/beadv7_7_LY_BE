@@ -21,25 +21,39 @@ import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN
 @Component
 public class AuthTokenProviderImpl implements AuthTokenProvider {
 
-    private final SecretKey secretKey;
-    private final long tokenValidTime;
+    private final SecretKey accessTokenSecretKey;
+    private final SecretKey refreshTokenSecretKey;
+    private final long accessTokenValidTime;
+    private final long refreshTokenValidTime;
 
     public AuthTokenProviderImpl(
-        @Value("${app.jwt.secret-key}") final String secretKey,
-        @Value("${app.jwt.token-expiration-time}") final long tokenValidTime
+        @Value("${app.jwt.access-token-secret-key}") final String accessTokenSecretKey,
+        @Value("${app.jwt.refresh-token-secret-key}") final String refreshTokenSecretKey,
+        @Value("${app.jwt.access-token-expiration-time}") final long accessTokenValidTime,
+        @Value("${app.jwt.refresh-token-expiration-time}") final long refreshTokenValidTime
     ) {
-        this.secretKey = Keys.hmacShaKeyFor(secretKey.getBytes());
-        this.tokenValidTime = tokenValidTime;
+        this.accessTokenSecretKey = Keys.hmacShaKeyFor(accessTokenSecretKey.getBytes());
+        this.refreshTokenSecretKey = Keys.hmacShaKeyFor(refreshTokenSecretKey.getBytes());
+        this.accessTokenValidTime = accessTokenValidTime;
+        this.refreshTokenValidTime = refreshTokenValidTime;
     }
 
-    // TODO : #80 파이널에서 Refresh Token 발급 + Access Token 만료시간 단축 고민 및 적용 예정
     @Override
-    public AuthToken createToken(final Long memberId) {
+    public AuthToken createAccessToken(final Long memberId) {
+        return generateToken(memberId, accessTokenSecretKey, accessTokenValidTime);
+    }
+
+    @Override
+    public AuthToken createRefreshToken(final Long memberId) {
+        return generateToken(memberId, refreshTokenSecretKey, refreshTokenValidTime);
+    }
+
+    private AuthToken generateToken(final Long memberId, final SecretKey secretKey, final long accessTokenValidTime) {
         final Claims claims = Jwts.claims()
             .subject(memberId.toString())
             .build();
         final Date now = new Date();
-        final Date validity = new Date(now.getTime() + tokenValidTime);
+        final Date validity = new Date(now.getTime() + accessTokenValidTime);
 
         final String jwtValue = Jwts.builder()
             .claims(claims)
@@ -52,7 +66,16 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
     }
 
     @Override
-    public Long validateToken(final AuthToken token) {
+    public Long validateAccessToken(final AuthToken token) {
+        return validateToken(token, accessTokenSecretKey);
+    }
+
+    @Override
+    public Long validateRefreshToken(final AuthToken token) {
+        return validateToken(token, refreshTokenSecretKey);
+    }
+
+    private Long validateToken(final AuthToken token, final SecretKey secretKey) {
         try {
             final Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
