@@ -70,8 +70,10 @@ class WalletLockPerformanceTest {
                 int attempt = 0;
                 while (attempt <= MAX_RETRIES) {
                     try {
-                        requiresNew.executeWithoutResult(status ->
-                                walletJpaRepository.findByUserIdForUpdate(userId));
+                        requiresNew.executeWithoutResult(status -> {
+                            walletJpaRepository.findByUserIdForUpdate(userId);
+                            sleepQuietly(50); // 실제 hold() 처리 시간(조회~저장)을 흉내낸 지연
+                        });
                         latenciesMillis.add((System.nanoTime() - startedAt) / 1_000_000);
                         successCount.incrementAndGet();
                         totalRetryCount.addAndGet(attempt);
