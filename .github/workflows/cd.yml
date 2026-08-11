@@ -260,6 +260,7 @@ jobs:
 
           if [ ! -f .member-service-secret ]; then
             touch .member-service-secret
+          fi
           
           if [ ! -f .product-service-secret ]; then
             touch .product-service-secret
@@ -329,6 +330,7 @@ jobs:
 
           if [ ! -f .gateway-service-secret ]; then
             touch .gateway-service-secret
+          fi
           
           if [ ! -f .product-service-secret ]; then
             touch .product-service-secret
@@ -398,6 +400,7 @@ jobs:
 
           if [ ! -f .gateway-service-secret ]; then
             touch .gateway-service-secret
+          fi
           
           if [ ! -f .member-service-secret ]; then
             touch .member-service-secret
