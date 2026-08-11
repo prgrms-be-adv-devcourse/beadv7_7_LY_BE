@@ -454,8 +454,7 @@ jobs:
             FULFILLMENT_SERVICE_URI=${{ secrets.FULFILLMENT_SERVICE_BASE_URL }}
             AUCTION_SERVICE_URI=${{ secrets.AUCTION_SERVICE_BASE_URL }}
 
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
+            ACCESS_TOKEN_SECRET_KEY=${{ secrets.ACCESS_TOKEN_SECRET_KEY }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -522,8 +521,10 @@ jobs:
             DB_USER_NAME=${{ secrets.DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
+            ACCESS_TOKEN_SECRET_KEY=${{ secrets.ACCESS_TOKEN_SECRET_KEY }}
+            REFRESH_TOKEN_SECRET_KEY=${{ secrets.REFRESH_TOKEN_SECRET_KEY }}
+            ACCESS_TOKEN_EXPIRATION_TIME=${{ secrets.ACCESS_TOKEN_EXPIRATION_TIME }}
+            REFRESH_TOKEN_EXPIRATION_TIME=${{ secrets.REFRESH_TOKEN_EXPIRATION_TIME }}
 
       - name: Start new server application
         id: start-new-server-application
