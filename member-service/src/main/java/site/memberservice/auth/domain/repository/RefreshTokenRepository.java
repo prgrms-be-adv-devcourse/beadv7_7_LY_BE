@@ -10,5 +10,5 @@ public interface RefreshTokenRepository {
 
     Optional<RefreshToken> findByMemberId(Long memberId);
 
-    void deleteByMemberId(Long memberId);
+    void deleteAllByMemberId(Long memberId);
 }

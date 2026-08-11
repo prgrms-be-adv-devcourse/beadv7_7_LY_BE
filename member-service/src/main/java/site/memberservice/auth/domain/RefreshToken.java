@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +14,15 @@ import site.common.entity.BaseEntity;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "refresh_token")
+@Table(
+    name = "refresh_token",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_member_id",
+            columnNames = "member_id"
+        )
+    }
+)
 @Entity
 public class RefreshToken extends BaseEntity {
 

@@ -37,6 +37,7 @@ public class AuthService {
 
         final AuthToken accessToken = authTokenProvider.createAccessToken(member.getId());
         final RefreshToken refreshToken = RefreshToken.create(authTokenProvider.createRefreshToken(member.getId()).getValue(), member.getId());
+        refreshTokenRepository.deleteAllByMemberId(member.getId());
         refreshTokenRepository.save(refreshToken);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());
@@ -44,6 +45,6 @@ public class AuthService {
 
     @Transactional
     public void logout(final Long memberId) {
-        refreshTokenRepository.deleteByMemberId(memberId);
+        refreshTokenRepository.deleteAllByMemberId(memberId);
     }
 }
