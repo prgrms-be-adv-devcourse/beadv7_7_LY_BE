@@ -5,11 +5,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
+import site.common.web.MemberId;
 import site.memberservice.auth.application.AuthService;
 import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.presentation.request.LoginRequest;
@@ -41,5 +43,22 @@ public class AuthApiController {
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, cookie.toString())
             .body(ApiResponse.success(loginResult));
+    }
+
+    @DeleteMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@MemberId final Long memberId) {
+        authService.logout(memberId);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(ApiResponse.success());
     }
 }
