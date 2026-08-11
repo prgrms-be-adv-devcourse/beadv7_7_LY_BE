@@ -30,7 +30,7 @@ import site.pointwalletservice.wallet.domain.Wallet;
 @DataJpaTest
 @ActiveProfiles("perf")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-//@Disabled("로컬 MySQL 필요 - docker compose up -d mysql 이후 수동으로만 실행")
+@Disabled("로컬 MySQL 필요 - docker compose up -d mysql 이후 수동으로만 실행")
 class WalletLockPerformanceTest {
 
     @Autowired
