@@ -243,6 +243,9 @@ jobs:
           
           MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
           MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
+          
+          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
+          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
           EOF
           
           sudo cat <<EOF > .gateway-service-secret
@@ -270,8 +273,8 @@ jobs:
         id: start-new-server-application
         run: |
           cd ~/project
-          sudo docker-compose stop gateway-service
-          sudo docker-compose rm -f gateway-service
+          sudo docker-compose stop gateway-service || true
+          sudo docker-compose rm -f gateway-service || true
           sudo docker-compose up -d gateway-service
           
           echo "🔍 gateway-service 헬스 체크 확인 중..."
@@ -316,6 +319,9 @@ jobs:
           
           GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
           GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+          
+          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
+          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
           EOF
           
           cat <<EOF > .member-service-secret
@@ -340,8 +346,8 @@ jobs:
         id: start-new-server-application
         run: |
           cd ~/project
-          sudo docker-compose stop member-service
-          sudo docker-compose rm -f member-service
+          sudo docker-compose stop member-service || true
+          sudo docker-compose rm -f member-service || true
           sudo docker-compose up -d member-service
           
           echo "🔍 member-service 헬스 체크 확인 중..."
@@ -410,8 +416,8 @@ jobs:
         id: start-new-server-application
         run: |
           cd ~/project
-          sudo docker-compose stop product-service
-          sudo docker-compose rm -f product-service
+          sudo docker-compose stop product-service || true
+          sudo docker-compose rm -f product-service || true
           sudo docker-compose up -d product-service
           
           echo "🔍 product-service 헬스 체크 확인 중..."
