@@ -1,0 +1,127 @@
+server:
+  port: ${PORT_NUMBER}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health
+      base-path: /gateway-service/actuator
+
+spring:
+  application:
+    name: gateway-service
+
+  profiles:
+    active: local
+
+  Jackson:
+    mapper:
+      SORT_PROPERTIES_ALPHABETICALLY: false
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # product
+            - id: product-service-actuator
+              uri: ${PRODUCT_SERVICE_URI}
+              predicates:
+                - Path=/product-service/actuator/**
+            - id: product-service-internal-no-auth
+              uri: ${PRODUCT_SERVICE_URI}
+              predicates:
+                - Path=/internal/v*/products/**
+            - id: product-service-no-auth
+              uri: ${PRODUCT_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/products, /api/v*/products/**, /api/v*/search/products
+                - Method=GET
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/members/me/liked-products/**
+              filters:
+                - JwtAuthenticationFilter
+
+            # member & auth
+            - id: member-service-actuator
+              uri: ${MEMBER_SERVICE_URI}
+              predicates:
+                - Path=/member-service/actuator/**
+            - id: member-service-internal-no-auth
+              uri: ${MEMBER_SERVICE_URI}
+              predicates:
+                - Path=/internal/v*/members/**
+            - id: member-service-no-auth
+              uri: ${MEMBER_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/members, /api/v*/auth/login
+                - Method=POST
+            - id: member-service
+              uri: ${MEMBER_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/members/**, /api/v*/auth/**
+              filters:
+                - JwtAuthenticationFilter
+
+            # point wallet
+            - id: pointwallet-service-actuator
+              uri: ${POINTWALLET_SERVICE_URI}
+              predicates:
+                - Path=/pointwallet-service/actuator/**
+            - id: pointwallet-service-internal-no-auth
+              uri: ${POINTWALLET_SERVICE_URI}
+              predicates:
+                - Path=/internal/v*/wallet/**
+            - id: pointwallet-service
+              uri: ${POINTWALLET_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/wallet, /api/v*/wallet/**, /api/v*/deposits, /api/v*/deposits/**
+              filters:
+                - JwtAuthenticationFilter
+
+            # order
+            - id: fulfillment-service-actuator
+              uri: ${FULFILLMENT_SERVICE_URI}
+              predicates:
+                - Path=/fulfillment-service/actuator/**
+            - id: order-service
+              uri: ${FULFILLMENT_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/orders, /api/v*/orders/**
+              filters:
+                - JwtAuthenticationFilter
+            - id: settlement-service
+              uri: ${FULFILLMENT_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/settlements, /api/v*/settlements/**
+              filters:
+                - JwtAuthenticationFilter
+
+            # auction
+            - id: auction-service-actuator
+              uri: ${AUCTION_SERVICE_URI}
+              predicates:
+                - Path=/auction-service/actuator/**
+            - id: auction-service-internal-no-auth
+              uri: ${AUCTION_SERVICE_URI}
+              predicates:
+                - Path=/internal/v*/auctions/**
+            - id: auction-service-no-auth
+              uri: ${AUCTION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/auctions, /api/v*/auctions/{auctionId:[0-9]+}
+                - Method=GET
+            - id: auction-service
+              uri: ${AUCTION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/auctions/**
+              filters:
+                - JwtAuthenticationFilter
+
+app:
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+    token-expiration-time: ${JWT_EXPIRATION_TIME}
