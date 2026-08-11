@@ -67,10 +67,10 @@ spring:
                 - JwtAuthenticationFilter
 
             # point wallet
-            - id: pointwallet-service-actuator/**
+            - id: pointwallet-service-actuator
               uri: ${POINTWALLET_SERVICE_URI}
               predicates:
-                - Path=/pointwallet-service/actuator
+                - Path=/pointwallet-service/actuator/**
             - id: pointwallet-service-internal-no-auth
               uri: ${POINTWALLET_SERVICE_URI}
               predicates:
