@@ -36,6 +36,12 @@ public class Artist extends BaseEntity {
     @Column(name = "normalized_name", nullable = false)
     private String normalizedName;
 
+    /** Discogs 아티스트 식별자. 카탈로그를 다시 적재할 때 이 값으로 같은 행을 찾는다.
+     *  이름은 같아도 다른 사람일 수 있어(Discogs는 그런 경우 "Nirvana (2)"처럼 번호를 붙인다)
+     *  이름 대신 이 값으로 맞춰야 한다. 손으로 등록한 아티스트에는 값이 없다. */
+    @Column(name = "discogs_artist_id", unique = true)
+    private Long discogsArtistId;
+
     private Artist(String name, String normalizedName) {
         this.name = name;
         this.normalizedName = normalizedName;
