@@ -1,5 +1,4 @@
 package site.pointwalletservice.deposit.domain;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -39,7 +38,7 @@ public class Deposit {
     private String orderId;
 
     @Column(name = "payment_key")
-   private String providerTransactionId;
+    private String providerTransactionId;
 
     @Embedded
     private Money requestedAmount;
@@ -91,6 +90,22 @@ public class Deposit {
         this.status = DepositStatus.CANCELED;
         this.cancelReason = reason;
         this.canceledAt = LocalDateTime.now();
+    }
+
+    /** PG 승인 호출 같은 비싼 외부 호출 전에, 애플리케이션 레이어가 미리 걸러낼 때 쓰는 질의 메서드.
+     *  "REQUESTED 상태여야 확정 가능하다"는 규칙은 여기 한 곳에만 존재한다. */
+    public boolean isConfirmable() {
+        return this.status == DepositStatus.REQUESTED;
+    }
+
+    /** PG 취소 호출 전 사전 확인용. "DONE 상태여야 취소 가능하다"는 규칙도 여기 한 곳에만 존재한다. */
+    public boolean isCancelable() {
+        return this.status == DepositStatus.DONE;
+    }
+
+    /** 콜백으로 들어온 금액이 신청 금액과 일치하는지 확인. Money 비교 규칙을 도메인 밖으로 노출하지 않는다. */
+    public boolean matchesAmount(Money amount) {
+        return this.requestedAmount.equals(amount);
     }
 
     private void validateStatus(DepositStatus expected) {

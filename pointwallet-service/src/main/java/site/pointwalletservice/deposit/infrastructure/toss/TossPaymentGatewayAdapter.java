@@ -4,8 +4,6 @@ import java.util.Base64;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -14,6 +12,7 @@ import org.springframework.web.client.RestClient;
 import site.pointwalletservice.deposit.domain.PaymentGatewayClient;
 import site.pointwalletservice.deposit.domain.PgApproveResult;
 import site.pointwalletservice.deposit.domain.PgCancelResult;
+import site.pointwalletservice.deposit.domain.PgInquiryResult;
 import site.pointwalletservice.shared.Money;
 
 @Component
@@ -23,6 +22,7 @@ public class TossPaymentGatewayAdapter implements PaymentGatewayClient {
 
     private static final String CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
     private static final String CANCEL_URL = "https://api.tosspayments.com/v1/payments/%s/cancel";
+    private static final String INQUIRY_URL = "https://api.tosspayments.com/v1/payments/%s";
     private static final int MAX_CONNECTION_RETRY = 2;
 
     private final RestClient restClient;
@@ -83,6 +83,28 @@ public class TossPaymentGatewayAdapter implements PaymentGatewayClient {
                 response.paymentKey(),
                 latestCancel.transactionKey(),
                 Money.of(latestCancel.cancelAmount())
+        );
+    }
+
+    @Override
+    public PgInquiryResult inquire(String providerTxId) {
+        TossInquiryApiResponse response = executeWithConnectionRetry("inquiry", () ->
+                restClient.get()
+                        .uri(INQUIRY_URL.formatted(providerTxId))
+                        .header("Authorization", basicAuthHeader())
+                        .exchange((request, response1) -> {
+                            if (!response1.getStatusCode().is2xxSuccessful()) {
+                                throw toApiException(response1.getStatusCode(), response1);
+                            }
+                            return response1.bodyTo(TossInquiryApiResponse.class);
+                        })
+        );
+
+        return new PgInquiryResult(
+                response.paymentKey(),
+                response.orderId(),
+                Money.of(response.totalAmount()),
+                response.status()
         );
     }
 

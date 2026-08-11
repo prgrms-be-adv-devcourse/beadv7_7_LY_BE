@@ -150,4 +150,55 @@ class DepositTest {
                     .isEqualTo(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
         }
     }
+
+    @Nested
+    @DisplayName("질의 메서드 (isConfirmable / isCancelable / matchesAmount)")
+    class QueryMethods {
+
+        @Test
+        @DisplayName("REQUESTED 상태면 isConfirmable은 true, isCancelable은 false다")
+        void REQUESTED_상태면_isConfirmable_true_isCancelable_false() {
+            // given
+            Deposit deposit = createRequestedDeposit();
+
+            // when & then
+            assertThat(deposit.isConfirmable()).isTrue();
+            assertThat(deposit.isCancelable()).isFalse();
+        }
+
+        @Test
+        @DisplayName("DONE 상태면 isConfirmable은 false, isCancelable은 true다")
+        void DONE_상태면_isConfirmable_false_isCancelable_true() {
+            // given
+            Deposit deposit = createRequestedDeposit();
+            deposit.confirm("provider-tx-id", ORDER_ID, REQUESTED_AMOUNT);
+
+            // when & then
+            assertThat(deposit.isConfirmable()).isFalse();
+            assertThat(deposit.isCancelable()).isTrue();
+        }
+
+        @Test
+        @DisplayName("FAILED/CANCELED 상태면 isConfirmable·isCancelable 모두 false다")
+        void FAILED_상태면_둘다_false() {
+            // given
+            Deposit deposit = createRequestedDeposit();
+            deposit.fail();
+
+            // when & then
+            assertThat(deposit.isConfirmable()).isFalse();
+            assertThat(deposit.isCancelable()).isFalse();
+        }
+
+        @Test
+        @DisplayName("matchesAmount는 요청 금액과 같을 때만 true를 반환한다")
+        void matchesAmount_요청금액과_같을때만_true() {
+            // given
+            Deposit deposit = createRequestedDeposit();
+
+            // when & then
+            assertThat(deposit.matchesAmount(REQUESTED_AMOUNT)).isTrue();
+            assertThat(deposit.matchesAmount(Money.of(1))).isFalse();
+        }
+    }
 }
