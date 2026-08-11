@@ -99,6 +99,11 @@ services:
         condition: service_healthy
 
 volumes:
+  # 볼륨 이름을 명시한다. 안 적으면 "<프로젝트명>_mysql-data"가 되는데,
+  # 예전에 mysql만 다른 프로젝트명(-p lp-auction-local-mysql)으로 띄운 적이 있어
+  # 실제 데이터가 그 이름의 볼륨에 들어 있다. 이름을 고정해 두면 프로젝트명이 무엇이든
+  # 같은 볼륨을 쓰므로, 다시 띄울 때 빈 DB가 되는 사고를 막는다.
   mysql-data:
+    name: lp-auction-local-mysql_mysql-data
   kafka-data:
   elasticsearch-data:
