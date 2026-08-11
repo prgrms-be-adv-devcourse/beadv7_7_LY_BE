@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import site.common.event.contract.AuctionWonEvent;
 import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderSearchResult;
+import site.fulfillmentservice.order.application.dto.RefundRequestCommand;
 import site.fulfillmentservice.order.domain.CancelReason;
 import site.fulfillmentservice.order.domain.DeliveryInfo;
 import site.fulfillmentservice.order.domain.Order;
@@ -148,6 +149,33 @@ public class OrderService {
         order.completeOrder(LocalDateTime.now());
         orderEventPublisher.publishCompleted(order);
         log.info("거래 확정 기한 초과로 자동 완료 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
+    }
+
+    public void requestRefund(Long orderId, Long buyerId, RefundRequestCommand command) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
+        }
+
+        order.requestRefund(command.reason(), command.description(), command.imageUrls(), LocalDateTime.now());
+    }
+
+    public void approveRefund(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        order.approveRefund(LocalDateTime.now());
+        orderEventPublisher.publishRefunded(order);
+    }
+
+    public void rejectRefund(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        order.rejectRefund(LocalDateTime.now());
+        orderEventPublisher.publishCompleted(order);
     }
 
     @Transactional(readOnly = true)

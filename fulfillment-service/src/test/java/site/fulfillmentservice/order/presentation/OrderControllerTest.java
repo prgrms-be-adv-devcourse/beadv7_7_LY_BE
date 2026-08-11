@@ -26,9 +26,11 @@ import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderSearchResult;
 import site.fulfillmentservice.order.application.dto.OrderSummaryResult;
 import site.fulfillmentservice.order.application.dto.OrderItemSnapshotResult;
+import site.fulfillmentservice.order.domain.RefundReason;
 import site.fulfillmentservice.order.exception.OrderErrorCode;
 import site.fulfillmentservice.order.exception.OrderException;
 import site.fulfillmentservice.order.presentation.dto.OrderPlaceRequest;
+import site.fulfillmentservice.order.presentation.dto.RefundRequest;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(OrderController.class)
@@ -150,6 +152,97 @@ class OrderControllerTest {
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.error.code").value("OERR-2007"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/orders/{orderId}/refund-request")
+    class RequestRefund {
+
+        private final RefundRequest request =
+                new RefundRequest(RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다.",
+                        List.of("https://cdn.example.com/refund/1.jpg"));
+
+        @Test
+        @DisplayName("성공하면 200과 성공 응답을 반환한다")
+        void requestRefund_success() throws Exception {
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-request", 1L)
+                            .header(MEMBER_ID_HEADER, "301")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+
+            verify(orderService).requestRefund(1L, 301L, request.toCommand());
+        }
+
+        @Test
+        @DisplayName("ORDERED 상태가 아니면 409와 실패 응답을 반환한다")
+        void requestRefund_notRefundable() throws Exception {
+            willThrow(new OrderException(OrderErrorCode.ORDER_NOT_REFUNDABLE))
+                    .given(orderService).requestRefund(any(), any(), any());
+
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-request", 1L)
+                            .header(MEMBER_ID_HEADER, "301")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2010"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/orders/{orderId}/refund-approve")
+    class ApproveRefund {
+
+        @Test
+        @DisplayName("성공하면 200과 성공 응답을 반환한다")
+        void approveRefund_success() throws Exception {
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-approve", 1L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+
+            verify(orderService).approveRefund(1L);
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태가 아니면 409와 실패 응답을 반환한다")
+        void approveRefund_notRequested() throws Exception {
+            willThrow(new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED))
+                    .given(orderService).approveRefund(1L);
+
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-approve", 1L))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2011"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/orders/{orderId}/refund-reject")
+    class RejectRefund {
+
+        @Test
+        @DisplayName("성공하면 200과 성공 응답을 반환한다")
+        void rejectRefund_success() throws Exception {
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-reject", 1L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+
+            verify(orderService).rejectRefund(1L);
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태가 아니면 409와 실패 응답을 반환한다")
+        void rejectRefund_notRequested() throws Exception {
+            willThrow(new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED))
+                    .given(orderService).rejectRefund(1L);
+
+            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-reject", 1L))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("OERR-2011"));
         }
     }
 
