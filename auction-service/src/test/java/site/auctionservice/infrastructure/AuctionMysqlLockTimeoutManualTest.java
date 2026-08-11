@@ -1,7 +1,7 @@
 package site.auctionservice.infrastructure;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -26,10 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * docker-compose 로 띄운 실제 MySQL 컨테이너(local 프로파일, localhost:33340)에 붙어
  * AuctionRepositoryImpl.findByIdForUpdate()가 실제로 3초 뒤 락 타임아웃으로 실패하는지
- * 검증하기 위한 로컬 전용 테스트. mysql 컨테이너가 떠있지 않으면 실패하므로 CI에서는
- * 절대 돌면 안 된다 - 그래서 @Disabled로 꺼둔다. 로컬에서 재검증하고 싶으면 mysql
- * 컨테이너를 띄운 뒤 아래 @Disabled를 지우고 실행한 다음, 다시 붙여서 커밋한다.
+ * 검증하는 테스트. 실행 전제: docker/local의 mysql 컨테이너 기동(localhost:33340).
+ * mysql이 없으면 컨텍스트 로딩부터 실패하므로 @Tag("integration")을 붙여 CI(-PexcludeTags=integration)에서 제외한다
  */
+@Tag("integration")
 @DataJpaTest
 @ActiveProfiles("local")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -46,7 +46,6 @@ class AuctionMysqlLockTimeoutManualTest {
     private PlatformTransactionManager transactionManager;
 
     @Test
-    @Disabled("로컬 mysql 컨테이너 필요 - docker/local docker-compose로 mysql 띄운 뒤에만 지우고 실행")
     @DisplayName("실제 MySQL에서 findByIdForUpdate()는 락 대기 3초를 넘기면 AuctionException(LOCK_ACQUISITION_FAILED)을 던진다")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void findByIdForUpdate_realMysql_timesOutAfterThreeSeconds() throws InterruptedException {
