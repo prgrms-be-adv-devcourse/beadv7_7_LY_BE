@@ -268,6 +268,18 @@ jobs:
           if [ ! -f .product-service-secret ]; then
             touch .product-service-secret
           fi
+          
+          if [ ! -f .auction-service-secret ]; then
+            touch .auction-service-secret
+          fi
+          
+          if [ ! -f .fulfillment-service-secret ]; then
+            touch .fulfillment-service-secret
+          fi
+          
+          if [ ! -f .pointwallet-service-secret ]; then
+            touch .pointwallet-service-secret
+          fi
 
       - name: Start new server application
         id: start-new-server-application
@@ -341,6 +353,18 @@ jobs:
           if [ ! -f .product-service-secret ]; then
             touch .product-service-secret
           fi
+          
+          if [ ! -f .auction-service-secret ]; then
+            touch .auction-service-secret
+          fi
+          
+          if [ ! -f .fulfillment-service-secret ]; then
+            touch .fulfillment-service-secret
+          fi
+          
+          if [ ! -f .pointwallet-service-secret ]; then
+            touch .pointwallet-service-secret
+          fi
 
       - name: Start new server application
         id: start-new-server-application
@@ -392,6 +416,9 @@ jobs:
           
           GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
           GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+          
+          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
+          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
           EOF
           
           cat <<EOF > .product-service-secret
@@ -410,6 +437,18 @@ jobs:
           
           if [ ! -f .member-service-secret ]; then
             touch .member-service-secret
+          fi
+          
+          if [ ! -f .auction-service-secret ]; then
+            touch .auction-service-secret
+          fi
+          
+          if [ ! -f .fulfillment-service-secret ]; then
+            touch .fulfillment-service-secret
+          fi
+          
+          if [ ! -f .pointwallet-service-secret ]; then
+            touch .pointwallet-service-secret
           fi
 
       - name: Start new server application
