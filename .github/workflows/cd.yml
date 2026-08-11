@@ -422,7 +422,7 @@ jobs:
           EOF
           
           cat <<EOF > .product-service-secret
-          PORT_NUMBER=8084
+          PORT_NUMBER=8080
           DB_URL=${{ secrets.DB_URL }}
           DB_USER_NAME=${{ secrets.DB_USER_NAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
