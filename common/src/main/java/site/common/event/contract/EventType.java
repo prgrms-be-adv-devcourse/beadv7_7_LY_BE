@@ -15,6 +15,9 @@ public enum EventType {
     // Settlement
     SETTLEMENT_CONFIRMED_EVENT("settlement.confirmed"),
 
+    // Wishlist
+    WISHLIST_CHANGED_EVENT("wishlist.changed"),
+
     ;
 
     private final String value;
