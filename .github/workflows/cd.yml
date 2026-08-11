@@ -444,61 +444,20 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
-          
-          sudo cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: gateway-service
+          secret-body: |
+            PORT_NUMBER=8080
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
+            PRODUCT_SERVICE_URI=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+            MEMBER_SERVICE_URI=${{ secrets.MEMBER_SERVICE_BASE_URL }}
+            POINTWALLET_SERVICE_URI=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}
+            FULFILLMENT_SERVICE_URI=${{ secrets.FULFILLMENT_SERVICE_BASE_URL }}
+            AUCTION_SERVICE_URI=${{ secrets.AUCTION_SERVICE_BASE_URL }}
 
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-          
-          sudo cat <<EOF > .gateway-service-secret
-          PORT_NUMBER=8080
-          
-          PRODUCT_SERVICE_URI=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
-          MEMBER_SERVICE_URI=${{ secrets.MEMBER_SERVICE_BASE_URL }}
-          POINTWALLET_SERVICE_URI=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}
-          FULFILLMENT_SERVICE_URI=${{ secrets.FULFILLMENT_SERVICE_BASE_URL }}
-          AUCTION_SERVICE_URI=${{ secrets.AUCTION_SERVICE_BASE_URL }}
-          
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
-          EOF
-
-          if [ ! -f .member-service-secret ]; then
-            touch .member-service-secret
-          fi
-          
-          if [ ! -f .product-service-secret ]; then
-            touch .product-service-secret
-          fi
-          
-          if [ ! -f .auction-service-secret ]; then
-            touch .auction-service-secret
-          fi
-          
-          if [ ! -f .fulfillment-service-secret ]; then
-            touch .fulfillment-service-secret
-          fi
-          
-          if [ ! -f .pointwallet-service-secret ]; then
-            touch .pointwallet-service-secret
-          fi
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -521,6 +480,12 @@ jobs:
           done
           echo "❌ gateway-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: gateway-service
 
       - name: Set deploy result
         if: always()
@@ -550,58 +515,17 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
-          
-          cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: member-service
+          secret-body: |
+            PORT_NUMBER=8080
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-          
-          cat <<EOF > .member-service-secret
-          PORT_NUMBER=8080
-          DB_URL=${{ secrets.DB_URL }}
-          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
-          EOF
-
-          if [ ! -f .gateway-service-secret ]; then
-            touch .gateway-service-secret
-          fi
-          
-          if [ ! -f .product-service-secret ]; then
-            touch .product-service-secret
-          fi
-          
-          if [ ! -f .auction-service-secret ]; then
-            touch .auction-service-secret
-          fi
-          
-          if [ ! -f .fulfillment-service-secret ]; then
-            touch .fulfillment-service-secret
-          fi
-          
-          if [ ! -f .pointwallet-service-secret ]; then
-            touch .pointwallet-service-secret
-          fi
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            JWT_EXPIRATION_TIME=${{ secrets.JWT_EXPIRATION_TIME }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -624,6 +548,12 @@ jobs:
           done
           echo "❌ member-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: member-service
 
       - name: Set deploy result
         if: always()
@@ -653,58 +583,17 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
-          
-          cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: product-service
+          secret-body: |
+            PORT_NUMBER=8080
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-          
-          cat <<EOF > .product-service-secret
-          PORT_NUMBER=8080
-          DB_URL=${{ secrets.DB_URL }}
-          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          
-          KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-          AUCTION_SERVICE_BASE_URL=${{ secrets.AUCTION_SERVICE_BASE_URL }}
-          EOF
-
-          if [ ! -f .gateway-service-secret ]; then
-            touch .gateway-service-secret
-          fi
-          
-          if [ ! -f .member-service-secret ]; then
-            touch .member-service-secret
-          fi
-          
-          if [ ! -f .auction-service-secret ]; then
-            touch .auction-service-secret
-          fi
-          
-          if [ ! -f .fulfillment-service-secret ]; then
-            touch .fulfillment-service-secret
-          fi
-          
-          if [ ! -f .pointwallet-service-secret ]; then
-            touch .pointwallet-service-secret
-          fi
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+            AUCTION_SERVICE_BASE_URL=${{ secrets.AUCTION_SERVICE_BASE_URL }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -727,6 +616,12 @@ jobs:
           done
           echo "❌ product-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: product-service
 
       - name: Set deploy result
         if: always()
@@ -765,7 +660,7 @@ jobs:
             DB_USER_NAME=${{ secrets.DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+
 
             MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
             PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
@@ -792,6 +687,12 @@ jobs:
           done
           echo "❌ auction-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: auction-service
 
       - name: Set deploy result
         if: always()
@@ -821,59 +722,18 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: fulfillment-service
+          secret-body: |
+            PORT_NUMBER=8080
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-
-          cat <<EOF > .fulfillment-service-secret
-          PORT_NUMBER=8080
-          DB_URL=${{ secrets.DB_URL }}
-          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-          KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-
-          PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
-          EOF
-
-          if [ ! -f .gateway-service-secret ]; then
-            touch .gateway-service-secret
-          fi
-
-          if [ ! -f .member-service-secret ]; then
-            touch .member-service-secret
-          fi
-
-          if [ ! -f .product-service-secret ]; then
-            touch .product-service-secret
-          fi
-
-          if [ ! -f .auction-service-secret ]; then
-            touch .auction-service-secret
-          fi
-
-          if [ ! -f .pointwallet-service-secret ]; then
-            touch .pointwallet-service-secret
-          fi
+            PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -896,6 +756,12 @@ jobs:
           done
           echo "❌ fulfillment-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: fulfillment-service
 
       - name: Set deploy result
         if: always()
@@ -925,62 +791,21 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: pointwallet-service
+          secret-body: |
+            PORT_NUMBER=8080
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
+            TOSS_CLIENT_KEY=${{ secrets.TOSS_CLIENT_KEY }}
+            TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
 
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-
-          cat <<EOF > .pointwallet-service-secret
-          PORT_NUMBER=8080
-          DB_URL=${{ secrets.DB_URL }}
-          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-          KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-
-          TOSS_CLIENT_KEY=${{ secrets.TOSS_CLIENT_KEY }}
-          TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
-
-          MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
-          EOF
-
-          if [ ! -f .gateway-service-secret ]; then
-            touch .gateway-service-secret
-          fi
-
-          if [ ! -f .member-service-secret ]; then
-            touch .member-service-secret
-          fi
-
-          if [ ! -f .product-service-secret ]; then
-            touch .product-service-secret
-          fi
-
-          if [ ! -f .auction-service-secret ]; then
-            touch .auction-service-secret
-          fi
-
-          if [ ! -f .fulfillment-service-secret ]; then
-            touch .fulfillment-service-secret
-          fi
+            MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
 
       - name: Start new server application
         id: start-new-server-application
@@ -1003,6 +828,12 @@ jobs:
           done
           echo "❌ pointwallet-service가 60초 동안 정상 실행되지 않음..."
           exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: pointwallet-service
 
       - name: Set deploy result
         if: always()
