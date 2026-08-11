@@ -8,5 +8,6 @@ public record TossInquiryApiResponse(
         String paymentKey,
         String orderId,
         BigDecimal totalAmount,
+        BigDecimal balanceAmount,
         String status
 ) {}

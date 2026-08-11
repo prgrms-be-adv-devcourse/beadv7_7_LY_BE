@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.ResourceAccessException;
 import site.pointwalletservice.deposit.domain.Deposit;
 import site.pointwalletservice.deposit.domain.DepositRepository;
 import site.pointwalletservice.deposit.domain.PaymentGatewayClient;
@@ -14,7 +15,6 @@ import site.pointwalletservice.deposit.exception.DepositErrorCode;
 import site.pointwalletservice.deposit.exception.DepositException;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
-
 import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
@@ -81,7 +81,7 @@ public class DepositApplicationService implements DepositService {
                 paymentGatewayClient.cancel(result.providerTxId(), "내부 저장 실패로 인한 자동 취소", result.approvedAmount());
                 log.warn("보정 취소 성공. orderId={}", orderId);
             } catch (Exception cancelFailure) {
-                logPgStateOnCompensationFailure(orderId, result.providerTxId(), cancelFailure);
+                logPgStateForManualCheck(orderId, result.providerTxId(), cancelFailure);
             }
             throw e;
         }
@@ -119,7 +119,7 @@ public class DepositApplicationService implements DepositService {
                 );
                 log.warn("차감 보정 성공. depositId={}", depositId);
             } catch (Exception compensateFailure) {
-                logPgStateOnCompensationFailure(String.valueOf(depositId), deposit.getProviderTransactionId(), compensateFailure);
+                logPgStateForManualCheck(String.valueOf(depositId), deposit.getProviderTransactionId(), compensateFailure);
             }
             throw e;
         }
@@ -136,22 +136,32 @@ public class DepositApplicationService implements DepositService {
                 );
             });
         } catch (Exception e) {
-            // PG 취소는 이미 성공(실제 환불됨) — 되돌릴 게 없으니 로그만 남기고 수동/배치 확인
+            // PG 취소는 이미 성공(실제 환불됨) — 되돌릴 게 없으니 조회로 최신 상태 남기고 수동 확인
             log.error("PG 취소 성공 후 DB 반영 실패 - 이미 환불된 건, 수동 확인 필요. depositId={}", depositId, e);
+            logPgStateForManualCheck(String.valueOf(depositId), deposit.getProviderTransactionId(), e);
             throw e;
         }
     }
 
     /**
-     * 보정(재취소/재충전) 자체가 실패했을 때, PG 조회 API로 실제 상태를 한 번 더 확인해서
-     * 로그에 남긴다. 관리자 화면 없이도 이 로그만 보고 "PG에서 실제로 어떤 상태인지" 바로 파악 가능.
+     * 보정(재취소/재충전) 실패, 또는 PG 성공 후 DB 반영 실패 등 "사람이 직접 확인해야 하는" 상황에서
+     * PG 조회 API로 실제 상태를 확인해 로그에 남긴다.
+     * 실패 원인이 연결 자체 불가(ResourceAccessException)면 조회도 같은 이유로 실패할 가능성이 높으므로
+     * 불필요한 재시도/대기 없이 생략하고, 원인이 구분되도록 로그를 남긴다.
      */
-    private void logPgStateOnCompensationFailure(String context, String providerTxId, Exception compensationFailure) {
-        log.error("보정마저 실패 - 수동 확인 필요. context={}, providerTxId={}", context, providerTxId, compensationFailure);
+    private void logPgStateForManualCheck(String context, String providerTxId, Exception cause) {
+        log.error("수동 확인 필요. context={}, providerTxId={}", context, providerTxId, cause);
+
+        if (cause instanceof ResourceAccessException) {
+            log.error("[수동확인용] Toss와 연결 자체가 불가능한 상태로 판단되어 조회를 생략함. context={}, providerTxId={}",
+                    context, providerTxId);
+            return;
+        }
+
         try {
             PgInquiryResult inquiry = paymentGatewayClient.inquire(providerTxId);
-            log.error("[수동확인용] PG 실제 상태 조회 결과 - context={}, providerTxId={}, orderId={}, status={}, amount={}",
-                    context, providerTxId, inquiry.orderId(), inquiry.status(), inquiry.totalAmount());
+            log.error("[수동확인용] PG 실제 상태 조회 결과 - context={}, providerTxId={}, orderId={}, status={}, totalAmount={}, balanceAmount={}",
+                    context, providerTxId, inquiry.orderId(), inquiry.status(), inquiry.totalAmount(), inquiry.balanceAmount());
         } catch (Exception inquiryFailure) {
             log.error("[수동확인용] PG 상태 조회마저 실패 - providerTxId={}", providerTxId, inquiryFailure);
         }

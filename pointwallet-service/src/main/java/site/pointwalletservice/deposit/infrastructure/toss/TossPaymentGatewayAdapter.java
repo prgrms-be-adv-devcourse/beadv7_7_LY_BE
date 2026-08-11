@@ -104,16 +104,11 @@ public class TossPaymentGatewayAdapter implements PaymentGatewayClient {
                 response.paymentKey(),
                 response.orderId(),
                 Money.of(response.totalAmount()),
+                Money.of(response.balanceAmount()),
                 response.status()
         );
     }
 
-    /**
-     * 연결 자체가 안 된 경우(타임아웃/커넥션 거부)에만 짧게 재시도한다.
-     * 4xx 등 비즈니스 오류(TossPaymentsApiException)는 재시도하지 않고 그대로 전파한다.
-     * Idempotency-Key를 이미 헤더에 실어 보내므로, 응답을 못 받고 재시도하더라도
-     * Toss 쪽에서 같은 키에 대한 중복 처리를 막아준다.
-     */
     private <T> T executeWithConnectionRetry(String operationName, java.util.function.Supplier<T> call) {
         ResourceAccessException lastFailure = null;
         for (int attempt = 1; attempt <= MAX_CONNECTION_RETRY; attempt++) {

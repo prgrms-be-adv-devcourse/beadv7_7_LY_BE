@@ -112,15 +112,16 @@ class TossPaymentGatewayAdapterTest {
         mockServer.expect(requestTo(inquiryUrl))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
-                        {"paymentKey":"%s","orderId":"%s","totalAmount":10000,"status":"DONE"}
-                        """.formatted(PROVIDER_TX_ID, ORDER_ID), MediaType.APPLICATION_JSON));
+                    {"paymentKey":"%s","orderId":"%s","totalAmount":10000,"balanceAmount":0,"status":"CANCELED"}
+                    """.formatted(PROVIDER_TX_ID, ORDER_ID), MediaType.APPLICATION_JSON));
 
         PgInquiryResult result = sut.inquire(PROVIDER_TX_ID);
 
         assertThat(result.providerTxId()).isEqualTo(PROVIDER_TX_ID);
         assertThat(result.orderId()).isEqualTo(ORDER_ID);
         assertThat(result.totalAmount()).isEqualTo(AMOUNT);
-        assertThat(result.status()).isEqualTo("DONE");
+        assertThat(result.balanceAmount()).isEqualTo(Money.zero());
+        assertThat(result.status()).isEqualTo("CANCELED");
         mockServer.verify();
     }
 

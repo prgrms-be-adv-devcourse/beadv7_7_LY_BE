@@ -72,7 +72,9 @@ public class Deposit {
     }
 
     public void confirm(String providerTransactionId, String orderId, Money approvedAmount) {
-        validateStatus(DepositStatus.REQUESTED);
+        if (!isConfirmable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         validateRequestConsistency(orderId, approvedAmount);
 
         this.providerTransactionId = providerTransactionId;
@@ -81,37 +83,33 @@ public class Deposit {
     }
 
     public void fail() {
-        validateStatus(DepositStatus.REQUESTED);
+        if (!isConfirmable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         this.status = DepositStatus.FAILED;
     }
 
     public void cancel(String reason) {
-        validateStatus(DepositStatus.DONE);
+        if (!isCancelable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         this.status = DepositStatus.CANCELED;
         this.cancelReason = reason;
         this.canceledAt = LocalDateTime.now();
     }
 
-    /** PG 승인 호출 같은 비싼 외부 호출 전에, 애플리케이션 레이어가 미리 걸러낼 때 쓰는 질의 메서드.
-     *  "REQUESTED 상태여야 확정 가능하다"는 규칙은 여기 한 곳에만 존재한다. */
+    /** PG 승인 호출 같은 비싼 외부 호출 전에 미리 걸러낼 때도 쓰고, confirm()/fail() 내부 검증도 이 메서드 하나로 통일한다. */
     public boolean isConfirmable() {
         return this.status == DepositStatus.REQUESTED;
     }
 
-    /** PG 취소 호출 전 사전 확인용. "DONE 상태여야 취소 가능하다"는 규칙도 여기 한 곳에만 존재한다. */
+    /** PG 취소 호출 전 사전 확인용이면서, cancel() 내부 검증도 이 메서드 하나로 통일한다. */
     public boolean isCancelable() {
         return this.status == DepositStatus.DONE;
     }
 
-    /** 콜백으로 들어온 금액이 신청 금액과 일치하는지 확인. Money 비교 규칙을 도메인 밖으로 노출하지 않는다. */
     public boolean matchesAmount(Money amount) {
         return this.requestedAmount.equals(amount);
-    }
-
-    private void validateStatus(DepositStatus expected) {
-        if (this.status != expected) {
-            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
-        }
     }
 
     private void validateRequestConsistency(String orderId, Money approvedAmount) {
