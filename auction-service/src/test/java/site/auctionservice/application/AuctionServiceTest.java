@@ -229,6 +229,21 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
+    void testModifyAuction_lockContention_throws() {
+        // given: 락 대기시간 제어와 예외 번역은 AuctionRepositoryImpl의 책임이라 여기서는 그 결과로 온 예외를 AuctionService가 삼키지 않는지만 검증한다.
+        given(auctionRepository.findByIdForUpdate(1L))
+                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
+        verify(searchViewRepository, never()).updateFromAuction(any(), any());
+    }
+
+    @Test
     @DisplayName("판매자 본인이 아니면 경매를 수정할 수 없다")
     void testModifyAuction_notOwner_throws() {
         // given
@@ -303,6 +318,21 @@ class AuctionServiceTest {
                 .isInstanceOf(AuctionException.class)
                 .extracting(e -> ((AuctionException) e).getErrorCode())
                 .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+        verify(searchViewRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
+    void testDeleteAuction_lockContention_throws() {
+        // given
+        given(auctionRepository.findByIdForUpdate(1L))
+                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
         verify(searchViewRepository, never()).deleteById(any());
     }
 
@@ -739,6 +769,23 @@ class AuctionServiceTest {
 
         verify(walletPort).hold(1L, 2L, Money.of(13_000L));
         verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getSchedule().getPeriod().getEndAt());
+    }
+
+    @Test
+    @DisplayName("경매 행 락 획득에 실패하면(입찰 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED가 그대로 전파되고 예치금 홀드를 호출하지 않는다")
+    void testPlaceBid_lockContention_throws() {
+        // given: 락 대기시간 제어 + 예외 번역은 AuctionRepositoryImpl 책임
+        // 여기서는 AuctionService가 그 결과를 삼키지 않고 예치금 홀드 전에 그대로 전파하는지만 본다.
+        given(auctionRepository.findByIdForUpdate(1L))
+                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
+        verify(walletPort, never()).hold(any(), any(), any());
     }
 
     @Test
