@@ -1,0 +1,58 @@
+name: Prepare deploy files
+description: >
+  EC2의 ~/project에 docker-compose가 읽을 .env와 서비스별 시크릿 파일을 만든다.
+
+inputs:
+  service:
+    description: '배포 대상 서비스 이름 (예: auction-service)'
+    required: true
+  secret-body:
+    description: '배포 대상 서비스의 시크릿 파일 내용 (KEY=VALUE 줄 목록)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # 이미지 정보(*_SERVICE_IMAGE_REPOSITORY, IMAGE_TAG)는 input이 아니라
+    # cd.yml의 워크플로 레벨 env에서 내려온다. 6개 서비스 값을 잡마다 인자로
+    # 넘기면 호출부가 다시 장황해지기 때문이다. 대신 값이 비어 있으면 .env가
+    # 조용히 망가지므로, 아래에서 먼저 검사하고 끊는다.
+    - name: Create .env and secret files
+      shell: bash
+      env:
+        SERVICE: ${{ inputs.service }}
+        SECRET_BODY: ${{ inputs.secret-body }}
+      run: |
+        set -euo pipefail
+        cd ~/project
+
+        SERVICES="gateway member product auction fulfillment pointwallet"
+        HINT="cd.yml의 워크플로 레벨 env 블록을 확인하세요"
+
+        : "${IMAGE_TAG:?IMAGE_TAG가 비어 있습니다. $HINT}"
+        for svc in $SERVICES; do
+          UPPER=$(echo "$svc" | tr 'a-z' 'A-Z')
+          VAR="${UPPER}_SERVICE_IMAGE_REPOSITORY"
+          : "${!VAR:?${VAR}가 비어 있습니다. $HINT}"
+        done
+
+        # .env - docker-compose가 각 서비스의 image 태그를 해석하는 데 쓴다.
+        # 배포 잡이 .env를 통째로 덮어쓰기 때문에, 지금 배포하는 서비스 것만
+        # 쓰면 나머지 5개 서비스의 이미지 변수가 빈 값이 된다. 항상 6개를 다 쓴다.
+        for svc in $SERVICES; do
+          UPPER=$(echo "$svc" | tr 'a-z' 'A-Z')
+          VAR="${UPPER}_SERVICE_IMAGE_REPOSITORY"
+          echo "${UPPER}_SERVICE_IMAGE_REPOSITORY=${!VAR}"
+          echo "${UPPER}_SERVICE_IMAGE_TAG=${IMAGE_TAG}"
+        done > .env
+
+        # 배포 대상 서비스의 시크릿 파일
+        printf '%s\n' "$SECRET_BODY" > ".${SERVICE}-secret"
+
+        # 나머지 서비스도 env_file 대상 파일이 존재해야 docker-compose가 파싱에 실패하지 않는다.
+        # 이미 있는 파일은 건드리지 않는다 - 다른 서비스의 시크릿이 들어있을 수 있다.
+        for svc in $SERVICES; do
+          [ -f ".${svc}-service-secret" ] || touch ".${svc}-service-secret"
+        done
+
+        echo "📄 배포 파일 준비 완료 (.env $(wc -l < .env)줄, .${SERVICE}-secret $(wc -l < ".${SERVICE}-secret")줄)"
