@@ -16,6 +16,18 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
+# 6개 서비스의 이미지 정보. 어느 배포 잡이든 .env에 6개를 전부 써야 하므로
+# (부분만 쓰면 나머지 서비스의 이미지 변수가 빈 값이 된다) 잡이 아니라
+# 워크플로 레벨에 둔다. .github/actions/prepare-deploy-files가 이 값을 읽는다.
+env:
+  GATEWAY_SERVICE_IMAGE_REPOSITORY: ${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
+  MEMBER_SERVICE_IMAGE_REPOSITORY: ${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
+  PRODUCT_SERVICE_IMAGE_REPOSITORY: ${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
+  AUCTION_SERVICE_IMAGE_REPOSITORY: ${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
+  FULFILLMENT_SERVICE_IMAGE_REPOSITORY: ${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
+  POINTWALLET_SERVICE_IMAGE_REPOSITORY: ${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
+  IMAGE_TAG: ${{ github.sha }}
+
 jobs:
   check-deploy-condition:
     runs-on: ubuntu-latest
@@ -744,61 +756,20 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Create secret file
-        run: |
-          cd ~/project
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: auction-service
+          secret-body: |
+            PORT_NUMBER=8080
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          cat <<EOF > .env
-          GATEWAY_SERVICE_IMAGE_REPOSITORY=${{ secrets.GATEWAY_SERVICE_GHCR_IMAGE }}
-          GATEWAY_SERVICE_IMAGE_TAG=${{ github.sha }}
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
-          MEMBER_SERVICE_IMAGE_REPOSITORY=${{ secrets.MEMBER_SERVICE_GHCR_IMAGE }}
-          MEMBER_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          PRODUCT_SERVICE_IMAGE_REPOSITORY=${{ secrets.PRODUCT_SERVICE_GHCR_IMAGE }}
-          PRODUCT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          AUCTION_SERVICE_IMAGE_REPOSITORY=${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
-          AUCTION_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          FULFILLMENT_SERVICE_IMAGE_REPOSITORY=${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
-          FULFILLMENT_SERVICE_IMAGE_TAG=${{ github.sha }}
-
-          POINTWALLET_SERVICE_IMAGE_REPOSITORY=${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
-          POINTWALLET_SERVICE_IMAGE_TAG=${{ github.sha }}
-          EOF
-
-          cat <<EOF > .auction-service-secret
-          PORT_NUMBER=8080
-          DB_URL=${{ secrets.DB_URL }}
-          DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-          KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-
-          MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
-          PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
-          WALLET_SERVICE_BASE_URL=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}
-          EOF
-
-          if [ ! -f .gateway-service-secret ]; then
-            touch .gateway-service-secret
-          fi
-
-          if [ ! -f .member-service-secret ]; then
-            touch .member-service-secret
-          fi
-
-          if [ ! -f .product-service-secret ]; then
-            touch .product-service-secret
-          fi
-
-          if [ ! -f .fulfillment-service-secret ]; then
-            touch .fulfillment-service-secret
-          fi
-
-          if [ ! -f .pointwallet-service-secret ]; then
-            touch .pointwallet-service-secret
-          fi
+            MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
+            PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+            WALLET_SERVICE_BASE_URL=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}
 
       - name: Start new server application
         id: start-new-server-application
