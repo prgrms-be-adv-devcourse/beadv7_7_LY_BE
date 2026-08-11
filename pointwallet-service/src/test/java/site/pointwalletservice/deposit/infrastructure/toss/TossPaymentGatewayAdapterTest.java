@@ -18,6 +18,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import site.pointwalletservice.deposit.domain.PgApproveResult;
 import site.pointwalletservice.deposit.domain.PgCancelResult;
+import site.pointwalletservice.deposit.domain.PgInquiryResult;
 import site.pointwalletservice.shared.Money;
 
 
@@ -101,6 +102,54 @@ class TossPaymentGatewayAdapterTest {
         assertThat(result.providerTxId()).isEqualTo(PROVIDER_TX_ID);
         assertThat(result.providerCancelTxId()).isEqualTo("cancel-tx-1");
         assertThat(result.canceledAmount()).isEqualTo(AMOUNT);
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("inquire 성공 시 GET으로 조회하고 결과를 매핑한다")
+    void inquire_성공하면_결과를_매핑한다() {
+        String inquiryUrl = "https://api.tosspayments.com/v1/payments/" + PROVIDER_TX_ID;
+        mockServer.expect(requestTo(inquiryUrl))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                    {"paymentKey":"%s","orderId":"%s","totalAmount":10000,"balanceAmount":0,"status":"CANCELED"}
+                    """.formatted(PROVIDER_TX_ID, ORDER_ID), MediaType.APPLICATION_JSON));
+
+        PgInquiryResult result = sut.inquire(PROVIDER_TX_ID);
+
+        assertThat(result.providerTxId()).isEqualTo(PROVIDER_TX_ID);
+        assertThat(result.orderId()).isEqualTo(ORDER_ID);
+        assertThat(result.totalAmount()).isEqualTo(AMOUNT);
+        assertThat(result.balanceAmount()).isEqualTo(Money.zero());
+        assertThat(result.status()).isEqualTo("CANCELED");
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("inquire도 연결 실패(ResourceAccessException)면 최대 2회까지 재시도하다가 결국 실패한다")
+    void inquire_연결실패면_재시도하다가_실패한다() {
+        String inquiryUrl = "https://api.tosspayments.com/v1/payments/" + PROVIDER_TX_ID;
+        mockServer.expect(requestTo(inquiryUrl)).andRespond(request -> { throw new IOException("connect timeout"); });
+        mockServer.expect(requestTo(inquiryUrl)).andRespond(request -> { throw new IOException("connect timeout"); });
+
+        assertThatThrownBy(() -> sut.inquire(PROVIDER_TX_ID))
+                .isInstanceOf(ResourceAccessException.class);
+
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("inquire도 4xx 비즈니스 오류면 재시도 없이 바로 예외가 전파된다")
+    void inquire_4xx면_재시도없이_바로_예외() {
+        String inquiryUrl = "https://api.tosspayments.com/v1/payments/" + PROVIDER_TX_ID;
+        mockServer.expect(requestTo(inquiryUrl))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .body("{\"code\":\"NOT_FOUND_PAYMENT\"}")
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> sut.inquire(PROVIDER_TX_ID))
+                .isInstanceOf(TossPaymentsApiException.class);
+
         mockServer.verify();
     }
 }

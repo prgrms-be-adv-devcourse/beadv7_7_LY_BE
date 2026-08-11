@@ -219,4 +219,9 @@ CLAUDE.md
 /secret
 
 
+# 지갑 락 NOWAIT vs 레거시 대기방식 성능 비교용 - 로컬 실측 전용, 커밋 대상 아님
+pointwallet-service/src/test/java/site/pointwalletservice/wallet/infrastructure/LegacyWaitWalletRepository.java
+pointwallet-service/src/test/java/site/pointwalletservice/wallet/infrastructure/WalletLockLegacyWaitPerformanceTest.java
+
+
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle,macos,windows,intellij+all

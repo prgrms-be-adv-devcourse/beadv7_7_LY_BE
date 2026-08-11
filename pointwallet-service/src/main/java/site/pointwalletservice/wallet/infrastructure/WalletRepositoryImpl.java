@@ -26,9 +26,4 @@ public class WalletRepositoryImpl implements WalletRepository {
     public Optional<Wallet> findByUserIdForUpdate(Long userId) {
         return walletJpaRepository.findByUserIdForUpdate(userId);
     }
-
-    @Override
-    public void setLockWaitTimeout(int seconds) {
-        walletJpaRepository.setLockWaitTimeout(seconds);
-    }
 }

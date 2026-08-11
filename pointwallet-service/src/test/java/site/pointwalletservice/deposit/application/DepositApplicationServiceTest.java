@@ -27,6 +27,7 @@ import site.pointwalletservice.deposit.domain.DepositStatus;
 import site.pointwalletservice.deposit.domain.PaymentGatewayClient;
 import site.pointwalletservice.deposit.domain.PgApproveResult;
 import site.pointwalletservice.deposit.domain.PgCancelResult;
+import site.pointwalletservice.deposit.domain.PgInquiryResult;
 import site.pointwalletservice.deposit.exception.DepositErrorCode;
 import site.pointwalletservice.deposit.exception.DepositException;
 import site.pointwalletservice.ledger.application.PointTransactionService;
@@ -109,7 +110,6 @@ class DepositApplicationServiceTest {
             assertThat(result.amount()).isEqualTo(AMOUNT);
         }
     }
-
     @Nested
     @DisplayName("충전 확정 (confirmDeposit)")
     class ConfirmDeposit {
@@ -117,7 +117,6 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("정상 흐름이면 승인 확정 + 지갑 충전(WalletService 위임) + 원장 기록(PointTransactionService 위임)까지 이어진다")
         void confirmDeposit_정상흐름이면_지갑잔액에_반영된다() {
-            // given
             Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
             when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
 
@@ -126,30 +125,21 @@ class DepositApplicationServiceTest {
 
             when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
 
-            // when
             sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
 
-            // then: Deposit이 확정됨
             assertThat(deposit.getStatus()).isEqualTo(DepositStatus.DONE);
             assertThat(deposit.getProviderTransactionId()).isEqualTo(PROVIDER_TX_ID);
 
-            // then: WalletService에 충전을 위임함
             verify(walletService).charge(USER_ID, AMOUNT);
-
-            // then: PointTransactionService에 원장 기록을 위임함
             verify(pointTransactionService).record(WALLET_ID, PointTransactionType.DEPOSIT, AMOUNT, AMOUNT, deposit.getId());
-
-            // then: DB 반영이 실제로 저장을 호출함
             verify(depositRepository).save(deposit);
         }
 
         @Test
         @DisplayName("존재하지 않는 orderId면 예외가 발생하고 PG API를 호출하지 않는다")
         void confirmDeposit_주문을_못찾으면_예외() {
-            // given
             when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.empty());
 
-            // when & then
             assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
@@ -161,12 +151,10 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("콜백 금액이 요청 금액과 다르면 Deposit을 실패 처리하고 PG API·WalletService·PointTransactionService를 호출하지 않는다")
         void confirmDeposit_콜백금액불일치면_실패처리하고_PG_API_호출안함() {
-            // given
             Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
             when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
             Money tamperedAmount = Money.of(1_000);
 
-            // when & then
             assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, tamperedAmount))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
@@ -182,28 +170,92 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("PG 승인은 성공했지만 DB 반영이 실패하면 보정 취소를 호출하고 예외를 그대로 던진다")
         void confirmDeposit_DB반영실패하면_보정취소하고_예외전파() {
-            // given
             Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
             when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
 
             PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
             when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+            when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
 
-            // DB 반영(트랜잭션 블록) 안에서 예외 발생 시뮬레이션
             doAnswerThrowOnExecuteWithoutResult();
 
-            // when & then
             assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
-                    .isInstanceOf(RuntimeException.class);
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 저장 실패");
 
-            // then: 보정 취소가 호출됨
             verify(paymentGatewayClient).cancel(PROVIDER_TX_ID, "내부 저장 실패로 인한 자동 취소", AMOUNT);
+        }
+
+        @Test
+        @DisplayName("PG 승인 성공 후 DB 반영도, 보정 취소도 실패하면 PG 조회 API로 실제 상태를 확인한다")
+        void confirmDeposit_보정취소마저_실패하면_PG조회를_호출한다() {
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
+            when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
+
+            PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+            when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+            when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+            doAnswerThrowOnExecuteWithoutResult();
+
+            // 보정 취소가 "비즈니스적으로" 실패한 경우 (연결 문제 아님) → 조회를 호출해야 함
+            when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "내부 저장 실패로 인한 자동 취소", AMOUNT))
+                    .thenThrow(new IllegalStateException("보정 취소마저 실패(시뮬레이션)"));
+            when(paymentGatewayClient.inquire(PROVIDER_TX_ID))
+                    .thenReturn(new PgInquiryResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT, Money.zero(), "CANCELED"));
+
+            assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 저장 실패");
+
+            verify(paymentGatewayClient).inquire(PROVIDER_TX_ID);
+        }
+
+        @Test
+        @DisplayName("보정 취소가 연결 자체 실패(ResourceAccessException)면 조회를 생략한다")
+        void confirmDeposit_연결실패면_조회를_생략한다() {
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
+            when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
+
+            PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+            when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+            when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+            doAnswerThrowOnExecuteWithoutResult();
+
+            when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "내부 저장 실패로 인한 자동 취소", AMOUNT))
+                    .thenThrow(new org.springframework.web.client.ResourceAccessException("연결 실패(시뮬레이션)"));
+
+            assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 저장 실패");
+
+            verify(paymentGatewayClient, never()).inquire(any());
+        }
+
+        @Test
+        @DisplayName("보정 취소도, PG 조회도 모두 실패해도 원래 예외는 그대로 전파된다")
+        void confirmDeposit_조회마저_실패해도_원래예외가_전파된다() {
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
+            when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
+
+            PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+            when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+            when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+            doAnswerThrowOnExecuteWithoutResult();
+
+            when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "내부 저장 실패로 인한 자동 취소", AMOUNT))
+                    .thenThrow(new IllegalStateException("보정 취소마저 실패(시뮬레이션)"));
+            when(paymentGatewayClient.inquire(PROVIDER_TX_ID))
+                    .thenThrow(new IllegalStateException("조회마저 실패(시뮬레이션)"));
+
+            assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 저장 실패");
         }
 
         private void doAnswerThrowOnExecuteWithoutResult() {
             org.mockito.Mockito.doAnswer(invocation -> {
                 Consumer<TransactionStatus> action = invocation.getArgument(0);
-                action.accept(null); // deposit.confirm() 등은 정상 실행됨
+                action.accept(null);
                 throw new RuntimeException("DB 저장 실패(시뮬레이션)");
             }).when(transactionTemplate).executeWithoutResult(any());
         }
@@ -225,7 +277,6 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("정상 흐름이면 WalletService.deduct 위임 + Deposit CANCELED 전환 + PG 취소호출 + 원장기록(PointTransactionService 위임)까지 이어진다")
         void cancelDeposit_정상흐름이면_지갑서비스에_차감을_위임한다() {
-            // given
             Deposit deposit = createDoneDeposit();
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
 
@@ -234,35 +285,24 @@ class DepositApplicationServiceTest {
             when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "단순 변심", AMOUNT))
                     .thenReturn(new PgCancelResult(PROVIDER_TX_ID, "cancel-tx-1", AMOUNT));
 
-            // when
             sut.cancelDeposit(DEPOSIT_ID, "단순 변심");
 
-            // then: Deposit이 취소됨
             assertThat(deposit.getStatus()).isEqualTo(DepositStatus.CANCELED);
             assertThat(deposit.getCancelReason()).isEqualTo("단순 변심");
 
-            // then: WalletService에 차감을 위임함
             verify(walletService).deduct(USER_ID, AMOUNT);
-
-            // then: PG 취소 API가 호출됨
             verify(paymentGatewayClient).cancel(PROVIDER_TX_ID, "단순 변심", AMOUNT);
-
-            // then: PointTransactionService에 원장 기록을 위임함
             verify(pointTransactionService).record(
                     WALLET_ID, PointTransactionType.DEPOSIT_CANCEL, AMOUNT, Money.zero(), DEPOSIT_ID
             );
-
-            // then: DB 반영이 실제로 저장을 호출함
             verify(depositRepository).save(deposit);
         }
 
         @Test
         @DisplayName("존재하지 않는 depositId면 예외가 발생하고 PG API·WalletService·PointTransactionService를 호출하지 않는다")
         void cancelDeposit_존재하지_않으면_예외() {
-            // given
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.empty());
 
-            // when & then
             assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
@@ -276,12 +316,10 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("DONE 상태가 아니면 예외가 발생하고 PG API·WalletService·PointTransactionService를 호출하지 않는다")
         void cancelDeposit_DONE상태가_아니면_예외() {
-            // given
-            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT); // REQUESTED
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
             ReflectionTestUtils.setField(deposit, "id", DEPOSIT_ID);
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
 
-            // when & then
             assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
@@ -295,12 +333,10 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("지갑이 없으면 WALLET_NOT_FOUND로 번역되고 PG API·PointTransactionService를 호출하지 않는다")
         void cancelDeposit_지갑이_없으면_WALLET_NOT_FOUND로_번역() {
-            // given
             Deposit deposit = createDoneDeposit();
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
             when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new WalletNotFoundException());
 
-            // when & then
             assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
@@ -313,18 +349,15 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("이미 써버려서 지갑 잔액이 부족하면 CANCEL_INSUFFICIENT_BALANCE로 번역되고 PG API·PointTransactionService를 호출하지 않는다")
         void cancelDeposit_잔액부족이면_PG호출안하고_예외() {
-            // given
             Deposit deposit = createDoneDeposit();
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
             when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new InsufficientBalanceException());
 
-            // when & then
             assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
                     .isInstanceOf(DepositException.class)
                     .extracting(e -> ((DepositException) e).getErrorCode())
                     .isEqualTo(DepositErrorCode.CANCEL_INSUFFICIENT_BALANCE);
 
-            // 지갑 검증에서 막혔으므로 아직 취소 확정 전 상태(DONE)로 남는다
             assertThat(deposit.getStatus()).isEqualTo(DepositStatus.DONE);
             verify(paymentGatewayClient, never()).cancel(any(), any(), any());
             verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
@@ -333,21 +366,61 @@ class DepositApplicationServiceTest {
         @Test
         @DisplayName("지갑 차감 후 PG 취소가 실패하면 차감을 보정(재충전)하고 예외를 그대로 던진다")
         void cancelDeposit_PG취소실패하면_차감보정하고_예외전파() {
-            // given
             Deposit deposit = createDoneDeposit();
             when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
             when(walletService.deduct(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, Money.zero()));
             when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "사유", AMOUNT))
-                    .thenThrow(new RuntimeException("PG 취소 실패(시뮬레이션)"));
+                    .thenThrow(new IllegalStateException("PG 취소 실패(시뮬레이션)"));
 
-            // when & then
             assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
                     .isInstanceOf(RuntimeException.class);
 
-            // then: 차감 보정(재충전)이 호출됨
             verify(walletService).charge(USER_ID, AMOUNT);
-            // then: 최종 DB 반영은 일어나지 않음
             verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("PG 취소 실패 후 차감 보정(재충전)마저 실패하면 PG 조회 API로 실제 상태를 확인한다")
+        void cancelDeposit_차감보정마저_실패하면_PG조회를_호출한다() {
+            Deposit deposit = createDoneDeposit();
+            when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
+            when(walletService.deduct(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, Money.zero()));
+            when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "사유", AMOUNT))
+                    .thenThrow(new IllegalStateException("PG 취소 실패(시뮬레이션)"));
+            when(walletService.charge(USER_ID, AMOUNT))
+                    .thenThrow(new IllegalStateException("차감 보정마저 실패(시뮬레이션)"));
+            when(paymentGatewayClient.inquire(PROVIDER_TX_ID))
+                    .thenReturn(new PgInquiryResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT, AMOUNT, "DONE"));
+
+            assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
+                    .isInstanceOf(RuntimeException.class);
+
+            verify(paymentGatewayClient).inquire(PROVIDER_TX_ID);
+        }
+
+        @Test
+        @DisplayName("PG 취소 성공 후 DB 반영이 실패하면 PG 조회 API로 실제 상태를 확인한다")
+        void cancelDeposit_PG취소성공후_DB반영실패하면_PG조회를_호출한다() {
+            Deposit deposit = createDoneDeposit();
+            when(depositRepository.findById(DEPOSIT_ID)).thenReturn(Optional.of(deposit));
+            when(walletService.deduct(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, Money.zero()));
+            when(paymentGatewayClient.cancel(PROVIDER_TX_ID, "사유", AMOUNT))
+                    .thenReturn(new PgCancelResult(PROVIDER_TX_ID, "cancel-tx-1", AMOUNT));
+            when(paymentGatewayClient.inquire(PROVIDER_TX_ID))
+                    .thenReturn(new PgInquiryResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT, Money.zero(), "CANCELED"));
+
+            // 마지막 DB 반영(취소 확정 저장) 단계에서만 실패하도록 재정의
+            org.mockito.Mockito.doAnswer(invocation -> {
+                Consumer<TransactionStatus> action = invocation.getArgument(0);
+                action.accept(null);
+                throw new RuntimeException("DB 저장 실패(시뮬레이션)");
+            }).when(transactionTemplate).executeWithoutResult(any());
+
+            assertThatThrownBy(() -> sut.cancelDeposit(DEPOSIT_ID, "사유"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 저장 실패");
+
+            verify(paymentGatewayClient).inquire(PROVIDER_TX_ID);
         }
     }
 }

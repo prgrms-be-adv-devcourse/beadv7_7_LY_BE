@@ -1,5 +1,4 @@
 package site.pointwalletservice.deposit.domain;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -39,7 +38,7 @@ public class Deposit {
     private String orderId;
 
     @Column(name = "payment_key")
-   private String providerTransactionId;
+    private String providerTransactionId;
 
     @Embedded
     private Money requestedAmount;
@@ -73,7 +72,9 @@ public class Deposit {
     }
 
     public void confirm(String providerTransactionId, String orderId, Money approvedAmount) {
-        validateStatus(DepositStatus.REQUESTED);
+        if (!isConfirmable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         validateRequestConsistency(orderId, approvedAmount);
 
         this.providerTransactionId = providerTransactionId;
@@ -82,21 +83,33 @@ public class Deposit {
     }
 
     public void fail() {
-        validateStatus(DepositStatus.REQUESTED);
+        if (!isConfirmable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         this.status = DepositStatus.FAILED;
     }
 
     public void cancel(String reason) {
-        validateStatus(DepositStatus.DONE);
+        if (!isCancelable()) {
+            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
+        }
         this.status = DepositStatus.CANCELED;
         this.cancelReason = reason;
         this.canceledAt = LocalDateTime.now();
     }
 
-    private void validateStatus(DepositStatus expected) {
-        if (this.status != expected) {
-            throw new DepositException(DepositErrorCode.ALREADY_PROCESSED_DEPOSIT);
-        }
+    /** PG 승인 호출 같은 비싼 외부 호출 전에 미리 걸러낼 때도 쓰고, confirm()/fail() 내부 검증도 이 메서드 하나로 통일한다. */
+    public boolean isConfirmable() {
+        return this.status == DepositStatus.REQUESTED;
+    }
+
+    /** PG 취소 호출 전 사전 확인용이면서, cancel() 내부 검증도 이 메서드 하나로 통일한다. */
+    public boolean isCancelable() {
+        return this.status == DepositStatus.DONE;
+    }
+
+    public boolean matchesAmount(Money amount) {
+        return this.requestedAmount.equals(amount);
     }
 
     private void validateRequestConsistency(String orderId, Money approvedAmount) {

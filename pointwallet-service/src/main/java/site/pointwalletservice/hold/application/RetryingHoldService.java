@@ -43,6 +43,7 @@ public class RetryingHoldService implements HoldService {
             includes = HoldLockContentionException.class,
             maxRetries = 5,
             delay = 50,
+            jitter = 10,
             multiplier = 2,
             maxDelay = 800
     )
