@@ -54,8 +54,6 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory {
                 return makeErrorResponse(exchange.getResponse(), INVALID_AUTH_TOKEN);
             }
 
-            // TODO: Token이 존재하지 않을 경우 에러 응답 보내는 로직 작성
-
             try {
                 final String subject = Jwts.parser()
                     .verifyWith(secretKey)
