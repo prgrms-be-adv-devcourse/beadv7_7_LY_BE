@@ -31,7 +31,7 @@ public class AuthApiController {
     private long refreshTokenValidTime;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResult>> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> login(@RequestBody LoginRequest request) {
         final LoginResult loginResult = authService.login(request.toCommand());
 
         ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResult.refreshToken())
@@ -44,7 +44,7 @@ public class AuthApiController {
 
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, cookie.toString())
-            .body(ApiResponse.success(loginResult));
+            .body(ApiResponse.success(new AccessTokenResponse(loginResult.accessToken())));
     }
 
     @PostMapping("/renewal")
