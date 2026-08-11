@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import site.common.web.MemberId;
 import site.memberservice.auth.application.AuthService;
 import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.presentation.request.LoginRequest;
+import site.memberservice.auth.presentation.response.AccessTokenResponse;
 
 import java.time.Duration;
 
@@ -43,6 +45,15 @@ public class AuthApiController {
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, cookie.toString())
             .body(ApiResponse.success(loginResult));
+    }
+
+    @PostMapping("/renewal")
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> renewal(
+        @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        final String accessToken = authService.reissueAccessToken(refreshToken);
+
+        return ResponseEntity.ok(ApiResponse.success(new AccessTokenResponse(accessToken)));
     }
 
     @DeleteMapping("/logout")

@@ -15,6 +15,7 @@ import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.Member;
 
 import static java.lang.String.format;
+import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 
 @RequiredArgsConstructor
@@ -41,6 +42,17 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());
+    }
+
+    public String reissueAccessToken(final String refreshTokenValue) {
+        final AuthToken refreshToken = new AuthToken(refreshTokenValue);
+        final Long memberId = authTokenProvider.validateRefreshToken(refreshToken);
+
+        if (!refreshTokenRepository.existsByValueAndMemberId(refreshToken.getValue(), memberId)) {
+            throw new AuthException(INVALID_AUTH_TOKEN, "유효하지 않은 리프레쉬 토큰 입니다.");
+        }
+
+        return authTokenProvider.createAccessToken(memberId).getValue();
     }
 
     @Transactional

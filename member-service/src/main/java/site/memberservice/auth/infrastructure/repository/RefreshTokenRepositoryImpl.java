@@ -5,8 +5,6 @@ import org.springframework.stereotype.Repository;
 import site.memberservice.auth.domain.RefreshToken;
 import site.memberservice.auth.domain.repository.RefreshTokenRepository;
 
-import java.util.Optional;
-
 @RequiredArgsConstructor
 @Repository
 public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
@@ -19,8 +17,8 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     }
 
     @Override
-    public Optional<RefreshToken> findByMemberId(final Long memberId) {
-        return refreshTokenJpaRepository.findByMemberId(memberId);
+    public boolean existsByValueAndMemberId(final String value, final Long memberId) {
+        return refreshTokenJpaRepository.existsByValueAndMemberId(value, memberId);
     }
 
     @Override

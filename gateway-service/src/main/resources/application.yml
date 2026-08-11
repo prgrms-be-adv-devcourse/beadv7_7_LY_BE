@@ -67,7 +67,7 @@ spring:
             - id: member-service-no-auth
               uri: ${MEMBER_SERVICE_URI}
               predicates:
-                - Path=/api/v*/members, /api/v*/auth/login
+                - Path=/api/v*/members, /api/v*/auth/login, /api/v*/auth/renewal
                 - Method=POST
             - id: member-service
               uri: ${MEMBER_SERVICE_URI}
