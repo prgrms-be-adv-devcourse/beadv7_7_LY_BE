@@ -1,7 +1,7 @@
 name: Dump service logs
 description: >
   배포에 실패한 서비스의 컨테이너 상태와 로그를 워크플로 로그에 남긴다.
-  실패 원인을 보려고 EC2에 직접 들어가지 않아도 되게 하기 위함이다.
+  실패 원인을 보려고 EC2에 직접 들어가지 않아도 되게 하기 위함.
 
 inputs:
   service:
@@ -9,9 +9,7 @@ inputs:
     required: true
   tail:
     description: >
-      출력할 로그 줄 수. 기동 실패 스택트레이스에 접속 정보가 섞여 나올 수 있어
-      너무 길게 잡지 않는다 (저장소 시크릿과 정확히 일치하는 값은 GitHub이
-      마스킹하지만, 애플리케이션이 값을 변형해 찍으면 마스킹되지 않는다).
+      출력할 로그 줄 수(최근 200줄)
     required: false
     default: '200'
 
