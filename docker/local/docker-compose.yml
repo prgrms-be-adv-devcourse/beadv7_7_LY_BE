@@ -5,6 +5,21 @@ services:
     image: mysql:8.0
     ports:
       - "33340:3306"
+    # 서버 설정은 command로 준다 — my.cnf 마운트만으로는 환경에 따라 반영이 안 되기 때문이다.
+    # 윈도우/WSL에서는 마운트된 파일이 777 권한으로 잡히는데, MySQL은 "누구나 쓸 수 있는
+    # 설정 파일"을 보안상 통째로 무시한다("World-writable config file ... is ignored").
+    # charset이 우연히 기본값과 같아 한참 모르고 지나갔지만, 기본값과 다른 값을 넣는 순간
+    # "적용했다고 믿고 실제로는 안 먹은" 상태가 된다. command는 마운트 권한과 무관하다.
+    #
+    # my.cnf도 그대로 둔다. [client]·[mysql] 섹션은 컨테이너 안 mysql CLI의 기본 charset이라
+    # 서버 옵션인 command로는 대신할 수 없고, 마운트가 정상인 환경(mac/리눅스)에서는 실제로 쓰인다.
+    # 겹치는 [mysqld] 값은 command가 이기므로(명령행 > 설정파일) 충돌하지 않는다.
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      # 검색 성능 측정용. 기본값은 128M이고, 상품 수십만 건을 다루면 디스크 I/O가 결과를 지배한다.
+      # 운영 환경(t3.large)은 기본값 128M을 쓰므로, 운영 재현 측정을 할 때는 이 줄을 128M으로 낮춘다.
+      - --innodb-buffer-pool-size=1G
     environment:
       TZ: Asia/Seoul
       MYSQL_ROOT_PASSWORD: root
