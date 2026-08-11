@@ -25,6 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 동시 트랜잭션을 직렬화하는지 검증한다. AuctionServiceTest 등 Mockito 기반 테스트는
  * 리포지토리가 mock이라 SQL 자체가 안 나가므로, @Lock을 지워도 잡아내지 못한다.
  * 이 테스트는 실제 스레드 두 개 + 실제 트랜잭션 두 개로 락 경합을 재현한다.
+ * <p>
+ * 락은 AuctionJpaRepository(raw)를 직접 호출해서 건다 - AuctionRepositoryImpl.findByIdForUpdate를
+ * 거치면 그 안에서 setLockWaitTimeout()(MySQL 전용 세션 변수)을 먼저 호출하는데, H2는 이 구문을 몰라서 SQLGrammarException이 난다
+ * setLockWaitTimeout 호출 + 예외 번역 로직 자체는 AuctionRepositoryImplLockTest(Mockito)가 검증한다.
  */
 @RepositoryTest
 @Import(AuctionRepositoryImpl.class)
@@ -63,7 +67,7 @@ class AuctionPessimisticLockTest {
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
 
         Thread threadA = new Thread(() -> txTemplate.executeWithoutResult(status -> {
-            auctionRepository.findByIdForUpdate(auctionId);
+            auctionJpaRepository.findByIdForUpdate(auctionId);
             events.add("A-acquired");
             aAcquired.countDown();
             await(releaseA); // 락을 쥔 채로 대기 - B가 확실히 블로킹되게 만든다
@@ -75,7 +79,7 @@ class AuctionPessimisticLockTest {
             bStarted.countDown();
             txTemplate.executeWithoutResult(status -> {
                 // A가 커밋하기 전까지 이 호출 자체가 블로킹되어야 한다
-                auctionRepository.findByIdForUpdate(auctionId);
+                auctionJpaRepository.findByIdForUpdate(auctionId);
                 events.add("B-acquired");
             });
         });
@@ -94,7 +98,7 @@ class AuctionPessimisticLockTest {
     }
 
     @Test
-    @DisplayName("락 대기 시간이 타임아웃(3초)을 넘으면 예외를 던진다")
+    @DisplayName("락 대기가 길어지면 무한정 기다리지 않고 결국 예외를 던진다 (정확한 대기시간은 H2 기본값이며, 운영 MySQL의 3초 세션 변수와는 별개)")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void findByIdForUpdate_exceedsTimeout_throws() throws InterruptedException {
         Long auctionId = saveAuctionAndCommit();
@@ -113,15 +117,24 @@ class AuctionPessimisticLockTest {
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
 
         Thread threadA = new Thread(() -> txTemplate.executeWithoutResult(status -> {
-            auctionRepository.findByIdForUpdate(auctionId);
+            auctionJpaRepository.findByIdForUpdate(auctionId);
             aAcquired.countDown();
-            await(releaseA); // 타임아웃(3초)보다 오래 락을 쥐고 있는다 - B는 그 전에 실패해야 한다
+            await(releaseA); // H2 자체 기본 타임아웃보다 오래 락을 쥐고 있는다 - B는 그 전에 실패해야 한다
         }));
 
         Thread threadB = new Thread(() -> {
             await(aAcquired);
             try {
-                txTemplate.executeWithoutResult(status -> auctionRepository.findByIdForUpdate(auctionId));
+                // 주의: 여기서 setLockWaitTimeout()을 호출하지 않는다 - 이건 MySQL 전용 세션 변수
+                // (SET innodb_lock_wait_timeout)라 H2에서는 SQLGrammarException(문법 오류,
+                // SQLState 42001)이 난다. 호출해보면 이 catch가 "타임아웃 실패"가 아니라 그 문법
+                // 오류를 잡아버려서, 실제로는 락 대기시간 제어를 전혀 검증하지 않은 채 테스트만
+                // 통과하는 거짓 성공이 난다(WalletLockConcurrencyTest가 같은 이유로
+                // setLockWaitTimeout을 호출하지 않는 것과 동일한 제약). 그래서 아래 타임아웃은
+                // 우리 설정이 아니라 H2 자체의 기본 락 대기시간에서 비롯된다 - "언젠가는 실패한다"만
+                // 검증할 수 있고 3초라는 구체적 수치는 이 테스트로 보장되지 않는다. 3초 세션 변수
+                // 호출 + 예외 번역은 AuctionRepositoryImplLockTest(Mockito)가 검증한다.
+                txTemplate.executeWithoutResult(status -> auctionJpaRepository.findByIdForUpdate(auctionId));
             } catch (Exception e) {
                 bFailure.set(e);
             }
@@ -130,13 +143,13 @@ class AuctionPessimisticLockTest {
         long start = System.currentTimeMillis();
         threadA.start();
         threadB.start();
-        threadB.join(10_000); // 타임아웃(3초)만큼 대기했다가 예외를 던지고 끝날 때까지 대기
+        threadB.join(10_000); // H2 기본 락 대기시간만큼 대기했다가 예외를 던지고 끝날 때까지 대기
         long elapsedMillis = System.currentTimeMillis() - start;
 
         releaseA.countDown(); // A는 정리 차원에서 커밋 진행
         threadA.join(5_000);
 
-        // then: B는 무한정 기다리지 않고 타임아웃 근처(3초)에서 실패해야 한다
+        // then: B는 무한정 기다리지 않고 결국 실패해야 한다 (정확한 대기시간은 검증 대상 아님)
         assertThat(bFailure.get()).isNotNull();
         assertThat(elapsedMillis).isLessThan(9_000);
     }
