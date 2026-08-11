@@ -6,7 +6,7 @@ server:
 
 spring:
   application:
-    name: discovery-service
+    name: exploration-service
 
   profiles:
     active: local
@@ -14,8 +14,6 @@ spring:
   # common이 spring-boot-starter-data-jpa를 api 의존성으로 노출해서, DB를 쓰지 않는
   # 이 모듈에도 JPA가 클래스패스에 딸려온다. 그대로 두면 DataSource 자동설정이 켜지고
   # url이 없다며 기동에 실패하므로 명시적으로 끈다.
-  # (discovery-service는 Elasticsearch만 쓴다 — 추천 사전 계산 결과 저장소를 어디에 둘지
-  #  정해지면 그때 다시 검토)
   autoconfigure:
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
@@ -23,6 +21,23 @@ spring:
 
   elasticsearch:
     uris: ${ELASTICSEARCH_URIS}
+
+  ai:
+    # OpenAI 스타터는 챗·임베딩뿐 아니라 이미지·오디오·모더레이션 모델까지 전부 자동설정한다.
+    # 쓰지도 않는 빈이 뜨는 것도 문제지만, 이 빈들이 기동 시점에 API 키를 요구해서
+    # 컨텍스트가 아예 안 뜬다. 필요한 둘만 남기고 끈다.
+    model:
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        # 잠정값. 실제로 쓸 모델과 차원 수는 인덱스 매핑을 만들 때 실측 데이터를 보고 확정한다
+        model: text-embedding-3-small
 
 management:
   endpoints:

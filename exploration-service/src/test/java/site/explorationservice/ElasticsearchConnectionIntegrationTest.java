@@ -1,4 +1,4 @@
-package site.discoveryservice;
+package site.explorationservice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,7 +77,7 @@ class ElasticsearchConnectionIntegrationTest {
         assertThat(found.getIndexedAt()).isEqualTo(indexedAt);
     }
 
-    @Document(indexName = "discovery-connection-test")
+    @Document(indexName = "exploration-connection-test")
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor

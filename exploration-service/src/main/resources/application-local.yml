@@ -1,0 +1,13 @@
+server:
+  port: 8087
+
+spring:
+  elasticsearch:
+    uris: http://localhost:9200
+
+  ai:
+    openai:
+      # 로컬에서는 키가 없어도 앱이 뜨게 한다 — OpenAI SDK가 기동 시점에 키를 요구하기 때문에
+      # 값이 아예 없으면 컨텍스트가 안 뜨고, 키가 없는 팀원은 ES 테스트조차 못 돌린다.
+      # 실제 OpenAI 호출은 당연히 401로 실패하므로, 쓰려면 OPENAI_API_KEY를 넣어야 한다.
+      api-key: ${OPENAI_API_KEY:not-set}
