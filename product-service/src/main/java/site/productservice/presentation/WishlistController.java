@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.common.web.MemberId;
-import site.productservice.application.wishlist.WishlistService;
+import site.productservice.application.wishlist.WishlistServiceFacade;
 import site.productservice.domain.wishlist.WishlistItem;
 import site.productservice.presentation.dto.wishlist.WishlistItemPageResponse;
 
@@ -19,14 +19,14 @@ import site.productservice.presentation.dto.wishlist.WishlistItemPageResponse;
 @RequiredArgsConstructor
 public class WishlistController {
 
-    private final WishlistService wishlistService;
+    private final WishlistServiceFacade wishlistServiceFacade;
 
     @PutMapping("/{productId}")
     public ApiResponse<WishlistItemResponse> add(
         @MemberId final Long memberId,
         @PathVariable final Long productId
     ) {
-        final WishlistItem saved = wishlistService.add(memberId, productId);
+        final WishlistItem saved = wishlistServiceFacade.add(memberId, productId);
         return ApiResponse.success(WishlistItemResponse.from(saved));
     }
 
@@ -35,7 +35,7 @@ public class WishlistController {
         @MemberId final Long memberId,
         @PathVariable final Long productId
     ) {
-        wishlistService.remove(memberId, productId);
+        wishlistServiceFacade.remove(memberId, productId);
         return ApiResponse.success();
     }
 
@@ -46,7 +46,7 @@ public class WishlistController {
         @RequestParam(defaultValue = "20") final int size
     ) {
         return ApiResponse.success(WishlistItemPageResponse.from(
-            wishlistService.findPage(memberId, cursor, size)));
+            wishlistServiceFacade.findPage(memberId, cursor, size)));
     }
 
     private record WishlistItemResponse(Long id, Long productId) {
