@@ -13,10 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import site.productservice.application.ProductService;
 import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.dto.wishlist.WishlistItemPage;
 import site.productservice.application.dto.wishlist.WishlistItemPageResult;
+import site.productservice.application.dto.wishlist.WishlistItemResult;
 import site.productservice.domain.PressType;
 import site.productservice.domain.wishlist.WishlistItem;
 import site.productservice.exception.ProductNotFoundException;
@@ -103,14 +105,33 @@ class WishlistServiceFacadeTest {
     @DisplayName("추가는 저장을 위임하고 변경 이벤트를 발행한다")
     void add는_저장을_위임하고_이벤트를_발행한다() {
         final WishlistItem saved = WishlistItem.of(1L, 100L);
+        ReflectionTestUtils.setField(saved, "id", 7L);
         when(productService.getProductSnapshot(100L)).thenReturn(snapshot(true));
         when(wishlistService.add(1L, 100L)).thenReturn(saved);
 
-        final WishlistItem result = facade().add(1L, 100L);
+        final WishlistItemResult result = facade().add(1L, 100L);
 
-        assertThat(result).isEqualTo(saved);
+        assertThat(result.id()).isEqualTo(7L);
+        assertThat(result.productId()).isEqualTo(100L);
         verify(wishlistService).add(1L, 100L);
         verify(wishlistEventPublisher).publishAdded(1L, 100L);
+    }
+
+    @Test
+    @DisplayName("추가 결과에도 상품 정보를 채워 반환한다 — 검증하며 조회한 스냅샷을 그대로 쓴다")
+    void add는_상품_정보를_채워_반환한다() {
+        final WishlistItem saved = WishlistItem.of(1L, 100L);
+        when(productService.getProductSnapshot(100L)).thenReturn(snapshot(true));
+        when(wishlistService.add(1L, 100L)).thenReturn(saved);
+
+        final WishlistItemResult result = facade().add(1L, 100L);
+
+        assertThat(result.title()).isEqualTo("제목");
+        assertThat(result.artistName()).isEqualTo("아티스트");
+        assertThat(result.coverImageUrl()).isEqualTo("http://image");
+        assertThat(result.releaseYear()).isEqualTo(2020);
+        // 검증 때 조회한 스냅샷을 재사용하므로 상품 조회는 한 번뿐이다.
+        verify(productService).getProductSnapshot(100L);
     }
 
     @Test

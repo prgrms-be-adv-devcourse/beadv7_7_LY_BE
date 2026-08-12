@@ -33,14 +33,15 @@ public class WishlistServiceFacade {
         return new WishlistItemPageResult(content, page.nextCursor(), page.hasNext());
     }
 
-    public WishlistItem add(final Long memberId, final Long productId) {
-        if (!productService.getProductSnapshot(productId).active()) {
+    public WishlistItemResult add(final Long memberId, final Long productId) {
+        ProductSnapshotResult product = productService.getProductSnapshot(productId);
+        if (!product.active()) {
             throw new ProductNotFoundException();
         }
 
         final WishlistItem saved = wishlistService.add(memberId, productId);
         wishlistEventPublisher.publishAdded(memberId, productId);
-        return saved;
+        return WishlistItemResult.of(saved, product);
     }
 
     // 위시리스트에 없던 상품을 삭제 요청해도 이벤트는 나간다.
