@@ -30,35 +30,6 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
             @Param("releaseCountry") String releaseCountry, @Param("format") String format,
             @Param("pressType") PressType pressType);
 
-    // 주의: 검색 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
-    @Query("""
-            select new site.productservice.domain.search.ProductSearchHit(
-                    p.id, p.title, a.name, p.coverImage, p.releaseYear, p.pressType, p.releaseCountry)
-            from Product p join Artist a on a.id = p.artistId
-            where p.active = true
-              and (p.normalizedTitle like :pattern
-                   or a.normalizedName like :pattern
-                   or exists (select 1 from ProductAlias pa
-                              where pa.productId = p.id and pa.normalizedName like :pattern)
-                   or exists (select 1 from ArtistAlias aa
-                              where aa.artistId = p.artistId and aa.normalizedName like :pattern))
-            order by p.id asc
-            """)
-    List<ProductSearchHit> searchActiveHits(@Param("pattern") String pattern, Pageable pageable);
-
-    @Query("""
-            select count(p)
-            from Product p join Artist a on a.id = p.artistId
-            where p.active = true
-              and (p.normalizedTitle like :pattern
-                   or a.normalizedName like :pattern
-                   or exists (select 1 from ProductAlias pa
-                              where pa.productId = p.id and pa.normalizedName like :pattern)
-                   or exists (select 1 from ArtistAlias aa
-                              where aa.artistId = p.artistId and aa.normalizedName like :pattern))
-            """)
-    long countActiveHits(@Param("pattern") String pattern);
-
     // 주의: 목록 쿼리와 count 쿼리는 join·where 조건이 항상 같아야 한다 — 한쪽만 고치면 totalElements가 조용히 틀어진다
     // (지금은 조건이 active 하나뿐이지만, 아티스트 조인이 양쪽에 다 있어야 수가 맞는다)
     @Query("""

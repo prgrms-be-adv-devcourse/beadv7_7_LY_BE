@@ -7,10 +7,14 @@ package site.productservice.domain.search;
 public interface ProductSearchRepository {
 
     /**
-     * 정규화된 검색어로 활성 상품을 찾는다. 제목·제목 별칭·아티스트명·아티스트 별칭 어디에 부분일치해도 잡힌다.
-     * 정렬은 productId 오름차순 고정 — LIKE 검색엔 "더 잘 맞는 순서" 개념이 없어 페이지가 안 흔들리는 순서만 보장한다.
+     * 검색어로 활성 상품을 찾는다. 토큰마다 제목·제목 별칭·아티스트명·아티스트 별칭 중 어디든 부분일치하면
+     * 통과하고, 모든 토큰이 통과해야 결과에 잡힌다 — 단어 순서가 달라도 찾도록.
+     * 정렬은 잘 맞는 순서: 카탈로그 번호 앞부분 일치 > 제목 정확 일치 > 제목 앞부분 > 제목 부분 > 그 외,
+     * 같은 구간 안에서는 productId 오름차순으로 페이지가 흔들리지 않게 고정한다.
+     * 카탈로그 번호 매칭은 검색어에 숫자가 있을 때만 시도한다 — 일반 단어 검색이 번호와 우연히 겹쳐
+     * 최상위를 차지하지 않도록.
      */
-    ProductSearchPage searchActiveByKeyword(String normalizedKeyword, int page, int size);
+    ProductSearchPage searchActiveByKeyword(SearchKeyword keyword, int page, int size);
 
     /**
      * 카탈로그 브라우징. 활성 상품 전체를 최신 등록순(id 내림차순)으로 한 페이지 돌려준다.

@@ -30,8 +30,8 @@ public class ProductSearchService {
         if (searchKeyword.isEmpty() || searchKeyword.getWhole().length() < MIN_KEYWORD_LENGTH) {
             return ProductSearchResult.empty(safePage, safeSize);
         }
-        ProductSearchPage searchPage = productSearchRepository.searchActiveByKeyword(searchKeyword.getWhole(),
-                safePage, safeSize);
+        ProductSearchPage searchPage = productSearchRepository.searchActiveByKeyword(searchKeyword, safePage,
+                safeSize);
         return ProductSearchResult.of(searchPage, safePage, safeSize);
     }
 
