@@ -31,6 +31,7 @@ public enum AuctionErrorCode implements ErrorCode {
     PRODUCT_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "AERR-5016", "판매 중단된 상품으로는 경매를 등록할 수 없습니다."),
     WALLET_NOT_FOUND(HttpStatus.BAD_GATEWAY, "AERR-5017", "지갑을 찾을 수 없습니다."),
     INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_CONTENT, "AERR-5018", "예치금이 부족합니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "AERR-5019", "요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
 
     ;
 
