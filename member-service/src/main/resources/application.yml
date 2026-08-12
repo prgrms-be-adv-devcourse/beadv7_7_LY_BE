@@ -17,9 +17,9 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL}
-    username: ${DB_USER_NAME}
-    password: ${DB_PASSWORD}
+    url: ${MEMBER_DB_URL}
+    username: ${MEMBER_DB_USER_NAME}
+    password: ${MEMBER_DB_PASSWORD}
 
   jpa:
     open-in-view: false

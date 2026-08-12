@@ -517,9 +517,9 @@ jobs:
           service: member-service
           secret-body: |
             PORT_NUMBER=8080
-            DB_URL=${{ secrets.DB_URL }}
-            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_URL=${{ secrets.MEMBER_DB_URL }}
+            DB_USER_NAME=${{ secrets.MEMBER_DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.MEMBER_DB_PASSWORD }}
 
             ACCESS_TOKEN_SECRET_KEY=${{ secrets.ACCESS_TOKEN_SECRET_KEY }}
             REFRESH_TOKEN_SECRET_KEY=${{ secrets.REFRESH_TOKEN_SECRET_KEY }}
