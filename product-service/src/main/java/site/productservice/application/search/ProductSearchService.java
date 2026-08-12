@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import site.productservice.application.dto.search.ProductSearchResult;
 import site.productservice.domain.search.ProductSearchPage;
 import site.productservice.domain.search.ProductSearchRepository;
-import site.productservice.domain.TextNormalizer;
+import site.productservice.domain.search.SearchKeyword;
 import site.productservice.exception.SearchKeywordRequiredException;
 
 /** 상품 검색(명세 1-1). 제목·제목 별칭·아티스트명·아티스트 별칭 어디에 걸려도 상품 카드가 나온다. */
@@ -17,6 +17,7 @@ public class ProductSearchService {
 
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 100;
+    private static final int MIN_KEYWORD_LENGTH = 2;
 
     private final ProductSearchRepository productSearchRepository;
 
@@ -24,12 +25,13 @@ public class ProductSearchService {
         validateKeyword(keyword);
         int safePage = Math.max(page, 0);
         int safeSize = clampSize(size);
-        String normalizedKeyword = TextNormalizer.normalize(keyword);
-        if (normalizedKeyword == null) {
+        SearchKeyword searchKeyword = SearchKeyword.from(keyword);
+        // 너무 짧은 검색어는 잘못된 요청이 아니라 "결과 없음"으로 취급한다 — 프론트 응답 계약이 바뀌지 않도록
+        if (searchKeyword.isEmpty() || searchKeyword.getWhole().length() < MIN_KEYWORD_LENGTH) {
             return ProductSearchResult.empty(safePage, safeSize);
         }
-        ProductSearchPage searchPage = productSearchRepository.searchActiveByKeyword(normalizedKeyword, safePage,
-                safeSize);
+        ProductSearchPage searchPage = productSearchRepository.searchActiveByKeyword(searchKeyword.getWhole(),
+                safePage, safeSize);
         return ProductSearchResult.of(searchPage, safePage, safeSize);
     }
 

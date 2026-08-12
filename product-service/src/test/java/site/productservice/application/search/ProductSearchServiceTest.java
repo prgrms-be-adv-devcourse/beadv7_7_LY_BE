@@ -58,6 +58,18 @@ class ProductSearchServiceTest {
     }
 
     @Test
+    @DisplayName("1글자 검색어는 저장소를 거치지 않고 빈 결과를 반환한다")
+    void searchProducts_한_글자면_빈_페이지() {
+        // given & when
+        ProductSearchResult result = productSearchService.searchProducts("a", 0, 20);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        then(productSearchRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("검색어를 정규화해 저장소에 넘기고 결과를 조립한다")
     void searchProducts_정규화_후_조회() {
         // given
