@@ -49,4 +49,23 @@ class SearchKeywordTest {
         assertThat(SearchKeyword.from("!!!").isEmpty()).isTrue();
         assertThat(SearchKeyword.from(null).isEmpty()).isTrue();
     }
+
+    @Test
+    @DisplayName("토큰이_5개를_넘으면_앞에서부터_5개만_남긴다")
+    void from_capsTokensAtFive() {
+        // given & when
+        SearchKeyword keyword = SearchKeyword.from("one two three four five six seven");
+
+        // then
+        assertThat(keyword.getTokens()).containsExactly("one", "two", "three", "four", "five");
+    }
+
+    @Test
+    @DisplayName("검색어에_숫자가_있는지_판정한다")
+    void hasDigit_judgesByWhole() {
+        // given & when & then
+        assertThat(SearchKeyword.from("CL 1355").hasDigit()).isTrue();
+        assertThat(SearchKeyword.from("jazz").hasDigit()).isFalse();
+        assertThat(SearchKeyword.from(null).hasDigit()).isFalse();
+    }
 }

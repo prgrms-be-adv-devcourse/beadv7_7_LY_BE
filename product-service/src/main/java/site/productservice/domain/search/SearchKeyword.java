@@ -12,6 +12,9 @@ import site.productservice.domain.TextNormalizer;
  */
 public final class SearchKeyword {
 
+    // 토큰 수 상한 — 긴 문장을 붙여넣어도 검색 조건이 무한정 늘어나지 않게 앞에서부터 이만큼만 쓴다
+    private static final int MAX_TOKENS = 5;
+
     private final List<String> tokens;
     private final String whole;
 
@@ -28,12 +31,18 @@ public final class SearchKeyword {
                 .map(TextNormalizer::normalize)
                 .filter(Objects::nonNull)
                 .distinct()
+                .limit(MAX_TOKENS)
                 .toList();
         return new SearchKeyword(tokens, TextNormalizer.normalize(raw));
     }
 
     public boolean isEmpty() {
         return tokens.isEmpty();
+    }
+
+    /** 검색어에 숫자가 하나라도 있는가 — 카탈로그 번호 후보인지 가를 때 쓴다 (번호에는 거의 항상 숫자가 있다). */
+    public boolean hasDigit() {
+        return whole != null && whole.chars().anyMatch(Character::isDigit);
     }
 
     public List<String> getTokens() {
