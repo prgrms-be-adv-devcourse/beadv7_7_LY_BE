@@ -17,9 +17,9 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL}
-    username: ${DB_USER_NAME}
-    password: ${DB_PASSWORD}
+    url: ${MEMBER_DB_URL}
+    username: ${MEMBER_DB_USER_NAME}
+    password: ${MEMBER_DB_PASSWORD}
 
   jpa:
     open-in-view: false
@@ -35,5 +35,7 @@ management:
 
 app:
   jwt:
-    secret-key: ${JWT_SECRET_KEY}
-    token-expiration-time: ${JWT_EXPIRATION_TIME}
+    access-token-secret-key: ${ACCESS_TOKEN_SECRET_KEY}
+    refresh-token-secret-key: ${REFRESH_TOKEN_SECRET_KEY}
+    access-token-expiration-time: ${ACCESS_TOKEN_EXPIRATION_TIME}
+    refresh-token-expiration-time: ${REFRESH_TOKEN_EXPIRATION_TIME}

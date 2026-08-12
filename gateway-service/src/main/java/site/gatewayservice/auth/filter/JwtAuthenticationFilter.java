@@ -32,8 +32,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SecretKey secretKey;
 
-    public JwtAuthenticationFilter(@Value("${app.jwt.secret-key}") final String secretKeyValue) {
-        this.secretKey = Keys.hmacShaKeyFor(secretKeyValue.getBytes(StandardCharsets.UTF_8));
+    public JwtAuthenticationFilter(@Value("${app.jwt.access-token-secret-key}") final String accessTokenSecretKey) {
+        this.secretKey = Keys.hmacShaKeyFor(accessTokenSecretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -46,7 +46,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory {
             String token = null;
 
             if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7); // "Bearer " (7자) 이후의 값만 추출
+                token = authHeader.substring(7);
             }
 
             if (token == null || token.isBlank()) {

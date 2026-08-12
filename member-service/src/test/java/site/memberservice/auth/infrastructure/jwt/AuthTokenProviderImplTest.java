@@ -27,29 +27,38 @@ class AuthTokenProviderImplTest {
 
     @BeforeEach
     void setUp() {
-        this.authTokenProvider = new AuthTokenProviderImpl(TEST_SECRET_KEY, TOKEN_VALID_TIME);
+        this.authTokenProvider = new AuthTokenProviderImpl(TEST_SECRET_KEY, TEST_SECRET_KEY, TOKEN_VALID_TIME, TOKEN_VALID_TIME);
         this.secretKey = Keys.hmacShaKeyFor(TEST_SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
     @DisplayName("회원의 인증 토큰을 생성한다.")
     @Test
-    void createToken() {
+    void createAccessToken() {
         // Given
         final Long memberId = 1727L;
 
         // When
-        final AuthToken authToken = authTokenProvider.createToken(memberId);
+        final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
+        final AuthToken refreshToken = authTokenProvider.createRefreshToken(memberId);
 
         // Then
-        assertThat(authToken).isNotNull();
+        assertThat(accessToken).isNotNull();
+        assertThat(refreshToken).isNotNull();
 
-        final Claims claims = Jwts.parser()
+        final Claims accessTokenClaims = Jwts.parser()
             .verifyWith(secretKey)
             .build()
-            .parseSignedClaims(authToken.getValue())
+            .parseSignedClaims(accessToken.getValue())
             .getPayload();
 
-        assertThat(claims.getSubject()).isEqualTo(memberId.toString());
+        final Claims refreshTokenClaims = Jwts.parser()
+            .verifyWith(secretKey)
+            .build()
+            .parseSignedClaims(refreshToken.getValue())
+            .getPayload();
+
+        assertThat(accessTokenClaims.getSubject()).isEqualTo(memberId.toString());
+        assertThat(refreshTokenClaims.getSubject()).isEqualTo(memberId.toString());
     }
 
     @DisplayName("유효한 토큰이 입력되면 회원 id 값을 반환한다.")
@@ -57,13 +66,16 @@ class AuthTokenProviderImplTest {
     void validateToken() {
         // Given
         final Long memberId = 1727L;
-        final AuthToken token = authTokenProvider.createToken(memberId);
+        final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
+        final AuthToken refreshToken = authTokenProvider.createRefreshToken(memberId);
 
         // When
-        final Long authenticatedMemberId = authTokenProvider.validateToken(token);
+        final Long authenticatedMemberIdFromAccessToken = authTokenProvider.validateAccessToken(accessToken);
+        final Long authenticatedMemberIdFromRefreshToken = authTokenProvider.validateRefreshToken(refreshToken);
 
         // Then
-        assertThat(authenticatedMemberId).isEqualTo(memberId);
+        assertThat(authenticatedMemberIdFromAccessToken).isEqualTo(memberId);
+        assertThat(authenticatedMemberIdFromRefreshToken).isEqualTo(memberId);
     }
 
     @DisplayName("만료된 인증 토큰이 입력되면 예외가 발생한다.")
@@ -73,12 +85,14 @@ class AuthTokenProviderImplTest {
         final Long memberId = 1727L;
         final AuthTokenProviderImpl expiredTokenTestProvider = new AuthTokenProviderImpl(
             TEST_SECRET_KEY,
+            TEST_SECRET_KEY,
+            -1000000,
             -1000000
         );
-        final AuthToken expiredToken = expiredTokenTestProvider.createToken(memberId);
+        final AuthToken expiredToken = expiredTokenTestProvider.createAccessToken(memberId);
 
         // When & Then
-        assertThatThrownBy(() -> expiredTokenTestProvider.validateToken(expiredToken))
+        assertThatThrownBy(() -> expiredTokenTestProvider.validateAccessToken(expiredToken))
             .isInstanceOf(AuthException.class)
             .hasMessageStartingWith("이미 만료된 인증 토큰입니다. 토큰 만료일:");
     }
@@ -90,7 +104,7 @@ class AuthTokenProviderImplTest {
         final AuthToken invalidToken = new AuthToken("AAAABBBBCCCCDDDDTTTTEEEESSSSTTTT");
 
         // When & Then
-        assertThatThrownBy(() -> authTokenProvider.validateToken(invalidToken))
+        assertThatThrownBy(() -> authTokenProvider.validateAccessToken(invalidToken))
             .isInstanceOf(AuthException.class)
             .hasMessageStartingWith("유효하지 않은 인증 토큰입니다.");
     }

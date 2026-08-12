@@ -67,7 +67,7 @@ spring:
             - id: member-service-no-auth
               uri: ${MEMBER_SERVICE_URI}
               predicates:
-                - Path=/api/v*/members, /api/v*/auth/login
+                - Path=/api/v*/members, /api/v*/auth/login, /api/v*/auth/renewal
                 - Method=POST
             - id: member-service
               uri: ${MEMBER_SERVICE_URI}
@@ -133,5 +133,4 @@ spring:
 
 app:
   jwt:
-    secret-key: ${JWT_SECRET_KEY}
-    token-expiration-time: ${JWT_EXPIRATION_TIME}
+    access-token-secret-key: ${ACCESS_TOKEN_SECRET_KEY}
