@@ -1,9 +1,10 @@
 rootProject.name = 'lp-auction'
 
 include 'common'
+include 'gateway-service'
 include 'member-service'
 include 'product-service'
 include 'pointwallet-service'
 include 'fulfillment-service'
 include 'auction-service'
-include 'discovery-service'
+include 'exploration-service'

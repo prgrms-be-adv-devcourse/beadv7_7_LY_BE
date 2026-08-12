@@ -31,7 +31,7 @@ management:
     web:
       exposure:
         include: prometheus, health
-      base-path: /api/actuator
+      base-path: /member-service/actuator
 
 app:
   jwt:

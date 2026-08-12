@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,12 @@ class OrderTest {
     private static Order pendingOrder() {
         return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
                 LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+    }
+
+    private static Order orderedOrder() {
+        Order order = pendingOrder();
+        order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+        return order;
     }
 
     @Nested
@@ -233,6 +240,124 @@ class OrderTest {
             assertThatThrownBy(() -> order.completeOrder(LocalDateTime.now()))
                     .isInstanceOf(OrderException.class)
                     .hasMessage("ORDERED 상태의 주문만 거래 확정할 수 있습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("환불 신청 (requestRefund)")
+    class RequestRefund {
+
+        @Test
+        @DisplayName("ORDERED 상태에서 환불을 신청하면 REFUND_REQUESTED로 바뀐다")
+        void requestRefundFromOrdered() {
+            // given
+            Order order = orderedOrder();
+            List<String> images = List.of("https://cdn.example.com/refund/1.jpg");
+            LocalDateTime now = LocalDateTime.now();
+
+            // when
+            order.requestRefund(RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다.", images, now);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND_REQUESTED);
+            assertThat(order.getRefundInfo().getReason()).isEqualTo(RefundReason.DEFECTIVE);
+            assertThat(order.getRefundInfo().getDescription()).isEqualTo("박스가 파손되어 도착했습니다.");
+            assertThat(order.getRefundInfo().getImageUrls()).isEqualTo(images);
+            assertThat(order.getRefundInfo().getRequestedAt()).isEqualTo(now);
+            assertThat(order.getRefundInfo().getRefundedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("설명과 이미지 없이도 환불을 신청할 수 있다")
+        void requestRefundWithoutDescriptionAndImages() {
+            // given
+            Order order = orderedOrder();
+
+            // when
+            order.requestRefund(RefundReason.NOT_DELIVERED, null, null, LocalDateTime.now());
+
+            // then
+            assertThat(order.getRefundInfo().getDescription()).isNull();
+            assertThat(order.getRefundInfo().getImageUrls()).isNull();
+        }
+
+        @Test
+        @DisplayName("ORDERED가 아니면 예외가 발생한다")
+        void requestRefundWhenNotOrdered_throwsException() {
+            // given
+            Order order = pendingOrder();
+
+            // when & then
+            assertThatThrownBy(() -> order.requestRefund(RefundReason.DEFECTIVE, null, null, LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("ORDERED 상태의 주문만 환불 신청할 수 있습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("환불 승인 (approveRefund)")
+    class ApproveRefund {
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태에서 승인하면 REFUND로 바뀌고 환불 시점이 기록된다")
+        void approveFromRefundRequested() {
+            // given
+            Order order = orderedOrder();
+            order.requestRefund(RefundReason.SUSPECTED_FAKE, null, null, LocalDateTime.now());
+
+            // when
+            LocalDateTime now = LocalDateTime.now();
+            order.approveRefund(now);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND);
+            assertThat(order.getRefundInfo().getRefundedAt()).isEqualTo(now);
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED가 아니면 예외가 발생한다")
+        void approveWhenNotRequested_throwsException() {
+            // given
+            Order order = orderedOrder();
+
+            // when & then
+            assertThatThrownBy(() -> order.approveRefund(LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("REFUND_REQUESTED 상태의 주문만 처리할 수 있습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("환불 반려 (rejectRefund)")
+    class RejectRefund {
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태에서 반려하면 COMPLETED로 바뀐다")
+        void rejectFromRefundRequested() {
+            // given
+            Order order = orderedOrder();
+            order.requestRefund(RefundReason.OTHER, null, null, LocalDateTime.now());
+
+            // when
+            LocalDateTime now = LocalDateTime.now();
+            order.rejectRefund(now);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            assertThat(order.getCompletedAt()).isEqualTo(now);
+            assertThat(order.getRefundInfo().getRefundedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED가 아니면 예외가 발생한다")
+        void rejectWhenNotRequested_throwsException() {
+            // given
+            Order order = orderedOrder();
+
+            // when & then
+            assertThatThrownBy(() -> order.rejectRefund(LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("REFUND_REQUESTED 상태의 주문만 처리할 수 있습니다");
         }
     }
 }

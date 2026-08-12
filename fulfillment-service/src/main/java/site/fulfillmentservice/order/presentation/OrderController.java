@@ -14,6 +14,7 @@ import site.fulfillmentservice.order.application.OrderService;
 import site.fulfillmentservice.order.presentation.dto.OrderDetailResponse;
 import site.fulfillmentservice.order.presentation.dto.OrderPageResponse;
 import site.fulfillmentservice.order.presentation.dto.OrderPlaceRequest;
+import site.fulfillmentservice.order.presentation.dto.RefundRequest;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -23,7 +24,8 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/{orderId}/place")
-    public ApiResponse<Void> placeOrder(@MemberId Long buyerId, @PathVariable Long orderId, @RequestBody OrderPlaceRequest request) {
+    public ApiResponse<Void> placeOrder(@MemberId Long buyerId, @PathVariable Long orderId,
+                                        @RequestBody OrderPlaceRequest request) {
         orderService.placeOrder(orderId, buyerId, request.toDeliveryInfo());
         return ApiResponse.success();
     }
@@ -40,12 +42,32 @@ public class OrderController {
         return ApiResponse.success();
     }
 
+    @PostMapping("/{orderId}/refund-request")
+    public ApiResponse<Void> requestRefund(@MemberId Long buyerId, @PathVariable Long orderId,
+                                           @RequestBody RefundRequest request) {
+        orderService.requestRefund(orderId, buyerId, request.toCommand());
+        return ApiResponse.success();
+    }
+
+    // TODO : #209 관리자 인증 없이 우선 열어둠. 관리자 인증 도입 시 보호 추가
+    @PostMapping("/{orderId}/refund-approve")
+    public ApiResponse<Void> approveRefund(@PathVariable Long orderId) {
+        orderService.approveRefund(orderId);
+        return ApiResponse.success();
+    }
+
+    // TODO : #209 관리자 인증 없이 우선 열어둠. 관리자 인증 도입 시 보호 추가
+    @PostMapping("/{orderId}/refund-reject")
+    public ApiResponse<Void> rejectRefund(@PathVariable Long orderId) {
+        orderService.rejectRefund(orderId);
+        return ApiResponse.success();
+    }
+
     @GetMapping("/{orderId}")
     public ApiResponse<OrderDetailResponse> getOrder(@MemberId Long memberId, @PathVariable Long orderId) {
         return ApiResponse.success(OrderDetailResponse.from(orderService.getOrderDetail(orderId, memberId)));
     }
 
-    /** perspective가 없으면 프레임워크 예외가 500으로 발생. 추후 GlobalExceptionHandler에서 처리 */
     @GetMapping
     public ApiResponse<OrderPageResponse> getOrders(
             @MemberId Long memberId,
