@@ -114,7 +114,7 @@ class WishlistServiceFacadeTest {
         assertThat(result.id()).isEqualTo(7L);
         assertThat(result.productId()).isEqualTo(100L);
         verify(wishlistService).add(1L, 100L);
-        verify(wishlistEventPublisher).publishAdded(1L, 100L);
+        verify(wishlistEventPublisher).publishAdded(1L);
     }
 
     @Test
@@ -142,7 +142,7 @@ class WishlistServiceFacadeTest {
         assertThatThrownBy(() -> facade().add(1L, 100L))
             .isInstanceOf(ProductNotFoundException.class);
         verify(wishlistService, never()).add(anyLong(), anyLong());
-        verify(wishlistEventPublisher, never()).publishAdded(anyLong(), anyLong());
+        verify(wishlistEventPublisher, never()).publishAdded(anyLong());
     }
 
     @Test
@@ -153,7 +153,7 @@ class WishlistServiceFacadeTest {
         assertThatThrownBy(() -> facade().add(1L, 100L))
             .isInstanceOf(ProductNotFoundException.class);
         verify(wishlistService, never()).add(anyLong(), anyLong());
-        verify(wishlistEventPublisher, never()).publishAdded(anyLong(), anyLong());
+        verify(wishlistEventPublisher, never()).publishAdded(anyLong());
     }
 
     @Test
@@ -162,7 +162,7 @@ class WishlistServiceFacadeTest {
         facade().remove(1L, 100L);
 
         verify(wishlistService).remove(1L, 100L);
-        verify(wishlistEventPublisher).publishRemoved(1L, 100L);
+        verify(wishlistEventPublisher).publishRemoved(1L);
     }
 
     // 저장이 실패하면(=트랜잭션이 롤백되면) 바뀐 게 없으므로 이벤트도 나가면 안 된다.
@@ -175,7 +175,7 @@ class WishlistServiceFacadeTest {
 
         assertThatThrownBy(() -> facade().add(1L, 100L))
             .isInstanceOf(IllegalStateException.class);
-        verify(wishlistEventPublisher, never()).publishAdded(anyLong(), anyLong());
+        verify(wishlistEventPublisher, never()).publishAdded(anyLong());
     }
 
     private ProductSnapshotResult snapshot(final boolean active) {

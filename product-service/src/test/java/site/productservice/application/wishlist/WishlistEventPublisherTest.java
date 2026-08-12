@@ -27,7 +27,7 @@ class WishlistEventPublisherTest {
     void publishAdded는_memberId만_담는다() {
         final WishlistEventPublisher publisher = new WishlistEventPublisher(eventPublisher);
 
-        publisher.publishAdded(7L, 100L);
+        publisher.publishAdded(7L);
 
         final ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
         verify(eventPublisher).publish(captor.capture());
@@ -42,7 +42,7 @@ class WishlistEventPublisherTest {
     void publishRemoved도_같은_이벤트를_발행한다() {
         final WishlistEventPublisher publisher = new WishlistEventPublisher(eventPublisher);
 
-        publisher.publishRemoved(7L, 100L);
+        publisher.publishRemoved(7L);
 
         final ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
         verify(eventPublisher).publish(captor.capture());
@@ -62,7 +62,7 @@ class WishlistEventPublisherTest {
             .publish(org.mockito.ArgumentMatchers.any());
         final WishlistEventPublisher publisher = new WishlistEventPublisher(eventPublisher);
 
-        assertThatCode(() -> publisher.publishAdded(7L, 100L)).doesNotThrowAnyException();
-        assertThatCode(() -> publisher.publishRemoved(7L, 100L)).doesNotThrowAnyException();
+        assertThatCode(() -> publisher.publishAdded(7L)).doesNotThrowAnyException();
+        assertThatCode(() -> publisher.publishRemoved(7L)).doesNotThrowAnyException();
     }
 }

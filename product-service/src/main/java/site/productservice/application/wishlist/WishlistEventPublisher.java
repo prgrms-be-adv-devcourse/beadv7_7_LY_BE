@@ -15,23 +15,22 @@ public class WishlistEventPublisher {
         this.eventPublisher = eventPublisher;
     }
 
-    public void publishAdded(final Long memberId, final Long productId) {
-        publishChanged(memberId, productId);
+    public void publishAdded(final Long memberId) {
+        publishChanged(memberId);
     }
 
-    public void publishRemoved(final Long memberId, final Long productId) {
-        publishChanged(memberId, productId);
+    public void publishRemoved(final Long memberId) {
+        publishChanged(memberId);
     }
 
-    private void publishChanged(final Long memberId, final Long productId) {
+    private void publishChanged(final Long memberId) {
         try {
             eventPublisher.publish(
                 WishlistChangedEvent.builder()
                     .memberId(memberId)
                     .build());
         } catch (final Exception e) {
-            log.error("WishlistChangedEvent 발행 실패 — memberId: {}, productId: {}. ", memberId,
-                productId, e);
+            log.error("WishlistChangedEvent 발행 실패 — memberId: {}. ", memberId, e);
         }
     }
 }

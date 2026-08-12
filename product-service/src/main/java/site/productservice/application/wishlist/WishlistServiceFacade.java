@@ -40,14 +40,14 @@ public class WishlistServiceFacade {
         }
 
         final WishlistItem saved = wishlistService.add(memberId, productId);
-        wishlistEventPublisher.publishAdded(memberId, productId);
+        wishlistEventPublisher.publishAdded(saved.getMemberId());
         return WishlistItemResult.of(saved, product);
     }
 
     // 위시리스트에 없던 상품을 삭제 요청해도 이벤트는 나간다.
     public void remove(final Long memberId, final Long productId) {
         wishlistService.remove(memberId, productId);
-        wishlistEventPublisher.publishRemoved(memberId, productId);
+        wishlistEventPublisher.publishRemoved(memberId);
     }
 
     private Map<Long, ProductSnapshotResult> fetchProductsById(
