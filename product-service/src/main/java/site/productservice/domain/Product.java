@@ -103,6 +103,28 @@ public class Product extends BaseEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    // === 외부 카탈로그(Discogs) 연동 값 — 상품 카탈로그를 Discogs 데이터로 채우면서 추가 ===
+    // 셋 다 우리가 만드는 값이 아니라 원본 식별자를 그대로 보관하는 자리라 수정 대상이 아니다.
+    // 손으로 등록한 상품에는 값이 없을 수 있어 전부 nullable.
+
+    /** Discogs 릴리스 식별자. 카탈로그를 다시 적재할 때 이 값으로 같은 행을 찾는다 —
+     *  없으면 적재할 때마다 id가 새로 매겨져 이 상품을 가리키던 경매·시세·찜이 전부 어긋난다. */
+    @Column(name = "discogs_release_id", unique = true)
+    private Long discogsReleaseId;
+
+    /** 같은 앨범의 여러 판(초판·재발매·각국 프레싱)을 묶는 식별자.
+     *  Discogs에는 초판/재발매 구분 값이 따로 없어서, 이 묶음 안에서 발매연도가 가장 이른 것을
+     *  초판으로 본다 — {@link #pressType}을 정하는 유일한 근거다. */
+    @Column(name = "discogs_master_id")
+    private Long discogsMasterId;
+
+    /** Discogs가 적어 둔 판 정보 원문 (예: "LP, Album, Reissue, Remastered, 180g, Green colored vinyl").
+     *  색깔·중량·한정 여부는 실제 시세에 영향을 주므로 버리지 않고 통째로 보관한다.
+     *  다만 같은 뜻을 여러 표기로 적어(180g / 180 gr / 180 gram) 그대로는 조건으로 쓸 수 없다 —
+     *  필요해지면 이 값을 원본 삼아 따로 정리한 컬럼을 만든다. 검색·필터에 직접 쓰지 않는다. */
+    @Column(name = "discogs_descriptors", length = 500)
+    private String discogsDescriptors;
+
     private Product(String catalogNumber, String normalizedCatalogNumber, Long artistId, String title,
             String normalizedTitle, String releaseCountry, int releaseYear, PressType pressType, String format,
             String label, String genre, String coverImage, String description) {
