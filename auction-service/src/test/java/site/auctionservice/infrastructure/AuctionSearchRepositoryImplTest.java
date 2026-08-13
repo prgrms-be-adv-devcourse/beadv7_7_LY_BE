@@ -10,12 +10,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 import site.auctionservice.application.dto.AuctionListQuery;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
 import site.auctionservice.application.port.dto.AuctionListSummary;
+import site.auctionservice.application.port.dto.AuctionProductSummary;
 import site.auctionservice.application.port.dto.ProductSnapshot;
 import site.auctionservice.domain.*;
 import site.auctionservice.exception.AuctionErrorCode;
 import site.auctionservice.exception.AuctionException;
 import site.auctionservice.support.RepositoryTest;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -360,5 +362,173 @@ class AuctionSearchRepositoryImplTest {
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
             .containsExactly(2L, 1L);
+    }
+
+    @Test
+    @DisplayName("updateFromAuction 호출 시 경매 필드와 상품 필드가 함께 갱신된다")
+    void testUpdateFromAuction_withProduct_updatesAuctionAndProductFields() {
+        // given
+        saveSearchView(1L, 100L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        ItemInfo updatedItemInfo = ItemInfo.of(ItemCondition.NEAR_MINT, "수정된 상품 설명입니다.", List.of("new.png"));
+        Pricing updatedPricing = Pricing.of(Money.of(20_000L), Money.of(500L), Money.of(1_000L));
+        LocalDateTime newStart = FUTURE_START.plusDays(2);
+        LocalDateTime newEnd = FUTURE_START.plusDays(3);
+        AuctionSchedule updatedSchedule = AuctionSchedule.of(Period.of(newStart, newEnd), false, null);
+        Auction updatedAuction = Auction.register(1L, 200L, updatedItemInfo, updatedPricing, updatedSchedule,
+            newStart.minusHours(1));
+        ReflectionTestUtils.setField(updatedAuction, "id", 1L);
+        ProductSnapshot updatedProduct = new ProductSnapshot(200L, "New Title", "New Artist",
+            2020, "Jazz", "REISSUE", true);
+
+        // when
+        auctionSearchViewRepository.updateFromAuction(updatedAuction, updatedProduct);
+        searchViewJpaRepository.flush();
+
+        // then
+        AuctionSearchView view = searchViewJpaRepository.findById(1L).orElseThrow();
+        assertThat(view.getItemCondition()).isEqualTo(ItemCondition.NEAR_MINT);
+        assertThat(view.getHighestBidAmount()).isEqualTo(BigDecimal.valueOf(21_000L));
+        assertThat(view.getStartAt()).isEqualTo(newStart);
+        assertThat(view.getEndAt()).isEqualTo(newEnd);
+        assertThat(view.getProductId()).isEqualTo(200L);
+        assertThat(view.getTitle()).isEqualTo("New Title");
+        assertThat(view.getArtistName()).isEqualTo("New Artist");
+        assertThat(view.getReleaseYear()).isEqualTo(2020);
+        assertThat(view.getGenre()).isEqualTo("Jazz");
+        assertThat(view.getPressType()).isEqualTo("REISSUE");
+    }
+
+    @Test
+    @DisplayName("updateFromAuction 호출 시 product가 null이면 경매 필드만 갱신되고 상품 필드는 유지된다")
+    void testUpdateFromAuction_nullProduct_keepsProductFieldsUnchanged() {
+        // given
+        saveSearchView(1L, 100L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        ItemInfo updatedItemInfo = ItemInfo.of(ItemCondition.GOOD, "수정된 상품 설명입니다.", List.of("new.png"));
+        Pricing updatedPricing = Pricing.of(Money.of(20_000L), Money.of(500L), Money.of(1_000L));
+        LocalDateTime newStart = FUTURE_START.plusDays(2);
+        LocalDateTime newEnd = FUTURE_START.plusDays(3);
+        AuctionSchedule updatedSchedule = AuctionSchedule.of(Period.of(newStart, newEnd), false, null);
+        Auction updatedAuction = Auction.register(1L, 100L, updatedItemInfo, updatedPricing, updatedSchedule,
+            newStart.minusHours(1));
+        ReflectionTestUtils.setField(updatedAuction, "id", 1L);
+
+        // when
+        auctionSearchViewRepository.updateFromAuction(updatedAuction, null);
+        searchViewJpaRepository.flush();
+
+        // then
+        AuctionSearchView view = searchViewJpaRepository.findById(1L).orElseThrow();
+        assertThat(view.getItemCondition()).isEqualTo(ItemCondition.GOOD);
+        assertThat(view.getHighestBidAmount()).isEqualTo(BigDecimal.valueOf(21_000L));
+        assertThat(view.getStartAt()).isEqualTo(newStart);
+        assertThat(view.getEndAt()).isEqualTo(newEnd);
+        assertThat(view.getTitle()).isEqualTo("Title1");
+        assertThat(view.getArtistName()).isEqualTo("Artist1");
+        assertThat(view.getGenre()).isEqualTo("Rock");
+        assertThat(view.getPressType()).isEqualTo("ORIGINAL");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매의 서치 뷰를 updateFromAuction하면 예외를 던진다")
+    void testUpdateFromAuction_notFound_throws() {
+        // given
+        ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(0L));
+        AuctionSchedule schedule = AuctionSchedule.of(Period.of(FUTURE_START, FUTURE_START.plusDays(1)), false, null);
+        Auction auction = Auction.register(1L, 100L, itemInfo, pricing, schedule, FUTURE_START.minusHours(1));
+        ReflectionTestUtils.setField(auction, "id", 999L);
+        ProductSnapshot productSnapshot = new ProductSnapshot(100L, "Title", "Artist", 1969, "Rock", "ORIGINAL", true);
+
+        // when & then
+        assertThatThrownBy(() -> auctionSearchViewRepository.updateFromAuction(auction, productSnapshot))
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("deleteById 호출 시 해당 경매의 서치 뷰가 삭제된다")
+    void testDeleteById_removesSearchView() {
+        // given
+        saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+        saveSearchView(2L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        // when
+        auctionSearchViewRepository.deleteById(1L);
+
+        // then
+        assertThat(searchViewJpaRepository.findById(1L)).isEmpty();
+        assertThat(searchViewJpaRepository.findById(2L)).isPresent();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매를 deleteById 해도 예외 없이 무시된다")
+    void testDeleteById_notFound_doesNotThrow() {
+        // when & then
+        assertThatCode(() -> auctionSearchViewRepository.deleteById(999L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("findAllSummaryByIds는 주어진 id에 해당하는 서치 뷰만 요약 정보로 반환한다")
+    void testFindAllSummaryByIds_returnsMatchingSummaries() {
+        // given
+        saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+        saveSearchView(2L, "Jazz", "REISSUE", 20_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+        saveSearchView(3L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        // when
+        List<AuctionProductSummary> result = auctionSearchViewRepository.findAllSummaryByIds(List.of(1L, 3L));
+
+        // then
+        assertThat(result).extracting(AuctionProductSummary::auctionId)
+            .containsExactlyInAnyOrder(1L, 3L);
+        assertThat(result).extracting(AuctionProductSummary::title)
+            .containsExactlyInAnyOrder("Title1", "Title3");
+        assertThat(result).extracting(AuctionProductSummary::artistName)
+            .containsExactlyInAnyOrder("Artist1", "Artist3");
+    }
+
+    @Test
+    @DisplayName("findAllSummaryByIds에 존재하지 않는 id가 섞여있으면 존재하는 것만 반환한다")
+    void testFindAllSummaryByIds_someIdsMissing_returnsOnlyExisting() {
+        // given
+        saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        // when
+        List<AuctionProductSummary> result = auctionSearchViewRepository.findAllSummaryByIds(List.of(1L, 999L));
+
+        // then
+        assertThat(result).extracting(AuctionProductSummary::auctionId).containsExactly(1L);
+    }
+
+    @Test
+    @DisplayName("updateOnBid 호출 시 최고 입찰가, 입찰수, 종료시각이 갱신된다")
+    void testUpdateOnBid_updatesBidFields() {
+        // given
+        saveSearchView(1L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+        LocalDateTime extendedEnd = FUTURE_START.plusDays(1).plusMinutes(10);
+
+        // when
+        auctionSearchViewRepository.updateOnBid(1L, BigDecimal.valueOf(15_000L), 1, extendedEnd);
+        searchViewJpaRepository.flush();
+
+        // then
+        AuctionSearchView view = searchViewJpaRepository.findById(1L).orElseThrow();
+        assertThat(view.getHighestBidAmount()).isEqualByComparingTo(BigDecimal.valueOf(15_000L));
+        assertThat(view.getBidCount()).isEqualTo(1);
+        assertThat(view.getEndAt()).isEqualTo(extendedEnd);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매의 서치 뷰를 updateOnBid하면 예외를 던진다")
+    void testUpdateOnBid_notFound_throws() {
+        // when & then
+        assertThatThrownBy(() -> auctionSearchViewRepository.updateOnBid(
+            999L, BigDecimal.valueOf(15_000L), 1, FUTURE_START.plusDays(1)))
+            .isInstanceOf(AuctionException.class)
+            .extracting(e -> ((AuctionException) e).getErrorCode())
+            .isEqualTo(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND);
     }
 }
