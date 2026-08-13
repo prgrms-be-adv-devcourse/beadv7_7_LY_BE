@@ -4,22 +4,21 @@ import java.util.List;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Service;
 import site.explorationservice.ai.embedding.application.EmbeddingService;
 import site.explorationservice.ai.embedding.application.dto.EmbeddingResult;
 import site.explorationservice.productindex.application.dto.ProductIndexCommand;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
 import site.explorationservice.productindex.domain.ProductDocument;
+import site.explorationservice.productindex.domain.ProductDocumentRepository;
 
-//테스트용
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductIndexService {
 
     private final EmbeddingService embeddingService;
-    private final ElasticsearchOperations elasticsearchOperations;
+    private final ProductDocumentRepository productDocumentRepository;
 
     public ProductIndexResult index(final ProductIndexCommand command,
         final ProductEmbeddingTemplate template) {
@@ -42,7 +41,7 @@ public class ProductIndexService {
         final List<ProductDocument> documents = IntStream.range(0, commands.size())
             .mapToObj(i -> toDocument(commands.get(i), embedding.vectors().get(i)))
             .toList();
-        elasticsearchOperations.save(documents);
+        productDocumentRepository.saveAll(documents);
 
         log.info("상품 색인 완료 — {}건, 차원: {}, 모델: {}, 토큰: {}",
             commands.size(), embedding.dimensions(), embedding.model(), embedding.totalTokens());
