@@ -8,6 +8,7 @@ import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
+import site.memberservice.member.application.dto.MemberRestrictionDto;
 import site.memberservice.member.application.dto.RestrictMemberCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.BankAccount;
@@ -20,7 +21,13 @@ import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.domain.repository.MemberRestrictionRepository;
 import site.memberservice.member.exception.MemberException;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
@@ -121,5 +128,20 @@ public class MemberService {
         );
 
         memberRestrictionRepository.save(memberRestriction);
+    }
+
+    public List<MemberRestrictionDto> getMemberRestrictions(final Long memberId) {
+        final Member member = getMember(memberId);
+        final List<MemberRestriction> activeRestrictions = memberRestrictionRepository.findActiveByMember(member, LocalDateTime.now());
+
+        return activeRestrictions.stream()
+            .collect(Collectors.toMap(
+                MemberRestriction::getRestrictionType,
+                Function.identity(),
+                BinaryOperator.maxBy(Comparator.comparing(MemberRestriction::getRestrictedUntil))
+            ))
+            .values().stream()
+            .map(MemberRestrictionDto::from)
+            .toList();
     }
 }

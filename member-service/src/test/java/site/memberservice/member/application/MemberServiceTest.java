@@ -14,6 +14,7 @@ import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
+import site.memberservice.member.application.dto.MemberRestrictionDto;
 import site.memberservice.member.application.dto.RestrictMemberCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.BankAccount;
@@ -28,6 +29,7 @@ import site.memberservice.member.domain.repository.MemberRestrictionRepository;
 import site.memberservice.member.exception.MemberException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static java.lang.String.format;
@@ -388,6 +390,70 @@ class MemberServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> memberService.restrictMember(command))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
+    }
+
+    @DisplayName("회원의 활성 제재 목록을 조회하면 같은 제재 유형 중 종료일이 가장 늦은 것만 반환한다.")
+    @Test
+    void getMemberRestrictions() {
+        // Given
+        final Member member = new Member(
+            1L,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+        final MemberRestriction laterRestriction = MemberRestriction.create(
+            RestrictionType.AUCTION_BIDDING,
+            "낙찰 후 미결제",
+            LocalDateTime.of(2026, 8, 13, 0, 0),
+            LocalDateTime.of(2026, 8, 20, 0, 0),
+            member
+        );
+        final MemberRestriction earlierRestriction = MemberRestriction.create(
+            RestrictionType.AUCTION_BIDDING,
+            "허위 매물 등록",
+            LocalDateTime.of(2026, 8, 10, 0, 0),
+            LocalDateTime.of(2026, 8, 15, 0, 0),
+            member
+        );
+
+        given(memberRepository.findById(member.getId()))
+            .willReturn(Optional.of(member));
+        given(memberRestrictionRepository.findActiveByMember(any(Member.class), any(LocalDateTime.class)))
+            .willReturn(List.of(laterRestriction, earlierRestriction));
+
+        // When
+        final List<MemberRestrictionDto> result = memberService.getMemberRestrictions(member.getId());
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(result).hasSize(1);
+            softly.assertThat(result.get(0).restrictionType()).isEqualTo(RestrictionType.AUCTION_BIDDING);
+            softly.assertThat(result.get(0).reason()).isEqualTo("낙찰 후 미결제");
+            softly.assertThat(result.get(0).restrictedUntil()).isEqualTo(LocalDateTime.of(2026, 8, 20, 0, 0));
+        });
+    }
+
+    @DisplayName("제재 이력 조회에 존재하지 않는 회원 id를 입력하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenGetMemberRestrictionsInputNotFoundMemberId() {
+        // Given
+        final Long notFoundMemberId = -99999L;
+
+        given(memberRepository.findById(notFoundMemberId))
+            .willReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.getMemberRestrictions(notFoundMemberId))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
     }
