@@ -54,8 +54,8 @@ class WalletHttpClientTest {
     }
 
     @Test
-    @DisplayName("지갑 서버 응답이 실패면 예외를 던진다")
-    void testHold_failureResponse_throwsAuctionException() {
+    @DisplayName("지갑 서버가 200인데 success:false/데이터 없음이면 계약 위반 예외를 던진다 (pointwallet은 실제로는 이 형태로 응답하지 않음 — 방어 코드)")
+    void testHold_malformedSuccessBody_throwsUpstreamContractViolation() {
         server.expect(requestTo("http://localhost:8080/internal/v1/wallet/hold"))
                 .andExpect(method(HttpMethod.PUT))
                 .andRespond(withSuccess("""
@@ -69,7 +69,7 @@ class WalletHttpClientTest {
         assertThatThrownBy(() -> walletHttpClient.hold(1L, 2L, Money.of(13_000L)))
                 .isInstanceOf(AuctionException.class)
                 .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.WALLET_HOLD_FAILED);
+                .isEqualTo(AuctionErrorCode.UPSTREAM_CONTRACT_VIOLATION);
         server.verify();
     }
 
