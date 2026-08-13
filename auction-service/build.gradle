@@ -18,6 +18,13 @@ dependencies {
 
     // H2 (테스트)
     testRuntimeOnly 'com.h2database:h2'
+
+    // AOP
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'       // spring boot 4.1.0 이후
+
+    // resilience4j
+    implementation 'io.github.resilience4j:resilience4j-spring-boot4:2.4.0'     // spring boot4
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
 }
 
 tasks.named('jar') {
