@@ -8,13 +8,16 @@ import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
+import site.memberservice.member.application.dto.RestrictMemberCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.BankAccount;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
+import site.memberservice.member.domain.MemberRestriction;
 import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.repository.BankAccountRepository;
 import site.memberservice.member.domain.repository.MemberRepository;
+import site.memberservice.member.domain.repository.MemberRestrictionRepository;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.Optional;
@@ -31,6 +34,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final MemberRepository memberRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final MemberRestrictionRepository memberRestrictionRepository;
 
     // TODO : #60 회원 개인 정보 암호화 및 관리 정책을 반드시 고민해서 적용하기
     @Transactional
@@ -103,5 +107,19 @@ public class MemberService {
             .orElseThrow(() -> new MemberException(MEMBER_BANK_ACCOUNT_NOT_FOUND, format("회원 은행 계좌 정보가 존재하지 않습니다. memberId: %s", memberId)));
 
         return BankAccountDto.of(member, bankAccount);
+    }
+
+    @Transactional
+    public void restrictMember(final RestrictMemberCommand command) {
+        final Member member = getMember(command.memberId());
+        final MemberRestriction memberRestriction = MemberRestriction.create(
+            command.restrictionType(),
+            command.reason(),
+            command.restrictedAt(),
+            command.restrictedUntil(),
+            member
+        );
+
+        memberRestrictionRepository.save(memberRestriction);
     }
 }
