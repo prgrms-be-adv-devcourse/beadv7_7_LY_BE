@@ -1,6 +1,7 @@
 package site.explorationservice.productindex.application;
 
 import java.util.List;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -11,17 +12,7 @@ import site.explorationservice.productindex.application.dto.ProductIndexCommand;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
 import site.explorationservice.productindex.domain.ProductDocument;
 
-/**
- * 상품을 임베딩해서 ES에 색인한다.
- * <p>
- * 지금은 수동 트리거가 호출하지만 <b>이 클래스는 남는다</b> — 나중에 상품 변경 이벤트를 받는 리스너가 그대로 호출한다. 버려지는 건 그 위의 컨트롤러다.
- * <p>
- * <b>재색인은 자연히 멱등하다.</b> ProductDocument의 문서 id가 productId라 같은 상품을 여러 번 색인해도
- * 덮어쓰기가 되고 중복이 생기지 않는다 — at-least-once 전제의 리스너를 붙일 때 별도 처리가 필요 없다.
- * <p>
- * 저장에 리포지토리 대신 ElasticsearchOperations를 직접 쓰는 건, 하는 일이 save 한 줄이라 인터페이스를 하나 더 두는 값이 없고 나중에 kNN 조회를
- * 붙일 때도 결국 Operations가 필요하기 때문이다.
- */
+//테스트용
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,21 +23,38 @@ public class ProductIndexService {
 
     public ProductIndexResult index(final ProductIndexCommand command,
         final ProductEmbeddingTemplate template) {
-        final String embeddedText = template.build(command);
-        final EmbeddingResult embedding = embeddingService.embed(List.of(embeddedText), null, null);
+        return indexAll(List.of(command), template).getFirst();
+    }
 
-        elasticsearchOperations.save(toDocument(command, embedding.first()));
+    /**
+     * 여러 상품을 <b>한 번의 임베딩 호출</b>로 색인한다. OpenAI 임베딩 API가 원래 텍스트 배열을 받아 벡터 배열을 반환하므로, 상품 수만큼 호출을 반복할
+     * 이유가 없다. 기존 상품을 일괄 색인할 때 쓰인다.
+     * <p>
+     * 저장도 한 번에 보낸다 — 문서 하나씩 요청을 보내면 건수만큼 왕복이 생긴다.
+     */
+    public List<ProductIndexResult> indexAll(final List<ProductIndexCommand> commands,
+        final ProductEmbeddingTemplate template) {
+        final List<String> embeddedTexts = commands.stream()
+            .map(template::build)
+            .toList();
+        final EmbeddingResult embedding = embeddingService.embed(embeddedTexts, null, null);
 
-        log.info("상품 색인 완료 — productId: {}, 차원: {}, 모델: {}",
-            command.productId(), embedding.dimensions(), embedding.model());
+        final List<ProductDocument> documents = IntStream.range(0, commands.size())
+            .mapToObj(i -> toDocument(commands.get(i), embedding.vectors().get(i)))
+            .toList();
+        elasticsearchOperations.save(documents);
 
-        return new ProductIndexResult(
-            command.productId(),
-            embeddedText,
-            embedding.dimensions(),
-            embedding.model(),
-            embedding.totalTokens()
-        );
+        log.info("상품 색인 완료 — {}건, 차원: {}, 모델: {}, 토큰: {}",
+            commands.size(), embedding.dimensions(), embedding.model(), embedding.totalTokens());
+
+        return IntStream.range(0, commands.size())
+            .mapToObj(i -> new ProductIndexResult(
+                commands.get(i).productId(),
+                embeddedTexts.get(i),
+                embedding.dimensions(),
+                embedding.model(),
+                embedding.totalTokens()))
+            .toList();
     }
 
     private ProductDocument toDocument(final ProductIndexCommand command, final float[] vector) {

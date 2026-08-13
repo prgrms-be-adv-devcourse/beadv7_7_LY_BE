@@ -1,5 +1,7 @@
 package site.explorationservice.productindex.presentation;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
@@ -9,15 +11,19 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.explorationservice.productindex.application.ProductEmbeddingTemplate;
 import site.explorationservice.productindex.application.ProductIndexService;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
 import site.explorationservice.productindex.domain.ProductDocument;
+import site.explorationservice.productindex.infrastructure.ProductVectorReader;
 import site.explorationservice.productindex.presentation.dto.IndexedProductResponse;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeRequest;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeResponse;
+import site.explorationservice.productindex.presentation.dto.SampleIndexResponse;
+import site.explorationservice.productindex.presentation.dto.SimilarProductResponse;
 
 /**
  * 상품 색인을 손으로 실행해 보기 위한 창구. 상품 변경 이벤트를 구독하기 전에 <b>임베딩과 색인 경로를 먼저 확정해 두려는 것</b>이다 — 이벤트를 바로 붙이면 잘못됐을
@@ -35,7 +41,10 @@ import site.explorationservice.productindex.presentation.dto.ProductIndexProbeRe
 @RequestMapping("/internal/v1/exploration/index/products")
 public class ProductIndexProbeController {
 
+    private static final String VECTOR_FIELD = "contentVector";
+
     private final ProductIndexService productIndexService;
+    private final ProductVectorReader productVectorReader;
     private final ElasticsearchOperations elasticsearchOperations;
 
     @PostMapping
@@ -54,6 +63,74 @@ public class ProductIndexProbeController {
 
         return ApiResponse.success(
             ProductIndexProbeResponse.from(result, template, elapsedMs));
+    }
+
+    /**
+     * 예시 상품 15건을 한 번에 색인한다. 상품 한 건만 넣어서는 추천이 제대로 도는지 볼 수 없어서다 — kNN은 이웃을 찾는 검색이라 비교 대상이 있어야 결과에 의미가
+     * 생긴다.
+     * <p>
+     * 같은 id로 다시 넣으면 덮어써지므로, template을 바꿔가며 반복 호출해 두 형식을 비교할 수 있다.
+     */
+    @PostMapping("/samples")
+    public ApiResponse<SampleIndexResponse> indexSamples(
+        @RequestParam(required = false) final ProductEmbeddingTemplate template) {
+        final ProductEmbeddingTemplate applied =
+            template == null ? ProductEmbeddingTemplate.COMPACT : template;
+
+        final long startedAt = System.nanoTime();
+        final List<ProductIndexResult> results =
+            productIndexService.indexAll(SampleProducts.all(), applied);
+        final long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
+
+        elasticsearchOperations.indexOps(ProductDocument.class).refresh();
+
+        return ApiResponse.success(SampleIndexResponse.from(results, applied, elapsedMs));
+    }
+
+    /**
+     * 기준 상품과 가까운 상품을 찾는다. <b>추천 품질을 눈으로 판정하기 위한 창구</b>다 — 임베딩 텍스트를 바꿨을 때 결과 순서가 어떻게 달라지는지가 여기서만
+     * 드러난다.
+     * <p>
+     * 저장된 벡터를 다시 질의 벡터로 쓰기 때문에 OpenAI를 호출하지 않는다.
+     */
+    @GetMapping("/{productId}/similar")
+    public ApiResponse<List<SimilarProductResponse>> findSimilar(
+        @PathVariable final Long productId,
+        @RequestParam(defaultValue = "5") final int size) {
+        final float[] vector = productVectorReader.findVectors(List.of(productId)).get(productId);
+
+        if (vector == null) {
+            return ApiResponse.success(List.of());
+        }
+        return ApiResponse.success(searchNeighbors(productId, vector, size));
+    }
+
+    private List<SimilarProductResponse> searchNeighbors(final Long productId, final float[] vector,
+        final int size) {
+        final List<Float> queryVector = new ArrayList<>(vector.length);
+        for (final float value : vector) {
+            queryVector.add(value);
+        }
+
+        // 기준 상품 자신은 항상 1위로 나오므로 질의 단계에서 뺀다. 나중에 걸러내면 k개를 채우지 못한다.
+        final NativeQuery query = NativeQuery.builder()
+            .withKnnSearches(knn -> knn
+                .field(VECTOR_FIELD)
+                .queryVector(queryVector)
+                .k(size)
+                .numCandidates(Math.max(size * 10, 50))
+                .filter(f -> f.bool(b -> b
+                    .filter(active -> active.term(t -> t.field("active").value(true)))
+                    .mustNot(self -> self.ids(i -> i.values(String.valueOf(productId)))))))
+            .build();
+
+        return elasticsearchOperations.search(query, ProductDocument.class).getSearchHits().stream()
+            .map(hit -> new SimilarProductResponse(
+                hit.getContent().getProductId(),
+                hit.getContent().getTitle(),
+                hit.getContent().getArtistName(),
+                hit.getScore()))
+            .toList();
     }
 
     @GetMapping("/{productId}")
