@@ -40,3 +40,5 @@ product:
 wallet:
   service:
     base-url: http://localhost:8086
+    pool:
+      max-connections: 10   # TODO(#214): 임시값 — 회의에서 모듈별 커넥션 풀 배분 확정 후 반영

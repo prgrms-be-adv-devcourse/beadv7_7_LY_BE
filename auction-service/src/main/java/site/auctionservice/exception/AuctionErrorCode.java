@@ -32,6 +32,7 @@ public enum AuctionErrorCode implements ErrorCode {
     WALLET_NOT_FOUND(HttpStatus.BAD_GATEWAY, "AERR-5017", "지갑을 찾을 수 없습니다."),
     INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_CONTENT, "AERR-5018", "예치금이 부족합니다."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "AERR-5019", "요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
+    WALLET_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AERR-5020", "지갑 서비스가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요."),
 
     ;
 

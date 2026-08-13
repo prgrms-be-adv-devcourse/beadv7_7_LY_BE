@@ -43,12 +43,64 @@ spring:
     listener:
       ack-mode: batch
 
+# TODO(#214) 부하테스트 및 분산락 적용 후 설정값 수정 필요
+resilience4j:
+  retry:
+    instances:
+      walletHold:
+        maxAttempts: 2                      # 최초 1 + 재시도 1
+        waitDuration: 200ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2.0
+        enableRandomizedWait: true
+        randomizedWaitFactor: 0.5
+        # Spring RestClient는 연결/읽기 타임아웃을 구분 없이 전부 ResourceAccessException으로 던지므로,
+        # 둘 다 재시도 대상인 지금은 그 타입 하나만 매칭하면 된다(cause 조사 불필요).
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+        ignoreExceptions:
+          - site.auctionservice.exception.WalletBusinessException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+  circuitbreaker:
+    instances:
+      walletHold:
+        slidingWindowType: TIME_BASED       # 경매의 마감 몰림으로 트래픽 편차가 큼 => TIME_BASED
+        slidingWindowSize: 60               # 최근 60초
+        minimumNumberOfCalls: 20            # TODO(#214): 부하테스트로 실측한 평시 TPS 기준 재조정
+        failureRateThreshold: 60            # 관측 데이터 없어 보수적으로 설정
+        slowCallDurationThreshold: 800ms    # read-timeout(800ms)과 동일하게 맞춰 "느림" 기준 통일
+        slowCallRateThreshold: 60
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+          - site.auctionservice.exception.AuctionException   # hold() 응답이 200이지만 body가 비정상(null/실패/data 없음)인 경우도 실패로 집계. WalletBusinessException(잔액부족/지갑없음)은 하위 ignoreExceptions가 우선 적용돼 그대로 제외됨
+        ignoreExceptions:
+          - site.auctionservice.exception.WalletBusinessException
+  bulkhead:
+    instances:
+      walletHold:
+        # AuctionClientConfig.walletRequestFactory 커넥션 풀(wallet.service.pool.max-connections)의 100%.
+        # 그 풀이 hold() 호출 전용이라 Bulkhead 허용량을 풀 크기보다 크게 두면 여기서 못 거르고 커넥션 대여
+        # (connectionRequestTimeout) 단계에서 실패가 새 나간다 — 같은 프로퍼티를 참조하므로 풀 크기가 바뀌면
+        # 이 값도 자동으로 같이 바뀐다.
+        maxConcurrentCalls: ${wallet.service.pool.max-connections}   # = walletRequestFactory pool 크기 x 100%
+        maxWaitDuration: 0                   # 즉시 거절 (Fail Fast) — 락을 쥔 채 대기하는 걸 피하기 위함
+
 management:
   endpoints:
     web:
       exposure:
-        include: prometheus, health
+        include: prometheus, health, circuitbreakers, circuitbreakerevents, bulkheads, retryevents
       base-path: /auction-service/actuator
+  health:
+    circuitbreakers:
+      enabled: false                         # CB OPEN 시 인스턴스가 LB에서 격리되는 것을 방지 (의도적으로 끔)
 
 member:
   service:
@@ -59,3 +111,6 @@ product:
 wallet:
   service:
     base-url: ${WALLET_SERVICE_BASE_URL}
+    pool:
+      # TODO(#214): 임시값. 서비스 전체 커넥션 풀을 모듈별로 얼마나 배분할지 회의에서 확정 후 배포 환경별로 값을 채울 것
+      max-connections: ${WALLET_HTTP_POOL_SIZE}
