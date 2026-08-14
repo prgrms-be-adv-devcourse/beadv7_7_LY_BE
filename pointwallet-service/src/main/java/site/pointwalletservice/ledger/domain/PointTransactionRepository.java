@@ -1,11 +1,10 @@
 package site.pointwalletservice.ledger.domain;
 import java.time.LocalDateTime;
 
+// domain/PointTransactionRepository.java
 public interface PointTransactionRepository {
-
     PointTransaction save(PointTransaction pointTransaction);
-
-    /** type/from/to는 전부 nullable — null이면 해당 조건 미적용. 정렬은 occurredAt desc 고정. */
     PointTransactionSearchPage search(Long walletId, PointTransactionType type,
                                       LocalDateTime from, LocalDateTime to, int page, int size);
+    boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type); // 추가
 }

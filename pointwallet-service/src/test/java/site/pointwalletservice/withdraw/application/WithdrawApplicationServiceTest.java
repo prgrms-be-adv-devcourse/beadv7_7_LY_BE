@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.Optional;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,13 +15,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
+import site.pointwalletservice.outbox.application.OutboxEventStore;
 import site.pointwalletservice.shared.Money;
-import site.pointwalletservice.shared.PlatformAccount;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
+import site.pointwalletservice.wallet.exception.WalletLockFailedException;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 import site.pointwalletservice.withdraw.application.dto.WithdrawRequestResult;
 import site.pointwalletservice.withdraw.application.dto.WithdrawStatusResult;
@@ -29,8 +35,10 @@ import site.pointwalletservice.withdraw.application.port.MemberBankAccountPort;
 import site.pointwalletservice.withdraw.domain.Withdraw;
 import site.pointwalletservice.withdraw.domain.WithdrawRepository;
 import site.pointwalletservice.withdraw.domain.WithdrawStatus;
+import site.pointwalletservice.withdraw.domain.event.WithdrawFeeEarnedEvent;
 import site.pointwalletservice.withdraw.exception.WithdrawErrorCode;
 import site.pointwalletservice.withdraw.exception.WithdrawException;
+import site.pointwalletservice.withdraw.exception.WithdrawLockContentionException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WithdrawApplicationService")
@@ -48,11 +56,17 @@ class WithdrawApplicationServiceTest {
     @Mock
     private MemberBankAccountPort memberBankAccountPort;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
+    @Mock
+    private OutboxEventStore outboxEventStore;
+
     private WithdrawApplicationService sut;
 
     private static final Long USER_ID = 1L;
     private static final Long WALLET_ID = 100L;
-    private static final Long PLATFORM_WALLET_ID = 999L;
+    private static final Long WITHDRAW_ID = 1L;
     private static final Money AMOUNT = Money.of(100_000);
     private static final Money FEE_AMOUNT = Money.of(2_000);  // 100,000 * 2%
     private static final Money NET_AMOUNT = Money.of(98_000);
@@ -60,7 +74,26 @@ class WithdrawApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        sut = new WithdrawApplicationService(withdrawRepository, walletService, pointTransactionService, memberBankAccountPort);
+        // TransactionTemplate.execute()가 실제 트랜잭션 없이 콜백을 즉시 실행하도록 스텁 —
+        // DepositApplicationServiceTest와 동일한 패턴.
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction((TransactionStatus) null);
+        }).when(transactionTemplate).execute(any());
+
+        sut = new WithdrawApplicationService(
+                withdrawRepository, walletService, pointTransactionService,
+                memberBankAccountPort, transactionTemplate, outboxEventStore
+        );
+    }
+
+    /** save() 시점에 ID를 채워준다 — requestWithdraw()가 이후 withdraw.getId()를 outbox 파티션 키로 쓰기 때문에 필요. */
+    private void stubSaveWithId(Long id) {
+        when(withdrawRepository.save(any(Withdraw.class))).thenAnswer(invocation -> {
+            Withdraw w = invocation.getArgument(0);
+            ReflectionTestUtils.setField(w, "id", id);
+            return w;
+        });
     }
 
     @Nested
@@ -68,15 +101,14 @@ class WithdrawApplicationServiceTest {
     class RequestWithdraw {
 
         @Test
-        @DisplayName("정상 흐름이면 수수료(2%, 내림)를 계산해 사용자 지갑 차감 + 플랫폼 계정 적립 + 즉시 SUCCESS 처리한다")
+        @DisplayName("정상 흐름이면 수수료(2%, 내림)를 계산해 사용자 지갑만 차감하고 즉시 SUCCESS 처리한 뒤, " +
+                "플랫폼 계정 적립은 WithdrawFeeEarnedEvent를 Outbox에 저장하는 것으로 넘긴다")
         void requestWithdraw_정상흐름() {
             // given
             when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
             when(walletService.deduct(USER_ID, AMOUNT))
                     .thenReturn(new WalletBalanceResult(WALLET_ID, Money.of(0)));
-            when(walletService.charge(PlatformAccount.PLATFORM_USER_ID, FEE_AMOUNT))
-                    .thenReturn(new WalletBalanceResult(PLATFORM_WALLET_ID, FEE_AMOUNT));
-            when(withdrawRepository.save(any(Withdraw.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            stubSaveWithId(WITHDRAW_ID);
 
             // when
             WithdrawRequestResult result = sut.requestWithdraw(USER_ID, AMOUNT);
@@ -92,15 +124,27 @@ class WithdrawApplicationServiceTest {
             assertThat(captor.getValue().getAmount()).isEqualTo(AMOUNT);
 
             verify(pointTransactionService).record(
-                    WALLET_ID, PointTransactionType.WITHDRAW, AMOUNT, Money.of(0), captor.getValue().getId()
+                    WALLET_ID, PointTransactionType.WITHDRAW, AMOUNT, Money.of(0), WITHDRAW_ID
             );
-            verify(pointTransactionService).record(
-                    PLATFORM_WALLET_ID, PointTransactionType.FEE_INCOME, FEE_AMOUNT, FEE_AMOUNT, captor.getValue().getId()
+
+            // 플랫폼 계정 charge()는 더 이상 이 트랜잭션 안에서 직접 호출되지 않는다
+            verify(walletService, never()).charge(any(), any());
+
+            // 대신 같은 트랜잭션 안에서 WithdrawFeeEarnedEvent가 Outbox에 저장된다
+            ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+            verify(outboxEventStore).store(
+                    org.mockito.ArgumentMatchers.eq(WithdrawFeeEarnedEvent.TOPIC),
+                    org.mockito.ArgumentMatchers.eq(WITHDRAW_ID.toString()),
+                    eventCaptor.capture()
             );
+            assertThat(eventCaptor.getValue()).isInstanceOf(WithdrawFeeEarnedEvent.class);
+            WithdrawFeeEarnedEvent event = (WithdrawFeeEarnedEvent) eventCaptor.getValue();
+            assertThat(event.withdrawId()).isEqualTo(WITHDRAW_ID);
+            assertThat(event.feeAmount()).isEqualByComparingTo(FEE_AMOUNT.getValue());
         }
 
         @Test
-        @DisplayName("등록된 계좌가 없으면 BANK_ACCOUNT_NOT_FOUND를 던지고 지갑에는 손도 안 댄다")
+        @DisplayName("등록된 계좌가 없으면 BANK_ACCOUNT_NOT_FOUND를 던지고, 트랜잭션 자체를 시작하지 않는다")
         void requestWithdraw_계좌없으면_예외() {
             // given
             when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.empty());
@@ -111,6 +155,7 @@ class WithdrawApplicationServiceTest {
                     .extracting(e -> ((WithdrawException) e).getErrorCode())
                     .isEqualTo(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
 
+            verify(transactionTemplate, never()).execute(any());
             verify(walletService, never()).deduct(any(), any());
             verify(withdrawRepository, never()).save(any());
         }
@@ -129,7 +174,7 @@ class WithdrawApplicationServiceTest {
                     .isEqualTo(WithdrawErrorCode.WALLET_NOT_FOUND);
 
             verify(withdrawRepository, never()).save(any());
-            verify(walletService, never()).charge(any(), any());
+            verify(outboxEventStore, never()).store(any(), any(), any());
         }
 
         @Test
@@ -147,6 +192,24 @@ class WithdrawApplicationServiceTest {
 
             verify(withdrawRepository, never()).save(any());
         }
+
+        @Test
+        @DisplayName("사용자 본인 지갑 락 경합이면 WithdrawLockContentionException으로 번역된다 " +
+                "(RetryingWithdrawService가 이 타입만 골라 재시도한다)")
+        void requestWithdraw_지갑락경합() {
+            // given
+            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
+            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new WalletLockFailedException());
+
+            // when & then
+            assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT))
+                    .isInstanceOf(WithdrawLockContentionException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.LOCK_ACQUISITION_FAILED);
+
+            verify(withdrawRepository, never()).save(any());
+            verify(outboxEventStore, never()).store(any(), any(), any());
+        }
     }
 
     @Nested
@@ -158,7 +221,7 @@ class WithdrawApplicationServiceTest {
         void getStatus_정상조회() {
             // given
             Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
-            org.springframework.test.util.ReflectionTestUtils.setField(withdraw, "id", 1L);
+            ReflectionTestUtils.setField(withdraw, "id", 1L);
             when(withdrawRepository.findById(1L)).thenReturn(Optional.of(withdraw));
 
             // when

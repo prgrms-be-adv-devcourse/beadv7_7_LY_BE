@@ -24,4 +24,7 @@ public interface PointTransactionJpaRepository extends JpaRepository<PointTransa
                                             @Param("type") PointTransactionType type,
                                             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
                                             Pageable pageable);
+
+    // infrastructure/PointTransactionJpaRepository.java 에 추가
+    boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type);
 }
