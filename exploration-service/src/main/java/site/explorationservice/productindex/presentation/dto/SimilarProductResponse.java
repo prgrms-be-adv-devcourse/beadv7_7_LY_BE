@@ -1,5 +1,7 @@
 package site.explorationservice.productindex.presentation.dto;
 
+import site.explorationservice.productindex.domain.ScoredProduct;
+
 /**
  * 기준 상품과 가까운 상품 하나.
  * <p>
@@ -13,4 +15,12 @@ public record SimilarProductResponse(
     float score
 ) {
 
+    public static SimilarProductResponse from(final ScoredProduct scored) {
+        return new SimilarProductResponse(
+            scored.document().getProductId(),
+            scored.document().getTitle(),
+            scored.document().getArtistName(),
+            scored.score()
+        );
+    }
 }

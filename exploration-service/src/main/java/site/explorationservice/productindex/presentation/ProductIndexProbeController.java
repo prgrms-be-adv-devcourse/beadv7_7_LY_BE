@@ -1,6 +1,5 @@
 package site.explorationservice.productindex.presentation;
 
-import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
@@ -18,7 +17,7 @@ import site.explorationservice.productindex.application.ProductEmbeddingTemplate
 import site.explorationservice.productindex.application.ProductIndexService;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
 import site.explorationservice.productindex.domain.ProductDocument;
-import site.explorationservice.productindex.infrastructure.ProductVectorReader;
+import site.explorationservice.productindex.domain.ProductDocumentRepository;
 import site.explorationservice.productindex.presentation.dto.IndexedProductResponse;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeRequest;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeResponse;
@@ -41,10 +40,8 @@ import site.explorationservice.productindex.presentation.dto.SimilarProductRespo
 @RequestMapping("/internal/v1/exploration/index/products")
 public class ProductIndexProbeController {
 
-    private static final String VECTOR_FIELD = "contentVector";
-
     private final ProductIndexService productIndexService;
-    private final ProductVectorReader productVectorReader;
+    private final ProductDocumentRepository productDocumentRepository;
     private final ElasticsearchOperations elasticsearchOperations;
 
     @PostMapping
@@ -97,40 +94,18 @@ public class ProductIndexProbeController {
     public ApiResponse<List<SimilarProductResponse>> findSimilar(
         @PathVariable final Long productId,
         @RequestParam(defaultValue = "5") final int size) {
-        final float[] vector = productVectorReader.findVectors(List.of(productId)).get(productId);
+        final float[] vector =
+            productDocumentRepository.findVectors(List.of(productId)).get(productId);
 
         if (vector == null) {
             return ApiResponse.success(List.of());
         }
-        return ApiResponse.success(searchNeighbors(productId, vector, size));
-    }
 
-    private List<SimilarProductResponse> searchNeighbors(final Long productId, final float[] vector,
-        final int size) {
-        final List<Float> queryVector = new ArrayList<>(vector.length);
-        for (final float value : vector) {
-            queryVector.add(value);
-        }
-
-        // 기준 상품 자신은 항상 1위로 나오므로 질의 단계에서 뺀다. 나중에 걸러내면 k개를 채우지 못한다.
-        final NativeQuery query = NativeQuery.builder()
-            .withKnnSearches(knn -> knn
-                .field(VECTOR_FIELD)
-                .queryVector(queryVector)
-                .k(size)
-                .numCandidates(Math.max(size * 10, 50))
-                .filter(f -> f.bool(b -> b
-                    .filter(active -> active.term(t -> t.field("active").value(true)))
-                    .mustNot(self -> self.ids(i -> i.values(String.valueOf(productId)))))))
-            .build();
-
-        return elasticsearchOperations.search(query, ProductDocument.class).getSearchHits().stream()
-            .map(hit -> new SimilarProductResponse(
-                hit.getContent().getProductId(),
-                hit.getContent().getTitle(),
-                hit.getContent().getArtistName(),
-                hit.getScore()))
-            .toList();
+        // 기준 상품 자신은 항상 1위로 나오므로 제외 목록에 넣는다.
+        return ApiResponse.success(
+            productDocumentRepository.findSimilar(vector, List.of(productId), size).stream()
+                .map(SimilarProductResponse::from)
+                .toList());
     }
 
     @GetMapping("/{productId}")
