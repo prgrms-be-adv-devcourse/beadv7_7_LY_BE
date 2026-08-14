@@ -12,8 +12,10 @@ public record ProductSnapshotResponse(
         String artistName,
         String coverImageUrl,
         String genre,
+        String label,
         String pressType,
         int releaseYear,
+        String releaseCountry,
         boolean active,
         Long mergedIntoId
 ) {
@@ -24,8 +26,10 @@ public record ProductSnapshotResponse(
                 result.artistName(),
                 result.coverImageUrl(),
                 result.genre(),
+                result.label(),
                 result.pressType().name(),
                 result.releaseYear(),
+                result.releaseCountry(),
                 result.active(),
                 result.mergedIntoId()
         );

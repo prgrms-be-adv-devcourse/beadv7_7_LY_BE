@@ -29,8 +29,10 @@ class ProductSnapshotResponseTest {
         assertThat(response.artistName()).isEqualTo("The Beatles");
         assertThat(response.coverImageUrl()).isNull();
         assertThat(response.genre()).isEqualTo("Rock");
+        assertThat(response.label()).isEqualTo("Apple");
         assertThat(response.pressType()).isEqualTo("ORIGINAL");
         assertThat(response.releaseYear()).isEqualTo(1969);
+        assertThat(response.releaseCountry()).isEqualTo("영국");
         assertThat(response.active()).isFalse();
         assertThat(response.mergedIntoId()).isNull();
     }
