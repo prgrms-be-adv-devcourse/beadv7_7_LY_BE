@@ -262,6 +262,26 @@ class ProductSearchRepositoryImplTest {
     }
 
     @Test
+    @DisplayName("아티스트_매칭이_제목_전방·부분_일치보다_위이고_제목_정확_일치보다는_아래다")
+    void search_artistMatch_ranksBetweenExactTitleAndPrefix() {
+        // given — id 순서(저장 순서)와 기대 순위가 반대가 되도록 낮은 순위부터 저장한다
+        Long coltrane = saveArtist("John Coltrane");
+        Long various = saveArtist("Various Artists");
+        Product containsTitle = saveProduct(various, "E1", "A Coltrane Tribute");
+        Product prefixTitle = saveProduct(various, "E2", "Coltrane Live");
+        Product byArtist = saveProduct(coltrane, "E3", "First Meditations");
+        Product exactTitle = saveProduct(various, "E4", "Coltrane");
+
+        // when
+        ProductSearchPage result = search("coltrane", 0, 20);
+
+        // then — 제목 정확 > 아티스트 > 제목 전방 > 제목 부분
+        assertThat(result.content()).extracting(ProductSearchHit::productId)
+                .containsExactly(exactTitle.getId(), byArtist.getId(), prefixTitle.getId(),
+                        containsTitle.getId());
+    }
+
+    @Test
     @DisplayName("숫자_없는_검색어는_카탈로그_번호와_우연히_겹쳐도_그걸로_찾지_않는다")
     void search_noDigitKeyword_skipsCatalogArm() {
         // given — 카탈로그 번호만 "jazz"로 시작하고 제목·아티스트는 무관한 상품

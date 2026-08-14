@@ -52,6 +52,10 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
      *   검색어에 숫자가 있을 때만 켠다. 번호에는 거의 항상 숫자가 있어서, 숫자 없는 검색어(jazz 등)가
      *   우연히 번호와 겹쳐 최상위를 차지하는 오염을 막는다 (실데이터에서 jazz로 시작하는 번호 51건 확인).
      * 갈래 2(텍스트): 토큰마다 (제목/아티스트/별칭 중 어디든) 걸리면 통과 — 전부 만족해야 함(AND).
+     *   순위 구간: 제목 정확(1) > 아티스트 이름·별칭(2) > 제목 앞부분(3) > 제목 부분(4) > 그 외(5).
+     *   아티스트를 제목 앞부분보다도 위에 둔 이유는 인터페이스 주석 참조 (실데이터에서 coltrane·beatles
+     *   검색 시 본인 앨범이 제목 우연 일치 앨범 수십~수백 건에 밀리는 문제 확인, 골든 Q03·Q23 —
+     *   앞부분 일치 앨범만으로 top10이 차는 경우가 실재해 "부분보다 위"로는 부족했다).
      *   갈래 1에서 이미 잡힌 행은 제외해 중복을 막는다. 이 제외는 갈래 1이 켜져 있을 때만 넣는다 —
      *   갈래 1 없이 제외만 남으면 번호와 제목이 둘 다 걸리는 상품이 양쪽에서 다 빠져 결과에서 사라진다.
      * 바깥에서 순위 구간(rank_bucket)순 정렬 + 전체 건수를 한 번에 계산(COUNT OVER) —
@@ -99,9 +103,13 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
                     SELECT p.id, p.title, a.name AS artist_name, p.cover_image,
                            p.release_year, p.press_type, p.release_country,
                            CASE WHEN p.normalized_title = :whole THEN 1
-                                WHEN p.normalized_title LIKE :wholePrefix THEN 2
-                                WHEN p.normalized_title LIKE :wholeContain THEN 3
-                                ELSE 4 END AS rank_bucket
+                                WHEN (a.normalized_name LIKE :wholeContain
+                                      OR EXISTS (SELECT 1 FROM artist_alias ra
+                                                 WHERE ra.artist_id = p.artist_id
+                                                   AND ra.normalized_name LIKE :wholeContain)) THEN 2
+                                WHEN p.normalized_title LIKE :wholePrefix THEN 3
+                                WHEN p.normalized_title LIKE :wholeContain THEN 4
+                                ELSE 5 END AS rank_bucket
                     FROM product p JOIN artist a ON a.id = p.artist_id
                     WHERE p.active = true
                 %s%s""".formatted(catalogExclusion, tokenWhere);
