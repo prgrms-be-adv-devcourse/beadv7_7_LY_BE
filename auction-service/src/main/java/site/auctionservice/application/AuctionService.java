@@ -163,9 +163,7 @@ public class AuctionService {
         List<Long> auctionIds = latestBids.getContent().stream().map(Bid::getAuctionId).toList();
         Map<Long, Auction> auctionsById = auctionRepository.findAllByIds(auctionIds).stream()
             .collect(Collectors.toMap(Auction::getId, a -> a));
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
-                auctionIds).stream()
-            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, AuctionProductSummary> summaryById = summariesByAuctionId(auctionIds);
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<ParticipatedAuctionResult> items = latestBids.getContent().stream()
@@ -192,10 +190,7 @@ public class AuctionService {
         List<Long> auctionIds = auctions.getContent().stream().map(Auction::getId).toList();
         // highestBidAmount/bidCount는 Auction/Bid 원본에서 — SearchView 동기화 리스크를 안 탄다
         Map<Long, Long> bidCounts = bidRepository.countGroupedByAuctionIds(auctionIds);
-        // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
-                auctionIds).stream()
-            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, AuctionProductSummary> summaryById = summariesByAuctionId(auctionIds);
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<HostedAuctionResult> items = auctions.getContent().stream()
@@ -210,6 +205,12 @@ public class AuctionService {
             .toList();
 
         return PageResult.of(auctions, items);
+    }
+
+    // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
+    private Map<Long, AuctionProductSummary> summariesByAuctionId(List<Long> auctionIds) {
+        return searchViewRepository.findAllSummaryByIds(auctionIds).stream()
+            .collect(Collectors.toMap(AuctionProductSummary::auctionId, s -> s));
     }
 
     @Transactional(readOnly = true)
