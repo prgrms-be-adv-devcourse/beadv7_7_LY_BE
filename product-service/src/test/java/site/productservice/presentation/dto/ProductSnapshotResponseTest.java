@@ -18,7 +18,7 @@ class ProductSnapshotResponseTest {
     void from_스냅샷_필드_매핑() {
         // given: 비활성 + 커버 없음 — 경계 값 조합
         ProductSnapshotResult result = new ProductSnapshotResult(55L, "Abbey Road", "The Beatles",
-                null, "Rock", PressType.ORIGINAL, 1969, false, null);
+                null, "Rock", "Apple", PressType.ORIGINAL, 1969, "영국", false, null);
 
         // when
         ProductSnapshotResponse response = ProductSnapshotResponse.from(result);

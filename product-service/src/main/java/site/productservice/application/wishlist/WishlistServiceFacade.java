@@ -8,6 +8,7 @@ import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.dto.wishlist.WishlistItemPage;
 import site.productservice.application.dto.wishlist.WishlistItemPageResult;
 import site.productservice.application.dto.wishlist.WishlistItemResult;
+import site.productservice.application.dto.wishlist.WishlistProductResult;
 import site.productservice.domain.wishlist.WishlistItem;
 import site.productservice.exception.ProductNotFoundException;
 
@@ -31,6 +32,16 @@ public class WishlistServiceFacade {
         final List<WishlistItemResult> content = toResults(memberId, page.items(), productsById);
 
         return new WishlistItemPageResult(content, page.nextCursor(), page.hasNext());
+    }
+
+    public List<WishlistProductResult> findRecentProducts(final Long memberId, final int limit) {
+        final WishlistItemPage page = wishlistService.findPage(memberId, null, limit);
+        final Map<Long, ProductSnapshotResult> productsById = fetchProductsById(page.items());
+
+        return page.items().stream()
+            .filter(item -> hasActiveProduct(memberId, item, productsById))
+            .map(item -> WishlistProductResult.of(productsById.get(item.getProductId())))
+            .toList();
     }
 
     public WishlistItemResult add(final Long memberId, final Long productId) {

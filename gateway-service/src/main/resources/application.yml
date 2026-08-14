@@ -46,6 +46,10 @@ spring:
                 - Path=/api/v*/members/me/liked-products/**
               filters:
                 - JwtAuthenticationFilter
+            - id: product-service-liked-products-internal-no-auth
+              uri: ${PRODUCT_SERVICE_URI}
+              predicates:
+                - Path=/internal/v*/members/*/liked-products
 
             # auction-service-watched-auctions
             - id: auction-service-watched-auctions
