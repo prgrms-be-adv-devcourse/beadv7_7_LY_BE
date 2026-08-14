@@ -20,6 +20,8 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER_NAME}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
 
   jpa:
     open-in-view: false
@@ -112,5 +114,4 @@ wallet:
   service:
     base-url: ${WALLET_SERVICE_BASE_URL}
     pool:
-      # TODO(#214): 임시값. 서비스 전체 커넥션 풀을 모듈별로 얼마나 배분할지 회의에서 확정 후 배포 환경별로 값을 채울 것
-      max-connections: ${WALLET_HTTP_POOL_SIZE}
+      max-connections: 10

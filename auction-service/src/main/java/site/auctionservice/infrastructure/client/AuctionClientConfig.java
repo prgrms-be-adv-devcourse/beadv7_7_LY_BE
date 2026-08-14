@@ -34,8 +34,6 @@ public class AuctionClientConfig {
 
     @Bean
     ClientHttpRequestFactory walletRequestFactory(@Value("${wallet.service.pool.max-connections}") int maxConnections) {
-        // TODO(#214): wallet.service.pool.max-connections(application.yml/application-local.yml)는 임시값(10).
-        // 서비스 전체 커넥션 풀을 모듈별로 얼마나 배분할지는 회의에서 확정 예정 — 배분 결과가 나오면 yml 값만 바꾸면 된다(코드 변경 불필요).
         PoolingHttpClientConnectionManager pool =
                 PoolingHttpClientConnectionManagerBuilder.create()
                         .setMaxConnTotal(maxConnections)
