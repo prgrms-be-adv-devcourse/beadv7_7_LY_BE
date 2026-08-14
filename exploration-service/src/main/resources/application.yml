@@ -36,8 +36,8 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       embedding:
-        # 잠정값. 실제로 쓸 모델과 차원 수는 인덱스 매핑을 만들 때 실측 데이터를 보고 확정한다
-        model: text-embedding-3-small
+        model: text-embedding-3-large
+        dimensions: 1024
 
 management:
   endpoints:

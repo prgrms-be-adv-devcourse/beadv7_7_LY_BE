@@ -1,5 +1,6 @@
 package site.explorationservice.ai.embedding.application;
 
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.metadata.Usage;
@@ -36,7 +37,12 @@ public class EmbeddingService {
         final Integer dimensions) {
         final EmbeddingResponse response = call(texts, model, dimensions);
 
+        // 호출자는 "요청한 텍스트 순서 = 응답 벡터 순서"를 전제로 벡터를 상품에 붙인다. 응답이 뒤섞여 오면 엉뚱한
+        // 상품에 남의 벡터가 박히는데, 이건 에러로 드러나지 않고 추천 결과만 조용히 이상해진다. 응답이 들고 있는
+        // index로 다시 정렬해 그 전제를 여기서 보장한다.
         final List<float[]> vectors = response.getResults().stream()
+            .sorted(Comparator.comparing(Embedding::getIndex,
+                Comparator.nullsLast(Comparator.naturalOrder())))
             .map(Embedding::getOutput)
             .toList();
         final Usage usage = response.getMetadata().getUsage();
