@@ -19,6 +19,7 @@ import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.dto.wishlist.WishlistItemPage;
 import site.productservice.application.dto.wishlist.WishlistItemPageResult;
 import site.productservice.application.dto.wishlist.WishlistItemResult;
+import site.productservice.application.dto.wishlist.WishlistProductResult;
 import site.productservice.domain.PressType;
 import site.productservice.domain.wishlist.WishlistItem;
 import site.productservice.exception.ProductNotFoundException;
@@ -102,6 +103,65 @@ class WishlistServiceFacadeTest {
     }
 
     @Test
+    @DisplayName("최근 담은 상품을 커서 없이 limit만큼 조회한다")
+    void findRecentProducts는_최근순으로_조회한다() {
+        when(wishlistService.findPage(1L, null, 50))
+            .thenReturn(new WishlistItemPage(List.of(WishlistItem.of(1L, 100L)), null, false));
+        when(productService.getProductSnapshots(List.of(100L))).thenReturn(List.of(snapshot(true)));
+
+        final List<WishlistProductResult> result = facade().findRecentProducts(1L, 50);
+
+        assertThat(result).extracting(WishlistProductResult::productId).containsExactly(100L);
+        // 임베딩 텍스트의 재료가 되는 필드들 — 화면용 응답에는 없는 것들이다.
+        assertThat(result.getFirst().genre()).isEqualTo("장르");
+        assertThat(result.getFirst().label()).isEqualTo("레이블");
+        assertThat(result.getFirst().releaseCountry()).isEqualTo("한국");
+        assertThat(result.getFirst().pressType()).isEqualTo("ORIGINAL");
+    }
+
+    // 벡터를 평균 내는 지금은 순서가 무의미하지만, 관심사를 묶을 때는 "최근에 담은 것"이 신호가 된다.
+    // 상품 배치 조회는 위시리스트 순서를 지켜주지 않으므로 되맞추는 로직이 필요하고, 그게 이 테스트다.
+    @Test
+    @DisplayName("상품 조회 결과가 뒤섞여 와도 담은 순서를 유지한다")
+    void findRecentProducts는_담은_순서를_유지한다() {
+        when(wishlistService.findPage(1L, null, 50)).thenReturn(new WishlistItemPage(
+            List.of(WishlistItem.of(1L, 300L), WishlistItem.of(1L, 100L),
+                WishlistItem.of(1L, 200L)), null, false));
+        when(productService.getProductSnapshots(List.of(300L, 100L, 200L))).thenReturn(
+            List.of(snapshot(100L, true), snapshot(200L, true), snapshot(300L, true)));
+
+        final List<WishlistProductResult> result = facade().findRecentProducts(1L, 50);
+
+        assertThat(result).extracting(WishlistProductResult::productId)
+            .containsExactly(300L, 100L, 200L);
+    }
+
+    @Test
+    @DisplayName("비활성이거나 없는 상품은 빼고 돌려준다")
+    void findRecentProducts는_비활성과_누락을_거른다() {
+        when(wishlistService.findPage(1L, null, 50)).thenReturn(new WishlistItemPage(
+            List.of(WishlistItem.of(1L, 100L), WishlistItem.of(1L, 200L),
+                WishlistItem.of(1L, 999L)), null, false));
+        when(productService.getProductSnapshots(List.of(100L, 200L, 999L))).thenReturn(
+            List.of(snapshot(100L, true), snapshot(200L, false)));
+
+        final List<WishlistProductResult> result = facade().findRecentProducts(1L, 50);
+
+        // 비활성 상품은 추천 결과에도 안 나오므로 읽는 쪽이 받아도 할 일이 없다.
+        assertThat(result).extracting(WishlistProductResult::productId).containsExactly(100L);
+    }
+
+    @Test
+    @DisplayName("담은 상품이 없으면 빈 목록을 돌려준다")
+    void findRecentProducts는_비어있으면_빈_목록이다() {
+        when(wishlistService.findPage(1L, null, 50))
+            .thenReturn(new WishlistItemPage(List.of(), null, false));
+        when(productService.getProductSnapshots(List.of())).thenReturn(List.of());
+
+        assertThat(facade().findRecentProducts(1L, 50)).isEmpty();
+    }
+
+    @Test
     @DisplayName("추가는 저장을 위임하고 변경 이벤트를 발행한다")
     void add는_저장을_위임하고_이벤트를_발행한다() {
         final WishlistItem saved = WishlistItem.of(1L, 100L);
@@ -179,7 +239,11 @@ class WishlistServiceFacadeTest {
     }
 
     private ProductSnapshotResult snapshot(final boolean active) {
-        return new ProductSnapshotResult(
-            100L, "제목", "아티스트", "http://image", "장르", PressType.ORIGINAL, 2020, active, null);
+        return snapshot(100L, active);
+    }
+
+    private ProductSnapshotResult snapshot(final Long productId, final boolean active) {
+        return new ProductSnapshotResult(productId, "제목", "아티스트", "http://image", "장르",
+            "레이블", PressType.ORIGINAL, 2020, "한국", active, null);
     }
 }
