@@ -52,7 +52,11 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
      *   검색어에 숫자가 있을 때만 켠다. 번호에는 거의 항상 숫자가 있어서, 숫자 없는 검색어(jazz 등)가
      *   우연히 번호와 겹쳐 최상위를 차지하는 오염을 막는다 (실데이터에서 jazz로 시작하는 번호 51건 확인).
      * 갈래 2(텍스트): 토큰마다 (제목/아티스트/별칭 중 어디든) 걸리면 통과 — 전부 만족해야 함(AND).
-     *   순위 구간: 제목 정확(1) > 아티스트 이름·별칭(2) > 제목 앞부분(3) > 제목 부분(4) > 그 외(5).
+     *   순위 구간: 제목·제목별칭 정확(1) > 아티스트 이름·별칭(2) > 제목·제목별칭 앞부분(3) >
+     *   제목·제목별칭 부분(4) > 그 외(5 — 여러 단어가 서로 다른 필드에 나뉘어 걸린 경우가 여기 온다).
+     *   제목 별칭을 제목과 같은 구간으로 두는 이유: 별칭은 같은 앨범을 부르는 다른 이름이라
+     *   별칭을 그대로 친 검색은 제목을 친 것과 같은 지목이다. 각 구간의 별칭 확인은 컬럼 비교가
+     *   거짓일 때만 실행되도록 OR 뒤에 둔다 (별칭 조회 단가는 행당 마이크로초 수준 실측).
      *   아티스트를 제목 앞부분보다도 위에 둔 이유는 인터페이스 주석 참조 (실데이터에서 coltrane·beatles
      *   검색 시 본인 앨범이 제목 우연 일치 앨범 수십~수백 건에 밀리는 문제 확인, 골든 Q03·Q23 —
      *   앞부분 일치 앨범만으로 top10이 차는 경우가 실재해 "부분보다 위"로는 부족했다).
@@ -102,13 +106,22 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
         String textArm = """
                     SELECT p.id, p.title, a.name AS artist_name, p.cover_image,
                            p.release_year, p.press_type, p.release_country,
-                           CASE WHEN p.normalized_title = :whole THEN 1
+                           CASE WHEN p.normalized_title = :whole
+                                  OR EXISTS (SELECT 1 FROM product_alias re
+                                             WHERE re.product_id = p.id
+                                               AND re.normalized_name = :whole) THEN 1
                                 WHEN (a.normalized_name LIKE :wholeContain
                                       OR EXISTS (SELECT 1 FROM artist_alias ra
                                                  WHERE ra.artist_id = p.artist_id
                                                    AND ra.normalized_name LIKE :wholeContain)) THEN 2
-                                WHEN p.normalized_title LIKE :wholePrefix THEN 3
-                                WHEN p.normalized_title LIKE :wholeContain THEN 4
+                                WHEN p.normalized_title LIKE :wholePrefix
+                                  OR EXISTS (SELECT 1 FROM product_alias rp
+                                             WHERE rp.product_id = p.id
+                                               AND rp.normalized_name LIKE :wholePrefix) THEN 3
+                                WHEN p.normalized_title LIKE :wholeContain
+                                  OR EXISTS (SELECT 1 FROM product_alias rc
+                                             WHERE rc.product_id = p.id
+                                               AND rc.normalized_name LIKE :wholeContain) THEN 4
                                 ELSE 5 END AS rank_bucket
                     FROM product p JOIN artist a ON a.id = p.artist_id
                     WHERE p.active = true

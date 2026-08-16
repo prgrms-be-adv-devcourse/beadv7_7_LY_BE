@@ -312,6 +312,40 @@ class ProductSearchRepositoryImplTest {
     }
 
     @Test
+    @DisplayName("상품_별칭_정확_일치는_제목_정확_일치와_같은_순위로_먼저_나온다")
+    void search_productAliasExact_ranksAsExactTitle() {
+        // given — 낮은 순위(제목 부분 → 제목 앞부분)부터 저장해 id 순서와 기대 순위를 반대로 둔다
+        Long weezer = saveArtist("Weezer");
+        Long various = saveArtist("Various Artists");
+        Product containsTitle = saveProduct(various, "G1", "베스트 블루앨범");
+        Product prefixTitle = saveProduct(various, "G2", "블루앨범 스페셜");
+        Product aliasExact = saveProduct(weezer, "G3", "Weezer", "블루앨범");
+
+        // when
+        ProductSearchPage result = search("블루앨범", 0, 20);
+
+        // then — 별칭을 그대로 친 검색은 제목을 친 것과 같은 지목이다: 별칭 정확 > 제목 앞부분 > 제목 부분
+        assertThat(result.content()).extracting(ProductSearchHit::productId)
+                .containsExactly(aliasExact.getId(), prefixTitle.getId(), containsTitle.getId());
+    }
+
+    @Test
+    @DisplayName("상품_별칭_앞부분_일치는_제목_부분_일치보다_먼저_나온다")
+    void search_productAliasPrefix_ranksAboveTitleContains() {
+        // given — 제목 부분 일치 상품이 먼저 저장돼 id가 작다
+        Long various = saveArtist("Various Artists");
+        Product containsTitle = saveProduct(various, "H1", "베스트 블루앨범");
+        Product aliasPrefix = saveProduct(various, "H2", "Some Album", "블루앨범 리마스터");
+
+        // when
+        ProductSearchPage result = search("블루앨범", 0, 20);
+
+        // then
+        assertThat(result.content()).extracting(ProductSearchHit::productId)
+                .containsExactly(aliasPrefix.getId(), containsTitle.getId());
+    }
+
+    @Test
     @DisplayName("범위_밖_페이지는_빈_내용이어도_전체_건수를_돌려준다")
     void search_pageBeyondRange_stillReturnsTotal() {
         // given
