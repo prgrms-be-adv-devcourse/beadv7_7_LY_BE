@@ -119,7 +119,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
             case ENDED_FAILED -> cb.and(
                     cb.lessThanOrEqualTo(root.get("endAt"), now),
                     cb.equal(root.get("bidCount"), 0));
-            case CANCELED -> throw new IllegalStateException("CANCELED는 search()에서 이미 처리됨");
+            case CANCELED, FORCE_CANCELED  -> throw new IllegalStateException("CANCELED는 search()에서 이미 처리됨");
         };
     }
 

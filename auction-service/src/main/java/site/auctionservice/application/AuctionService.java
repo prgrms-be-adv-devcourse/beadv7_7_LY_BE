@@ -99,7 +99,8 @@ public class AuctionService {
 
     @Transactional(readOnly = true)
     public AuctionDetailResult getAuctionDetail(Long auctionId, Long viewerId) {
-        Auction auction = auctionRepository.findById(auctionId).filter(a -> !a.isCanceled())
+        Auction auction = auctionRepository.findById(auctionId)
+            .filter(a -> !a.isCancelledOrForceCancelled())
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
 
         ProductDetail product = productPort.getProductDetail(auction.getProductId());
@@ -113,7 +114,7 @@ public class AuctionService {
                 case RUNNING -> getRunningDetail(auction, viewerId);
                 case ENDED_WON -> getEndedWonDetail(auction.getHighestBid().getBidId());
                 case ENDED_FAILED -> new AuctionStatusDetail.EndedFailedDetail();
-                case CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
+                case CANCELED, FORCE_CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
             };
 
         return AuctionDetailResult.of(auction, product, sellerNickname, auctionStatusDetail);
@@ -169,7 +170,7 @@ public class AuctionService {
         List<ParticipatedAuctionResult> items = latestBids.getContent().stream()
             .filter(bid -> {
                 Auction auction = auctionsById.get(bid.getAuctionId());
-                return auction != null && !auction.isCanceled();
+                return auction != null && !auction.isCancelledOrForceCancelled();
             })
             .map(bid -> {
                 Auction auction = auctionsById.get(bid.getAuctionId());
@@ -194,7 +195,7 @@ public class AuctionService {
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<HostedAuctionResult> items = auctions.getContent().stream()
-            .filter(auction -> !auction.isCanceled())
+            .filter(auction -> !auction.isCancelledOrForceCancelled())
             .map(auction -> {
                 AuctionProductSummary summary = summaryById.get(auction.getId());
                 Money highest = auction.hasBid() ? auction.getHighestBid().getAmount() : null;
@@ -235,7 +236,7 @@ public class AuctionService {
         // 예치금 홀드 (동기, 트랜잭션 안)
         walletPort.hold(command.auctionId(), command.bidderId(), amount);
 
-        // TODO(#75) 입찰 실패 시 예치금 홀드 해제(보상 트랜잭션)는 아직 없음.
+        // TODO : #75 입찰 실패 시 예치금 홀드 해제(보상 트랜잭션) 구현 필요
         // 아래 구간에서 예외가 나면 홀드는 이미 잡힌 채로 남는다 — 지금은 로그로만 흔적을 남긴다.
         try {
             // 새 Bid 저장 (ACTIVE)
@@ -259,6 +260,25 @@ public class AuctionService {
             log.error("입찰 처리 실패 - 예치금 홀드가 해제되지 않은 채 남아있을 수 있음: auctionId={}, bidderId={}, amount={}",
                     command.auctionId(), command.bidderId(), amount.getValue(), e);
             throw e;
+        }
+    }
+
+    // TODO : #238 시작 스케줄러와 좁은 타이밍에 겹치면 강제취소가 RUNNING으로 덮어써질 수 있으므로 분산락 도입 시 시작 스케줄러도 같은 auctionId 락 스코프에 포함시켜 해결 예정.
+    // 현재는 AuctionScheduleService에서 비관적 락으로 조회하고 있어 동시성 문제가 발생하는 상황이지만 분산락 도입을 앞두고 있어서 임시 허용한 상태.
+    @Transactional
+    public void forceCancelAuction(Long auctionId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+        boolean hasBid = auction.hasBid();
+        auction.forceCancel(now);   // 검증 + 상태 전이
+
+        searchViewRepository.deleteById(auctionId);
+
+        if (hasBid) {
+            bidRepository.findActiveBid(auctionId).ifPresent(Bid::markCanceled);
         }
     }
 

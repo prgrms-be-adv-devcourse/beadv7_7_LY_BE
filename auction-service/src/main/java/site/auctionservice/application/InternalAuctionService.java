@@ -29,7 +29,7 @@ public class InternalAuctionService {
     @Transactional(readOnly = true)
     public InternalAuctionSummaryResult getInternalSummary(Long auctionId) {
         Auction auction = auctionRepository.findById(auctionId)
-            .filter(a -> !a.isCanceled())
+            .filter(a -> !a.isCancelledOrForceCancelled())
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         long bidCount = bidRepository.countByAuctionId(auctionId);
         BigDecimal finalPrice =

@@ -331,9 +331,72 @@ class AuctionTest {
     }
 
     @Test
-    @DisplayName("CANCELED, ENDED_WON, ENDED_FAILED은 시각과 무관하게 실제 상태도 그대로 유지된다")
+    @DisplayName("SCHEDULED 상태의 경매는 관리자가 강제 취소할 수 있다")
+    void testForceCancel_scheduledStatus_succeeds() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED);
+
+        // when
+        auction.forceCancel(beforeStart);
+
+        // then
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+    }
+
+    @Test
+    @DisplayName("RUNNING 상태의 경매는 시작 시각이 지났어도 관리자가 강제 취소할 수 있다")
+    void testForceCancel_runningStatus_afterStartTime_succeeds() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when
+        auction.forceCancel(afterStart);
+
+        // then
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+    }
+
+    @Test
+    @DisplayName("이미 종료된 경매(ENDED_WON, ENDED_FAILED, CANCELED)는 강제 취소할 수 없다")
+    void testForceCancel_alreadyTerminalStatus_throws() {
+        // given
+        Auction wonAuction = auctionWith(AuctionStatus.ENDED_WON);
+        Auction failedAuction = auctionWith(AuctionStatus.ENDED_FAILED);
+        Auction canceledAuction = auctionWith(AuctionStatus.CANCELED);
+
+        // when & then
+        assertThatThrownBy(() -> wonAuction.forceCancel(afterEnd))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+        assertThatThrownBy(() -> failedAuction.forceCancel(afterEnd))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+        assertThatThrownBy(() -> canceledAuction.forceCancel(beforeStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+    }
+
+    @Test
+    @DisplayName("RUNNING 상태여도 실효 상태가 이미 종료(ENDED_WON/ENDED_FAILED)면 강제 취소할 수 없다")
+    void testForceCancel_effectivelyEnded_throws() {
+        // given: status는 아직 RUNNING이지만 종료 시각이 지나 실효 상태는 ENDED_FAILED다
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then
+        assertThatThrownBy(() -> auction.forceCancel(afterEnd))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+    }
+
+    @Test
+    @DisplayName("CANCELED, FORCE_CANCELED, ENDED_WON, ENDED_FAILED은 시각과 무관하게 실제 상태도 그대로 유지된다")
     void testGetEffectiveStatusAt_terminalStatuses_ignoreTime() {
         assertThat(auctionWith(AuctionStatus.CANCELED).getEffectiveStatusAt(beforeStart)).isEqualTo(AuctionStatus.CANCELED);
+        assertThat(auctionWith(AuctionStatus.FORCE_CANCELED).getEffectiveStatusAt(afterStart)).isEqualTo(AuctionStatus.FORCE_CANCELED);
         assertThat(auctionWith(AuctionStatus.ENDED_WON).getEffectiveStatusAt(beforeStart)).isEqualTo(AuctionStatus.ENDED_WON);
         assertThat(auctionWith(AuctionStatus.ENDED_FAILED).getEffectiveStatusAt(afterEnd)).isEqualTo(AuctionStatus.ENDED_FAILED);
     }

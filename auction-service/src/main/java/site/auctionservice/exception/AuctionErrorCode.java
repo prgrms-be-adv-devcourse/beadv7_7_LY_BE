@@ -34,6 +34,8 @@ public enum AuctionErrorCode implements ErrorCode {
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "AERR-5019", "요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
     WALLET_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AERR-5020", "지갑 서비스가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요."),
 
+    AUCTION_NOT_FORCE_CANCELABLE(HttpStatus.CONFLICT, "AERR-5025", "이미 종료된 경매는 강제 종료할 수 없습니다."),
+
     ;
 
     private final HttpStatus status;

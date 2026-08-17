@@ -60,6 +60,19 @@ class BidTest {
     }
 
     @Test
+    @DisplayName("markCanceled()는 ACTIVE 입찰을 CANCELED로 전이한다")
+    void testMarkCanceled_fromActive_succeeds() {
+        // given
+        Bid bid = Bid.place(1L, 2L, Money.of(1_000L), now);
+
+        // when
+        bid.markCanceled();
+
+        // then
+        assertThat(bid.getOutcome()).isEqualTo(BidOutcome.CANCELED);
+    }
+
+    @Test
     @DisplayName("이미 OUTBID된 입찰은 WON으로 전이할 수 없다")
     void testMarkWon_afterOutbid_throws() {
         // given

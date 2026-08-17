@@ -59,6 +59,10 @@ public class Bid extends BaseEntity {
         changeOutcome(BidOutcome.WON);
     }
 
+    public void markCanceled() {
+        changeOutcome(BidOutcome.CANCELED);
+    }
+
     private void changeOutcome(BidOutcome next) {
         if (!this.outcome.canTransitTo(next)) {
             throw new IllegalStateException("허용되지 않은 입찰 결과 전이입니다: %s → %s".formatted(this.outcome, next));
