@@ -1,13 +1,16 @@
 package site.fulfillmentservice.settlement.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import site.fulfillmentservice.settlement.domain.CommissionPolicy;
 import site.fulfillmentservice.settlement.domain.CommissionPolicyRepository;
 import site.fulfillmentservice.support.RepositoryTest;
@@ -21,6 +24,9 @@ class CommissionPolicyRepositoryImplTest {
 
     @Autowired
     private CommissionPolicyJpaRepository commissionPolicyJpaRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void findByEffectiveToIsNull은_현재_유효한_정책을_반환한다() {
@@ -43,5 +49,26 @@ class CommissionPolicyRepositoryImplTest {
         Optional<CommissionPolicy> result = commissionPolicyRepository.findByEffectiveToIsNull();
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void 낙관적_락_충돌시_예외를_던진다() {
+        CommissionPolicy saved = commissionPolicyJpaRepository.saveAndFlush(
+                CommissionPolicy.of(BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(1), null));
+        entityManager.clear();
+
+        CommissionPolicy first = commissionPolicyRepository.findById(saved.getId()).orElseThrow();
+        entityManager.clear();
+
+        CommissionPolicy second = commissionPolicyRepository.findById(saved.getId()).orElseThrow();
+        entityManager.clear();
+
+        first.close(LocalDateTime.now().plusDays(1));
+        commissionPolicyRepository.saveAndFlush(first);
+        entityManager.clear();
+
+        second.close(LocalDateTime.now().plusDays(2));
+        assertThatThrownBy(() -> commissionPolicyRepository.saveAndFlush(second))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }

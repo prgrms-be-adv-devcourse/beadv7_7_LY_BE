@@ -18,6 +18,11 @@ public class CommissionPolicyRepositoryImpl implements CommissionPolicyRepositor
     }
 
     @Override
+    public CommissionPolicy saveAndFlush(CommissionPolicy commissionPolicy) {
+        return commissionPolicyJpaRepository.saveAndFlush(commissionPolicy);
+    }
+
+    @Override
     public Optional<CommissionPolicy> findById(Long id) {
         return commissionPolicyJpaRepository.findById(id);
     }
