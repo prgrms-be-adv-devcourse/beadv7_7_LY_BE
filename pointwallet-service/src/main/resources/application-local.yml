@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -26,7 +26,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
-        spring.json.trusted.packages: site.common.event.contract
+        spring.json.trusted.packages: site.common.event.contract,site.pointwalletservice.withdraw.domain.event
     listener:
       ack-mode: batch
 

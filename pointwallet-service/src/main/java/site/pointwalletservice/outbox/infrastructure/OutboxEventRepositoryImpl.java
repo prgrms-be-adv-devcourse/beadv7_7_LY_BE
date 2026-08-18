@@ -1,6 +1,7 @@
 // outbox/infrastructure/OutboxEventRepositoryImpl.java
 package site.pointwalletservice.outbox.infrastructure;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -20,8 +21,24 @@ public class OutboxEventRepositoryImpl implements OutboxEventRepository {
     }
 
     @Override
+    public Optional<OutboxEvent> findById(Long id) {
+        return outboxEventJpaRepository.findById(id);
+    }
+
+    @Override
     public List<OutboxEvent> findPendingOldestFirst(int limit) {
         return outboxEventJpaRepository.findByStatusOrderByCreatedAtAsc(
                 OutboxEventStatus.PENDING, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<OutboxEvent> findFailedOldestFirst(int limit) {
+        return outboxEventJpaRepository.findByStatusOrderByCreatedAtAsc(
+                OutboxEventStatus.FAILED, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<OutboxEvent> findDeadNewestFirst() {
+        return outboxEventJpaRepository.findByStatusOrderByCreatedAtDesc(OutboxEventStatus.DEAD);
     }
 }

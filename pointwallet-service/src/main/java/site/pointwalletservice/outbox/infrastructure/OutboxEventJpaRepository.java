@@ -11,4 +11,6 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEvent, Lon
 
     @Query("select e from OutboxEvent e where e.status = :status order by e.createdAt asc")
     List<OutboxEvent> findByStatusOrderByCreatedAtAsc(OutboxEventStatus status, Pageable pageable);
+
+    List<OutboxEvent> findByStatusOrderByCreatedAtDesc(OutboxEventStatus status);
 }

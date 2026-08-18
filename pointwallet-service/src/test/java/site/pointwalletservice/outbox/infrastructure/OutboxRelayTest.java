@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import tools.jackson.databind.json.JsonMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,12 +34,14 @@ class OutboxRelayTest {
     private KafkaTemplate<String, Object> kafkaTemplate;
 
     private JsonMapper jsonMapper;
+    private SimpleMeterRegistry meterRegistry;
     private OutboxRelay sut;
 
     @BeforeEach
     void setUp() {
         jsonMapper = JsonMapper.builder().build();
-        sut = new OutboxRelay(outboxEventRepository, kafkaTemplate, jsonMapper);
+        meterRegistry = new SimpleMeterRegistry();
+        sut = new OutboxRelay(outboxEventRepository, kafkaTemplate, jsonMapper, meterRegistry);
     }
 
     @Test
@@ -49,6 +52,7 @@ class OutboxRelayTest {
         OutboxEvent pending = OutboxEvent.create(
                 WithdrawFeeEarnedEvent.TOPIC, "1", WithdrawFeeEarnedEvent.class.getName(), payload);
         when(outboxEventRepository.findPendingOldestFirst(100)).thenReturn(List.of(pending));
+        when(outboxEventRepository.findFailedOldestFirst(100)).thenReturn(List.of());
         when(kafkaTemplate.send(eq(WithdrawFeeEarnedEvent.TOPIC), eq("1"), any()))
                 .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
@@ -72,6 +76,7 @@ class OutboxRelayTest {
         OutboxEvent valid = OutboxEvent.create(
                 WithdrawFeeEarnedEvent.TOPIC, "2", WithdrawFeeEarnedEvent.class.getName(), validPayload);
         when(outboxEventRepository.findPendingOldestFirst(100)).thenReturn(List.of(broken, valid));
+        when(outboxEventRepository.findFailedOldestFirst(100)).thenReturn(List.of());
         when(kafkaTemplate.send(eq(WithdrawFeeEarnedEvent.TOPIC), eq("2"), any()))
                 .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
@@ -83,6 +88,48 @@ class OutboxRelayTest {
         assertThat(broken.getLastError()).isNotNull();
         assertThat(valid.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
         verify(kafkaTemplate, times(1)).send(eq(WithdrawFeeEarnedEvent.TOPIC), eq("2"), any());
+    }
+
+    @Test
+    @DisplayName("PENDING과 함께 FAILED 행도 재시도 대상으로 폴링하고, 발행에 성공하면 PUBLISHED로 바뀐다")
+    void relay_FAILED_행도_재시도해서_발행한다() {
+        // given
+        String payload = objectMapperWrite(new WithdrawFeeEarnedEvent(3L, java.math.BigDecimal.valueOf(500)));
+        OutboxEvent failed = OutboxEvent.create(
+                WithdrawFeeEarnedEvent.TOPIC, "3", WithdrawFeeEarnedEvent.class.getName(), payload);
+        failed.markFailed("일시적인 카프카 전송 실패");
+        when(outboxEventRepository.findPendingOldestFirst(100)).thenReturn(List.of());
+        when(outboxEventRepository.findFailedOldestFirst(100)).thenReturn(List.of(failed));
+        when(kafkaTemplate.send(eq(WithdrawFeeEarnedEvent.TOPIC), eq("3"), any()))
+                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+
+        // when
+        sut.relay();
+
+        // then
+        assertThat(failed.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
+        verify(kafkaTemplate, times(1)).send(eq(WithdrawFeeEarnedEvent.TOPIC), eq("3"), any());
+    }
+
+    @Test
+    @DisplayName("재시도 한도(MAX_RETRY_COUNT)를 넘겨 계속 실패하면 더 이상 FAILED가 아니라 DEAD로 전환된다")
+    void relay_재시도_한도를_넘기면_DEAD로_전환된다() {
+        // given: 이미 MAX_RETRY_COUNT - 1번 실패한 상태에서 이번에도 실패
+        OutboxEvent broken = OutboxEvent.create(
+                WithdrawFeeEarnedEvent.TOPIC, "4", "no.such.EventClass", "{}");
+        for (int i = 0; i < OutboxEvent.MAX_RETRY_COUNT - 1; i++) {
+            broken.markFailed("이전 실패");
+        }
+        when(outboxEventRepository.findPendingOldestFirst(100)).thenReturn(List.of());
+        when(outboxEventRepository.findFailedOldestFirst(100)).thenReturn(List.of(broken));
+
+        // when
+        sut.relay();
+
+        // then
+        assertThat(broken.getStatus()).isEqualTo(OutboxEventStatus.DEAD);
+        assertThat(meterRegistry.counter("outbox.event.dead", "eventType", "no.such.EventClass").count())
+                .isEqualTo(1.0);
     }
 
     private String objectMapperWrite(Object event) {
