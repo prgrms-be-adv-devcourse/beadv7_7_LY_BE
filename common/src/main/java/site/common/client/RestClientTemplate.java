@@ -39,8 +39,10 @@ public final class RestClientTemplate {
     }
 
     /**
-     * 재시도 설정 안하면 RetryPolicy.DEFAULT 재시도 커스텀 설정 시 RetryPolicy를 인자로 받아 재시도 횟수, 딜레이를 커스텀할 수 있다. Retry
-     * 발생 조건(5xx만 재시도)은 커스텀 불가
+     * 재시도 설정 안하면 RetryPolicy.DEFAULT
+     * 재시도 커스텀 설정 시 RetryPolicy를 인자로 받아 재시도 횟수, 딜레이를 커스텀할 수 있다.
+     * Retry 발생 조건(5xx만 재시도)은 커스텀 불가
+     * Retry에서 delay를 주는 방식은 thread sleep 이므로 사용하는 곳에서 주의 필요
      */
     public static <T> T executeWithRetry(final Supplier<ApiResponse<T>> requestSupplier,
         final Function<RestClientException, RuntimeException> exceptionHandler) {
