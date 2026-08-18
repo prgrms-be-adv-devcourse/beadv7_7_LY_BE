@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,5 +93,18 @@ class CommissionPolicyRepositoryImplTest {
         second.reopen();
         assertThatThrownBy(() -> commissionPolicyRepository.saveAndFlush(second))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+    }
+
+    @Test
+    void findAllByOrderByEffectiveFromDesc은_effectiveFrom_내림차순으로_반환한다() {
+        CommissionPolicy older = commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(30), LocalDateTime.now().minusDays(1)));
+        CommissionPolicy newer = commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null));
+
+        List<CommissionPolicy> result = commissionPolicyRepository.findAllByOrderByEffectiveFromDesc();
+
+        assertThat(result).extracting(CommissionPolicy::getId)
+                .containsExactly(newer.getId(), older.getId());
     }
 }

@@ -1,6 +1,7 @@
 package site.fulfillmentservice.settlement.infrastructure;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -36,6 +37,11 @@ public class CommissionPolicyRepositoryImpl implements CommissionPolicyRepositor
     @Override
     public Optional<CommissionPolicy> findByEffectiveTo(LocalDateTime effectiveTo) {
         return commissionPolicyJpaRepository.findByEffectiveTo(effectiveTo);
+    }
+
+    @Override
+    public List<CommissionPolicy> findAllByOrderByEffectiveFromDesc() {
+        return commissionPolicyJpaRepository.findAllByOrderByEffectiveFromDesc();
     }
 
     @Override

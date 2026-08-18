@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -273,6 +274,44 @@ class CommissionPolicyServiceTest {
                     .isInstanceOf(SettlementException.class)
                     .extracting(e -> ((SettlementException) e).getErrorCode())
                     .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
+        }
+    }
+
+    @Nested
+    @DisplayName("getCommissionPolicies")
+    class GetCommissionPolicies {
+
+        @Test
+        @DisplayName("전체 정책을 effectiveFrom 내림차순으로 반환한다")
+        void returnsAllPoliciesOrderedByEffectiveFromDesc() {
+            // given
+            CommissionPolicy newer = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
+            CommissionPolicy older = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(30), LocalDateTime.now().minusDays(1));
+            given(commissionPolicyRepository.findAllByOrderByEffectiveFromDesc())
+                    .willReturn(List.of(newer, older));
+
+            // when
+            List<CommissionPolicyResult> results = commissionPolicyService.getCommissionPolicies();
+
+            // then
+            assertThat(results).hasSize(2);
+            assertThat(results.get(0).commissionRate()).isEqualByComparingTo(BigDecimal.valueOf(0.1000));
+            assertThat(results.get(1).commissionRate()).isEqualByComparingTo(BigDecimal.valueOf(0.0500));
+        }
+
+        @Test
+        @DisplayName("정책이 하나도 없으면 빈 리스트를 반환한다")
+        void returnsEmptyListWhenNoPolicies() {
+            // given
+            given(commissionPolicyRepository.findAllByOrderByEffectiveFromDesc()).willReturn(List.of());
+
+            // when
+            List<CommissionPolicyResult> results = commissionPolicyService.getCommissionPolicies();
+
+            // then
+            assertThat(results).isEmpty();
         }
     }
 }

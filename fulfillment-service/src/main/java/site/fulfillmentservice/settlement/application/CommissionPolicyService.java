@@ -2,6 +2,7 @@ package site.fulfillmentservice.settlement.application;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +63,13 @@ public class CommissionPolicyService {
 
         log.info("수수료 정책 삭제: adminId={}, commissionPolicyId={}, commissionRate={}, effectiveFrom={}",
                 adminId, target.getId(), target.getCommissionRate(), target.getEffectiveFrom());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CommissionPolicyResult> getCommissionPolicies() {
+        return commissionPolicyRepository.findAllByOrderByEffectiveFromDesc().stream()
+                .map(CommissionPolicyResult::from)
+                .toList();
     }
 
     private void reopenPredecessor(CommissionPolicy predecessor) {
