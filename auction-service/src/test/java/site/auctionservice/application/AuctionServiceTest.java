@@ -57,6 +57,9 @@ class AuctionServiceTest {
     @Mock
     private WalletPort walletPort;
 
+    @Mock
+    private AuctionEventPublisher auctionEventPublisher;
+
     @InjectMocks
     private AuctionService auctionService;
 
@@ -379,6 +382,7 @@ class AuctionServiceTest {
         // then
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
         verify(searchViewRepository).deleteById(1L);
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
     }
 
     @Test
@@ -394,10 +398,11 @@ class AuctionServiceTest {
         // then
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
         verify(searchViewRepository).deleteById(1L);
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
     }
 
     @Test
-    @DisplayName("활성 입찰이 있는 경매를 강제 취소하면 해당 입찰도 CANCELED로 전이한다")
+    @DisplayName("활성 입찰이 있는 경매를 강제 취소하면 해당 입찰도 CANCELED로 전이하고 예치금 홀드 해제 이벤트를 발행한다")
     void testForceCancelAuction_withActiveBid_cancelsActiveBid() {
         // given
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
@@ -411,6 +416,26 @@ class AuctionServiceTest {
 
         // then
         assertThat(activeBid.getOutcome()).isEqualTo(BidOutcome.CANCELED);
+        verify(auctionEventPublisher).publishForceCanceled(1L, 5L);
+    }
+
+    @Test
+    @DisplayName("이벤트 발행이 실패해도 강제 취소 자체는 예외 없이 커밋된다")
+    void testForceCancelAuction_eventPublishFails_stillCommits() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
+        willThrow(new RuntimeException("kafka down"))
+                .given(auctionEventPublisher).publishForceCanceled(1L, 5L);
+
+        // when & then
+        auctionService.forceCancelAuction(1L);
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+        assertThat(activeBid.getOutcome()).isEqualTo(BidOutcome.CANCELED);
+        verify(searchViewRepository).deleteById(1L);
     }
 
     @Test
@@ -424,6 +449,7 @@ class AuctionServiceTest {
         auctionService.forceCancelAuction(1L);
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
         verify(bidRepository, never()).findActiveBid(any());
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
     }
 
     @Test

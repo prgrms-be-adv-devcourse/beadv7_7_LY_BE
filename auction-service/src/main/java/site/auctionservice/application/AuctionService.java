@@ -38,6 +38,7 @@ public class AuctionService {
     private final ProductPort productPort;
     private final WalletPort walletPort;
     private final AuctionSearchViewRepository searchViewRepository;
+    private final AuctionEventPublisher auctionEventPublisher;
 
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
@@ -279,6 +280,12 @@ public class AuctionService {
 
         if (hasBid) {
             bidRepository.findActiveBid(auctionId).ifPresent(Bid::markCanceled);
+            Long bidderId = auction.getHighestBid().getBidderId();
+            try {
+                auctionEventPublisher.publishForceCanceled(auctionId, bidderId);
+            } catch(final Exception e) {
+                log.error("경매 강제 종료 예치금 홀드 해제 실패 : auctionId={}, bidderId={}", auctionId, bidderId, e);
+            }
         }
     }
 
