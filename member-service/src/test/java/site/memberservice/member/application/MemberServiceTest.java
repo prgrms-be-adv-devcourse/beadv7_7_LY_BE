@@ -574,6 +574,49 @@ class MemberServiceTest {
         });
     }
 
+    @DisplayName("낙찰 상품 주문 취소 이력 저장 시 이미 해당 주문에 대한 취소 행위 기록이 존재하면 예외가 발생하고 이력을 저장하지 않는다.")
+    @Test
+    void throwExceptionWhenRecordWinningBidOrderCancellationInputDuplicateOrderId() {
+        // Given
+        final Member member = new Member(
+            1L,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+        final RecordWinningBidOrderCancellationCommand command = new RecordWinningBidOrderCancellationCommand(
+            member.getId(),
+            10L,
+            20L,
+            LocalDateTime.of(2026, 8, 13, 0, 0)
+        );
+
+        given(memberRepository.findById(member.getId()))
+            .willReturn(Optional.of(member));
+        given(memberViolationHistoryRepository.hasWinningBidOrderCancellationRecord(
+            member,
+            ViolationType.WINNING_BID_ORDER_CANCELED,
+            command.orderId()
+        ))
+            .willReturn(true);
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.recordWinningBidOrderCancellation(command))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("이미 해당 주문에 대한 취소 행위 기록 요청이 들어왔습니다. input: %d", command.orderId()));
+
+        verify(memberViolationHistoryRepository, never()).countByMemberAndViolationTypeSince(any(Member.class), any(ViolationType.class), any(LocalDateTime.class));
+        verify(memberRestrictionRepository, never()).save(any(MemberRestriction.class));
+        verify(memberViolationHistoryRepository, never()).save(any(MemberViolationHistory.class));
+    }
+
     @DisplayName("낙찰 상품 주문 취소 이력 저장 시 존재하지 않는 회원 id를 입력하면 예외가 발생한다.")
     @Test
     void throwExceptionWhenRecordWinningBidOrderCancellationInputNotFoundMemberId() {
