@@ -40,3 +40,5 @@ product:
 wallet:
   service:
     base-url: http://localhost:8086
+    pool:
+      max-connections: 10

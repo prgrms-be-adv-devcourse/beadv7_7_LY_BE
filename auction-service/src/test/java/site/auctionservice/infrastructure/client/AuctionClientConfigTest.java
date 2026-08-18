@@ -11,10 +11,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AuctionClientConfigTest {
 
-    /**
-     * order 도메인의 OrderClientConfig처럼, 동일 타입(RestClient)의 빈을 하나 더 등록해
-     * 실제 충돌 상황을 재현한다.
-     */
     @Configuration
     static class ConflictingRestClientConfig {
         @Bean
@@ -30,7 +26,8 @@ class AuctionClientConfigTest {
                     MemberHttpClient.class,
                     ProductHttpClient.class,
                     WalletHttpClient.class
-            );
+            )
+            .withPropertyValues("wallet.service.pool.max-connections=10");
 
     @Test
     @DisplayName("product/wallet/member 클라이언트가 각자 전용 RestClient 빈으로 주입된다")
