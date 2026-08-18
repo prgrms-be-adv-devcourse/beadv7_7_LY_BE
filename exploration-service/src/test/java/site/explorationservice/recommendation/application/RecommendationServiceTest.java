@@ -24,6 +24,8 @@ import site.explorationservice.productindex.domain.ProductDocument;
 import site.explorationservice.productindex.domain.ProductDocumentRepository;
 import site.explorationservice.productindex.domain.ScoredProduct;
 import site.explorationservice.recommendation.application.dto.RecommendationResult;
+import site.explorationservice.recommendation.application.port.WishlistPort;
+import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
 import site.explorationservice.recommendation.domain.RecommendationPolicy;
 
 /**
@@ -38,6 +40,9 @@ class RecommendationServiceTest {
 
     @Mock
     private ProductDocumentRepository productDocumentRepository;
+
+    @Mock
+    private WishlistPort wishlistPort;
 
     @InjectMocks
     private RecommendationService recommendationService;
@@ -165,6 +170,40 @@ class RecommendationServiceTest {
         assertThat(results.getFirst().title()).isEqualTo("Kind of Blue");
         assertThat(results.getFirst().artistName()).isEqualTo("Miles Davis");
         assertThat(results.getFirst().score()).isEqualTo(0.93f);
+    }
+
+    @Test
+    @DisplayName("위시리스트에서 가져온 상품 id를 씨앗으로 넘긴다")
+    void 회원_추천_씨앗_변환() {
+        given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
+            .willReturn(List.of(
+                wishlistProduct(10L), wishlistProduct(20L)));
+        givenVectors(Map.of(10L, new float[]{1.0f, 0.0f}, 20L, new float[]{0.0f, 1.0f}));
+        givenSimilar();
+
+        recommendationService.recommendForMember(1L, 5);
+
+        // 위시리스트가 돌려준 상품 id 그대로가 findVectors·findSimilar 양쪽에 씨앗으로 들어가야 한다.
+        then(productDocumentRepository).should().findVectors(List.of(10L, 20L));
+        then(productDocumentRepository).should()
+            .findSimilar(any(), excludeIdsCaptor.capture(), anyInt());
+        assertThat(excludeIdsCaptor.getValue()).containsExactly(10L, 20L);
+    }
+
+    @Test
+    @DisplayName("위시리스트가 비어 있으면 ES를 아예 부르지 않는다")
+    void 회원_추천_빈_위시리스트() {
+        given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
+            .willReturn(List.of());
+
+        assertThat(recommendationService.recommendForMember(1L, 5)).isEmpty();
+
+        then(productDocumentRepository).should(never()).findVectors(anyList());
+    }
+
+    private WishlistProduct wishlistProduct(final Long productId) {
+        return new WishlistProduct(productId, "제목", "아티스트", "Jazz", "Columbia", 1959, "미국",
+            "ORIGINAL");
     }
 
     private void givenVectors(final Map<Long, float[]> vectors) {
