@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import site.productservice.application.dto.ProductDetailResult;
 import site.productservice.application.dto.ProductListQuery;
 import site.productservice.application.dto.ProductListResult;
+import site.productservice.application.dto.ProductPageResult;
 import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.port.AuctionOpenCountPort;
 import site.productservice.domain.Artist;
@@ -40,6 +41,11 @@ public class ProductService {
     private static final int LIST_DEFAULT_SIZE = 20;
     private static final int LIST_MAX_SIZE = 100;
 
+    // 카탈로그 브라우징(사람이 보는 화면)과 다른 상수를 쓴다 — 이건 백필처럼 기계가 전체를 훑는 내부 API라
+    // 한 번에 더 많이 가져가는 게 유리하다.
+    private static final int PAGE_DEFAULT_SIZE = 100;
+    private static final int PAGE_MAX_SIZE = 500;
+
     private final ProductRepository productRepository;
     private final ArtistRepository artistRepository;
     private final ProductSearchRepository productSearchRepository;
@@ -68,6 +74,36 @@ public class ProductService {
         return products.stream()
                 .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
                 .toList();
+    }
+
+    /**
+     * id 오름차순으로 상품을 순회한다. 백필이 소비하는 창구다 — 판매 상태와 무관하게 전체를 훑어야 ES에
+     * 실제 active 상태가 정확히 반영된다(비활성 상품을 추천에서 빼는 건 kNN 필터의 몫이지 여기서 걸러낼 일이
+     * 아니다).
+     * <p>
+     * 다음 페이지 존재 여부를 알아내려고 size보다 한 건 더 조회한다 — findPage(위시리스트)와 같은 방식이다.
+     */
+    public ProductPageResult getProductPage(Long cursor, int size) {
+        int pageSize = clampPageSize(size);
+        List<Product> fetched = productRepository.findAllOrderByIdAfter(cursor, pageSize + 1);
+
+        boolean hasNext = fetched.size() > pageSize;
+        List<Product> products = hasNext ? fetched.subList(0, pageSize) : fetched;
+        Map<Long, Artist> artistsById = getArtists(products);
+
+        List<ProductSnapshotResult> items = products.stream()
+                .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
+                .toList();
+        Long nextCursor = hasNext ? products.getLast().getId() : null;
+
+        return new ProductPageResult(items, nextCursor, hasNext);
+    }
+
+    private int clampPageSize(int size) {
+        if (size < 1) {
+            return PAGE_DEFAULT_SIZE;
+        }
+        return Math.min(size, PAGE_MAX_SIZE);
     }
 
     private Artist getArtist(Long artistId) {

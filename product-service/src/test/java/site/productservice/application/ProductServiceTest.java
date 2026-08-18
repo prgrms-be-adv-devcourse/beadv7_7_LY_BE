@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import site.productservice.application.dto.ProductDetailResult;
 import site.productservice.application.dto.ProductListQuery;
 import site.productservice.application.dto.ProductListResult;
+import site.productservice.application.dto.ProductPageResult;
 import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.port.AuctionOpenCountPort;
 import site.productservice.domain.Artist;
@@ -205,6 +206,105 @@ class ProductServiceTest {
         // when & then
         assertThatThrownBy(() -> productService.getProductSnapshots(List.of(55L)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("전체 순회는 다음 페이지 존재를 알아내려고 size보다 한 건 더 조회한다")
+    void getProductPage는_size보다_한건_더_조회한다() {
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of());
+
+        productService.getProductPage(null, 100);
+
+        then(productRepository).should().findAllOrderByIdAfter(null, 101);
+    }
+
+    @Test
+    @DisplayName("전체 순회는 cursor를 그대로 리포지토리에 전달한다")
+    void getProductPage는_cursor를_그대로_전달한다() {
+        given(productRepository.findAllOrderByIdAfter(50L, 101)).willReturn(List.of());
+
+        productService.getProductPage(50L, 100);
+
+        then(productRepository).should().findAllOrderByIdAfter(50L, 101);
+    }
+
+    @Test
+    @DisplayName("전체 순회는 size보다 많이 조회되면 잘라내고 hasNext와 nextCursor를 설정한다")
+    void getProductPage는_넘치면_hasNext와_nextCursor를_설정한다() {
+        Product first = productWithId(55L);
+        Product second = productWithId(56L);
+        Product third = productWithId(57L);
+        given(productRepository.findAllOrderByIdAfter(null, 3))
+                .willReturn(List.of(first, second, third));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+
+        ProductPageResult page = productService.getProductPage(null, 2);
+
+        assertThat(page.items()).extracting(ProductSnapshotResult::productId).containsExactly(55L, 56L);
+        assertThat(page.hasNext()).isTrue();
+        assertThat(page.nextCursor()).isEqualTo(56L);
+    }
+
+    @Test
+    @DisplayName("전체 순회는 size 이하로 조회되면 hasNext가 false이고 nextCursor가 없다")
+    void getProductPage는_넘치지_않으면_다음_페이지가_없다() {
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        assertThat(page.items()).extracting(ProductSnapshotResult::productId).containsExactly(55L);
+        assertThat(page.hasNext()).isFalse();
+        assertThat(page.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("전체 순회는 size가 0 이하면 기본값 100으로 조회한다")
+    void getProductPage는_size가_0이하면_기본값을_쓴다() {
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of());
+
+        productService.getProductPage(null, 0);
+
+        then(productRepository).should().findAllOrderByIdAfter(null, 101);
+    }
+
+    @Test
+    @DisplayName("전체 순회는 size가 최대치를 넘으면 500으로 제한한다")
+    void getProductPage는_size가_최대치를_넘으면_제한한다() {
+        given(productRepository.findAllOrderByIdAfter(null, 501)).willReturn(List.of());
+
+        productService.getProductPage(null, 5000);
+
+        then(productRepository).should().findAllOrderByIdAfter(null, 501);
+    }
+
+    @Test
+    @DisplayName("전체 순회 결과도 아티스트를 합성해 반환한다")
+    void getProductPage는_아티스트를_합성해_반환한다() {
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        assertThat(page.items().getFirst().artistName()).isEqualTo("The Beatles");
+    }
+
+    @Test
+    @DisplayName("전체 순회는 결과가 없으면 빈 페이지를 반환한다")
+    void getProductPage는_결과가_없으면_빈_페이지() {
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of());
+
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        assertThat(page.items()).isEmpty();
+        assertThat(page.hasNext()).isFalse();
+    }
+
+    private Product productWithId(Long id) {
+        Product p = Product.of("CAT-" + id, 3L, "Title " + id, "UK", 1969,
+                PressType.ORIGINAL, "LP", "Apple Records", "Rock", null, null);
+        ReflectionTestUtils.setField(p, "id", id);
+        return p;
     }
 
     @Test

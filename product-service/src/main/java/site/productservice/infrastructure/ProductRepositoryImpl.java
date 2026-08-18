@@ -1,6 +1,7 @@
 package site.productservice.infrastructure;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import site.productservice.domain.PressType;
 import site.productservice.domain.Product;
@@ -42,5 +43,10 @@ public class ProductRepositoryImpl implements ProductRepository {
     @Override
     public List<Product> findAllByIds(List<Long> ids) {
         return productJpaRepository.findAllById(ids);
+    }
+
+    @Override
+    public List<Product> findAllOrderByIdAfter(final Long cursor, final int limit) {
+        return productJpaRepository.findAllOrderByIdAfter(cursor, PageRequest.of(0, limit));
     }
 }

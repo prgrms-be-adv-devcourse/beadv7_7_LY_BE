@@ -47,4 +47,11 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
             where p.active = true
             """)
     long countActive();
+
+    @Query("""
+            select p from Product p
+            where :cursor is null or p.id > :cursor
+            order by p.id asc
+            """)
+    List<Product> findAllOrderByIdAfter(@Param("cursor") Long cursor, Pageable pageable);
 }
