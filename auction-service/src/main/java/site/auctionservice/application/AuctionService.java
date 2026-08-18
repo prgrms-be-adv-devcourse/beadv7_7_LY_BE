@@ -39,6 +39,7 @@ public class AuctionService {
     private final WalletPort walletPort;
     private final AuctionSearchViewRepository searchViewRepository;
     private final AuctionEventPublisher auctionEventPublisher;
+    private final ImageUrlValidator imageUrlValidator;
 
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
@@ -47,6 +48,7 @@ public class AuctionService {
         if (!productSnapshot.active()) {
             throw new AuctionException(AuctionErrorCode.PRODUCT_NOT_ACTIVE);
         }
+        imageUrlValidator.validate(command.itemImages());
         Auction auction = Auction.register(
             sellerId, command.productId(),
             ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(),
@@ -69,6 +71,7 @@ public class AuctionService {
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
+        imageUrlValidator.validate(command.itemImages());
         auction.modify(sellerId, command.productId(),
             ItemInfo.of(ItemCondition.from(command.itemCondition()), command.itemDescription(),
                 command.itemImages()),
