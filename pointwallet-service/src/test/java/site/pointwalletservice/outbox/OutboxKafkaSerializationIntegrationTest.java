@@ -6,28 +6,21 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.mockito.ArgumentCaptor;
 import site.pointwalletservice.outbox.application.OutboxEventStore;
 import site.pointwalletservice.outbox.infrastructure.OutboxRelay;
 import site.pointwalletservice.wallet.application.WithdrawFeeEarnedEventHandler;
 import site.pointwalletservice.withdraw.domain.event.WithdrawFeeEarnedEvent;
 
-/**
- * Outbox 저장(JsonMapper로 직렬화) → OutboxRelay 발행(같은 JsonMapper로 역직렬화 후
- * JacksonJsonSerializer로 재직렬화) → 실제 브로커 전송 → 컨슈머(ErrorHandlingDeserializer +
- * JacksonJsonDeserializer, trusted.packages 화이트리스트) → @KafkaListener 순서로
- * "정말 별도 타입 매핑 설정 없이도 왕복이 되는지"를 실제 임베디드 브로커로 검증한다.
- * <p>
- * 이 체인은 서로 다른 두 군데(수동 주입 JsonMapper / Kafka 자동설정 JacksonJsonSerializer)가
- * 같은 방식으로 동작한다는 가정 위에 서있어서, 코드 리뷰만으로는 "될 것 같다"까지만 말할 수 있고
- * 실제로 브로커를 띄워봐야 확신할 수 있다 - WithdrawFeeEarnedEventHandler만 목으로 바꿔서
- * "최종적으로 필드 값까지 정확한 WithdrawFeeEarnedEvent가 컨슈머에 도달하는지"를 확인한다.
- */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
@@ -48,28 +41,37 @@ class OutboxKafkaSerializationIntegrationTest {
     @Autowired
     private OutboxRelay outboxRelay;
 
+    @Autowired
+    private KafkaListenerEndpointRegistry registry;
+
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafkaBroker;
+
     @MockitoBean
     private WithdrawFeeEarnedEventHandler withdrawFeeEarnedEventHandler;
 
     @Test
     @DisplayName("Outbox에 저장한 이벤트가 별도 타입 매핑 설정 없이도 필드 값까지 그대로 컨슈머에 도달한다")
     void 직렬화_설정_없이도_필드값까지_정확하게_왕복된다() {
-        // given
+        // given: 컨슈머가 파티션 할당을 마칠 때까지 먼저 기다린다 - 안 그러면
+        // auto-offset-reset 기본값(latest) 때문에 지금 보낼 메시지를 놓칠 수 있다.
+        MessageListenerContainer container = registry.getListenerContainer("withdrawFeeEarnedEventListener");
+        ContainerTestUtils.waitForAssignment(container, embeddedKafkaBroker.getPartitionsPerTopic());
+
         Long withdrawId = 42L;
         BigDecimal feeAmount = new BigDecimal("2000");
         WithdrawFeeEarnedEvent original = new WithdrawFeeEarnedEvent(withdrawId, feeAmount);
 
         outboxEventStore.store(WithdrawFeeEarnedEvent.TOPIC, withdrawId.toString(), original);
 
-        // when: @Scheduled는 테스트에서 안 도니까 직접 호출해서 실제 브로커로 발행시킨다
+        // when
         outboxRelay.relay();
 
-        // then: 실제 컨슈머(@KafkaListener)가 브로커에서 받아 역직렬화한 뒤 핸들러를 호출할 때까지 대기
+        // then
         ArgumentCaptor<WithdrawFeeEarnedEvent> captor = ArgumentCaptor.forClass(WithdrawFeeEarnedEvent.class);
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> verify(withdrawFeeEarnedEventHandler).handle(captor.capture()));
 
-        // then: __TypeId__ 헤더 기반 역직렬화가 정확한 타입 + 값으로 이어졌는지 (특히 BigDecimal)
         WithdrawFeeEarnedEvent received = captor.getValue();
         assertThat(received.withdrawId()).isEqualTo(withdrawId);
         assertThat(received.feeAmount()).isEqualByComparingTo(feeAmount);

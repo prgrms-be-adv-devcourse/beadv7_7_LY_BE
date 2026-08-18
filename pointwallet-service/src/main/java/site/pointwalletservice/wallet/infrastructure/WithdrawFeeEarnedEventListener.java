@@ -14,7 +14,7 @@ public class WithdrawFeeEarnedEventListener {
 
     private final WithdrawFeeEarnedEventHandler withdrawFeeEarnedEventHandler;
 
-    @KafkaListener(topics = WithdrawFeeEarnedEvent.TOPIC, groupId = "pointwallet-service")
+    @KafkaListener(id = "withdrawFeeEarnedEventListener", topics = WithdrawFeeEarnedEvent.TOPIC, groupId = "pointwallet-service")
     public void handle(WithdrawFeeEarnedEvent event) {
         log.info("인출 수수료 이벤트 수신: withdrawId={}, feeAmount={}", event.withdrawId(), event.feeAmount());
         try {
