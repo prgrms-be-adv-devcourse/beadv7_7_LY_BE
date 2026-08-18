@@ -13,7 +13,7 @@ import site.explorationservice.recommendation.presentation.dto.RecommendationRes
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/exploration/recommendations")
+@RequestMapping("/api/v1/recommendations")
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
