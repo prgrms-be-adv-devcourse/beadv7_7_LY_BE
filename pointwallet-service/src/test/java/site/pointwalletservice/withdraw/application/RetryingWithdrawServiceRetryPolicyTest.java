@@ -14,9 +14,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.retry.RetryException;
 import org.springframework.core.retry.RetryPolicy;
 import org.springframework.core.retry.RetryTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import site.pointwalletservice.shared.Money;
-import site.pointwalletservice.withdraw.application.dto.WithdrawRequestResult;
-import site.pointwalletservice.withdraw.domain.WithdrawStatus;
+import site.pointwalletservice.withdraw.domain.Withdraw;
 import site.pointwalletservice.withdraw.exception.WithdrawErrorCode;
 import site.pointwalletservice.withdraw.exception.WithdrawException;
 import site.pointwalletservice.withdraw.exception.WithdrawLockContentionException;
@@ -24,9 +24,12 @@ import site.pointwalletservice.withdraw.exception.WithdrawLockContentionExceptio
 /**
  * RetryingHoldServiceRetryPolicyTest와 동일한 이유로, @Retryable(AOP 프록시)은 순수 Mockito
  * 단위테스트로 검증이 안 돼서 동일 정책의 RetryTemplate을 직접 구성해 검증한다.
+ * <p>
+ * 재시도 대상이 executeDeductionAndOutbox()로 바뀌었다 - 계좌 조회(validateBankAccount)는
+ * WithdrawServiceFacade가 재시도 루프 진입 전에 1회만 부르므로 여기 대상이 아니다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("RetryingWithdrawService의 재시도 정책 (requestWithdraw() 자체를 처음부터 재시도)")
+@DisplayName("RetryingWithdrawService의 재시도 정책 (executeDeductionAndOutbox()만 재시도)")
 class RetryingWithdrawServiceRetryPolicyTest {
 
     @Mock
@@ -36,6 +39,8 @@ class RetryingWithdrawServiceRetryPolicyTest {
 
     private static final Long USER_ID = 1L;
     private static final Money AMOUNT = Money.of(100_000);
+    private static final Money FEE_AMOUNT = Money.of(2_000);
+    private static final Money NET_AMOUNT = Money.of(98_000);
 
     @BeforeEach
     void setUp() {
@@ -50,24 +55,30 @@ class RetryingWithdrawServiceRetryPolicyTest {
         retryTemplate = new RetryTemplate(retryPolicy);
     }
 
+    private Withdraw stubWithdraw() {
+        Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
+        ReflectionTestUtils.setField(withdraw, "id", 1L);
+        withdraw.complete();
+        return withdraw;
+    }
+
     @Test
     @DisplayName("락 경합으로 몇 번 실패하다가 성공하면, 그 시점까지 재시도하고 결과를 반환한다")
     void 경합후_성공하면_재시도끝에_결과를_반환한다() throws RetryException {
         // given: 2번은 경합 실패, 3번째에 성공
-        WithdrawRequestResult expected = new WithdrawRequestResult(
-                1L, WithdrawStatus.SUCCESS, java.math.BigDecimal.valueOf(2_000), java.math.BigDecimal.valueOf(98_000));
-        when(withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT))
+        Withdraw expected = stubWithdraw();
+        when(withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT))
                 .thenThrow(new WithdrawLockContentionException())
                 .thenThrow(new WithdrawLockContentionException())
                 .thenReturn(expected);
 
         // when
-        WithdrawRequestResult result = retryTemplate.execute(() ->
-                withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT));
+        Withdraw result = retryTemplate.execute(() ->
+                withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT));
 
         // then
         assertThat(result).isEqualTo(expected);
-        verify(withdrawApplicationService, times(3)).requestWithdraw(USER_ID, AMOUNT);
+        verify(withdrawApplicationService, times(3)).executeDeductionAndOutbox(USER_ID, AMOUNT);
     }
 
     @Test
@@ -75,7 +86,7 @@ class RetryingWithdrawServiceRetryPolicyTest {
     void maxRetries까지_계속_실패하면_RetryException으로_감싸_던진다() {
         // given
         WithdrawLockContentionException lastFailure = new WithdrawLockContentionException();
-        when(withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT))
+        when(withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT))
                 .thenThrow(new WithdrawLockContentionException())
                 .thenThrow(new WithdrawLockContentionException())
                 .thenThrow(new WithdrawLockContentionException())
@@ -85,11 +96,11 @@ class RetryingWithdrawServiceRetryPolicyTest {
 
         // when & then: maxRetries=5 → 총 6번(초기 1 + 재시도 5) 시도
         assertThatThrownBy(() -> retryTemplate.execute(() ->
-                withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT)))
+                withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT)))
                 .isInstanceOf(RetryException.class)
                 .cause().isSameAs(lastFailure);
 
-        verify(withdrawApplicationService, times(6)).requestWithdraw(USER_ID, AMOUNT);
+        verify(withdrawApplicationService, times(6)).executeDeductionAndOutbox(USER_ID, AMOUNT);
     }
 
     @Test
@@ -97,16 +108,16 @@ class RetryingWithdrawServiceRetryPolicyTest {
     void 경합이_아닌_예외는_재시도하지_않는다() {
         // given
         WithdrawException notRetryable = new WithdrawException(WithdrawErrorCode.INSUFFICIENT_BALANCE);
-        when(withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT)).thenThrow(notRetryable);
+        when(withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT)).thenThrow(notRetryable);
 
         // when & then
         assertThatThrownBy(() -> retryTemplate.execute(() ->
-                withdrawApplicationService.requestWithdraw(USER_ID, AMOUNT)))
+                withdrawApplicationService.executeDeductionAndOutbox(USER_ID, AMOUNT)))
                 .satisfiesAnyOf(
                         ex -> assertThat(ex).isSameAs(notRetryable),
                         ex -> assertThat(ex).isInstanceOf(RetryException.class).cause().isSameAs(notRetryable)
                 );
 
-        verify(withdrawApplicationService, times(1)).requestWithdraw(USER_ID, AMOUNT);
+        verify(withdrawApplicationService, times(1)).executeDeductionAndOutbox(USER_ID, AMOUNT);
     }
 }

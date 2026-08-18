@@ -2,6 +2,8 @@ package site.pointwalletservice.withdraw.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.math.BigDecimal;
@@ -15,18 +17,21 @@ import site.pointwalletservice.withdraw.exception.WithdrawErrorCode;
 import site.pointwalletservice.withdraw.exception.WithdrawException;
 import site.pointwalletservice.withdraw.exception.WithdrawLockContentionException;
 
-@DisplayName("WithdrawServiceFacade - 재시도 소진 시 예외 언래핑")
+@DisplayName("WithdrawServiceFacade")
 class WithdrawServiceFacadeTest {
 
     private final RetryingWithdrawService retryingWithdrawService = mock(RetryingWithdrawService.class);
-    private final WithdrawServiceFacade sut = new WithdrawServiceFacade(retryingWithdrawService);
+    private final WithdrawApplicationService withdrawApplicationService = mock(WithdrawApplicationService.class);
+    private final WithdrawServiceFacade sut =
+            new WithdrawServiceFacade(retryingWithdrawService, withdrawApplicationService);
 
     private static final Long USER_ID = 1L;
     private static final Money AMOUNT = Money.of(100_000);
 
     @Test
-    @DisplayName("성공하면 RetryingWithdrawService의 결과를 그대로 반환한다")
-    void 성공하면_결과를_그대로_반환한다() {
+    @DisplayName("계좌 검증을 먼저 1회 실행한 뒤 재시도 서비스로 위임한다 — " +
+            "재시도가 몇 번을 돌든 계좌 조회 API는 이 1회로 끝난다")
+    void 계좌검증_1회_후_재시도서비스로_위임한다() {
         // given
         WithdrawRequestResult expected = new WithdrawRequestResult(
                 1L, WithdrawStatus.SUCCESS, BigDecimal.valueOf(2_000), BigDecimal.valueOf(98_000));
@@ -37,6 +42,23 @@ class WithdrawServiceFacadeTest {
 
         // then
         assertThat(result).isEqualTo(expected);
+        verify(withdrawApplicationService).validateBankAccount(USER_ID);
+        verify(retryingWithdrawService).requestWithdraw(USER_ID, AMOUNT);
+    }
+
+    @Test
+    @DisplayName("계좌 검증에서 실패하면(계좌 없음) 재시도 서비스는 아예 호출되지 않는다")
+    void 계좌검증_실패시_재시도서비스_미호출() {
+        // given
+        WithdrawException bankAccountNotFound = new WithdrawException(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
+        org.mockito.Mockito.doThrow(bankAccountNotFound)
+                .when(withdrawApplicationService).validateBankAccount(USER_ID);
+
+        // when & then
+        assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT))
+                .isSameAs(bankAccountNotFound);
+
+        verify(retryingWithdrawService, never()).requestWithdraw(USER_ID, AMOUNT);
     }
 
     @Test
@@ -70,7 +92,7 @@ class WithdrawServiceFacadeTest {
     }
 
     @Test
-    @DisplayName("getStatus()는 재시도 없이 그대로 위임한다")
+    @DisplayName("getStatus()는 계좌 검증 없이 재시도 서비스로 그대로 위임한다")
     void getStatus는_그대로_위임한다() {
         // given
         Long withdrawRequestId = 1L;
@@ -79,6 +101,7 @@ class WithdrawServiceFacadeTest {
         sut.getStatus(withdrawRequestId);
 
         // then
-        org.mockito.Mockito.verify(retryingWithdrawService).getStatus(withdrawRequestId);
+        verify(retryingWithdrawService).getStatus(withdrawRequestId);
+        verify(withdrawApplicationService, never()).validateBankAccount(org.mockito.ArgumentMatchers.any());
     }
 }
