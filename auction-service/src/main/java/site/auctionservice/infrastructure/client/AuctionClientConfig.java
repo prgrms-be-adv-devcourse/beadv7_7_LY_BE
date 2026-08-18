@@ -1,5 +1,6 @@
 package site.auctionservice.infrastructure.client;
 
+import java.time.Duration;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -10,6 +11,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -18,8 +20,14 @@ import org.springframework.web.client.RestClient;
 public class AuctionClientConfig {
 
     @Bean
-    RestClient auctionProductRestClient(@Value("${product.service.base-url}") String baseUrl) {
-        return RestClient.builder().baseUrl(baseUrl).build();
+    RestClient auctionProductRestClient(
+            @Value("${product.service.base-url}") String baseUrl,
+            @Value("${product.service.connect-timeout-ms:500}") long connectTimeoutMs,
+            @Value("${product.service.read-timeout-ms:1000}") long readTimeoutMs) {
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(timeoutRequestFactory(connectTimeoutMs, readTimeoutMs))
+                .build();
     }
 
     @Bean
@@ -28,8 +36,21 @@ public class AuctionClientConfig {
     }
 
     @Bean
-    RestClient auctionMemberRestClient(@Value("${member.service.base-url}") String baseUrl) {
-        return RestClient.builder().baseUrl(baseUrl).build();
+    RestClient auctionMemberRestClient(
+            @Value("${member.service.base-url}") String baseUrl,
+            @Value("${member.service.connect-timeout-ms:300}") long connectTimeoutMs,
+            @Value("${member.service.read-timeout-ms:500}") long readTimeoutMs) {
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(timeoutRequestFactory(connectTimeoutMs, readTimeoutMs))
+                .build();
+    }
+
+    private SimpleClientHttpRequestFactory timeoutRequestFactory(long connectTimeoutMs, long readTimeoutMs) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
+        requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+        return requestFactory;
     }
 
     @Bean
