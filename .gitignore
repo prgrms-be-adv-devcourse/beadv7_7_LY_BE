@@ -214,6 +214,7 @@ CLAUDE.md
 .codex/
 .omx/
 .superpowers/
+/frontend
 
 # secret
 /secret

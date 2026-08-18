@@ -2,11 +2,10 @@ package site.productservice.application.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +19,7 @@ import site.productservice.domain.PressType;
 import site.productservice.domain.search.ProductSearchHit;
 import site.productservice.domain.search.ProductSearchPage;
 import site.productservice.domain.search.ProductSearchRepository;
+import site.productservice.domain.search.SearchKeyword;
 import site.productservice.exception.SearchKeywordRequiredException;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +33,11 @@ class ProductSearchServiceTest {
 
     private static final ProductSearchHit HIT =
             new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK");
+
+    /** 저장소 mock 매칭용 — 전체 정규화값이 기대와 같은 SearchKeyword인지 본다. */
+    private static SearchKeyword keywordOf(String expectedWhole) {
+        return argThat(keyword -> keyword != null && expectedWhole.equals(keyword.getWhole()));
+    }
 
     @Test
     @DisplayName("검색어가 없거나 공백이면 검색어 필수 예외를 던진다")
@@ -54,14 +59,26 @@ class ProductSearchServiceTest {
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isZero();
         assertThat(result.hasNext()).isFalse();
-        then(productSearchRepository).should(never()).searchActiveByKeyword(anyString(), anyInt(), anyInt());
+        then(productSearchRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("1글자 검색어는 저장소를 거치지 않고 빈 결과를 반환한다")
+    void searchProducts_한_글자면_빈_페이지() {
+        // given & when
+        ProductSearchResult result = productSearchService.searchProducts("a", 0, 20);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        then(productSearchRepository).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("검색어를 정규화해 저장소에 넘기고 결과를 조립한다")
     void searchProducts_정규화_후_조회() {
         // given
-        given(productSearchRepository.searchActiveByKeyword("비틀즈", 0, 20))
+        given(productSearchRepository.searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(20)))
                 .willReturn(new ProductSearchPage(List.of(HIT), 1L));
 
         // when
@@ -79,9 +96,9 @@ class ProductSearchServiceTest {
     @DisplayName("size는 1 미만이면 기본값 20, 100 초과면 100으로 보정한다")
     void searchProducts_size_보정() {
         // given
-        given(productSearchRepository.searchActiveByKeyword("비틀즈", 0, 20))
+        given(productSearchRepository.searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(20)))
                 .willReturn(new ProductSearchPage(List.of(), 0L));
-        given(productSearchRepository.searchActiveByKeyword("비틀즈", 0, 100))
+        given(productSearchRepository.searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(100)))
                 .willReturn(new ProductSearchPage(List.of(), 0L));
 
         // when
@@ -89,29 +106,29 @@ class ProductSearchServiceTest {
         productSearchService.searchProducts("비틀즈", 0, 101);
 
         // then
-        then(productSearchRepository).should().searchActiveByKeyword("비틀즈", 0, 20);
-        then(productSearchRepository).should().searchActiveByKeyword("비틀즈", 0, 100);
+        then(productSearchRepository).should().searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(20));
+        then(productSearchRepository).should().searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(100));
     }
 
     @Test
     @DisplayName("page가 음수면 0으로 보정한다")
     void searchProducts_page_보정() {
         // given
-        given(productSearchRepository.searchActiveByKeyword("비틀즈", 0, 20))
+        given(productSearchRepository.searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(20)))
                 .willReturn(new ProductSearchPage(List.of(), 0L));
 
         // when
         productSearchService.searchProducts("비틀즈", -3, 20);
 
         // then
-        then(productSearchRepository).should().searchActiveByKeyword("비틀즈", 0, 20);
+        then(productSearchRepository).should().searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(20));
     }
 
     @Test
     @DisplayName("다음 페이지가 있으면 hasNext가 true다 (계산은 long으로 — 큰 page 값도 안전)")
     void searchProducts_hasNext_계산() {
         // given — 전체 3건, 페이지당 2건, 0페이지
-        given(productSearchRepository.searchActiveByKeyword("비틀즈", 0, 2))
+        given(productSearchRepository.searchActiveByKeyword(keywordOf("비틀즈"), eq(0), eq(2)))
                 .willReturn(new ProductSearchPage(List.of(HIT, HIT), 3L));
 
         // when
