@@ -119,3 +119,8 @@ wallet:
     base-url: ${WALLET_SERVICE_BASE_URL}
     pool:
       max-connections: 10
+
+s3:
+  image:
+    bucket: ${S3_IMAGE_BUCKET}
+    public-url-prefix: ${S3_IMAGE_PUBLIC_URL_PREFIX}

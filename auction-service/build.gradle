@@ -25,6 +25,10 @@ dependencies {
     // resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot4:2.4.0'     // spring boot4
     implementation 'org.apache.httpcomponents.client5:httpclient5'
+
+    // AWS S3 (이미지 업로드 PresignedUrl 발급)
+    implementation platform('software.amazon.awssdk:bom:2.53.2')
+    implementation 'software.amazon.awssdk:s3'
 }
 
 tasks.named('jar') {
