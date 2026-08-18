@@ -1,7 +1,15 @@
 package site.auctionservice.infrastructure;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import site.auctionservice.application.dto.AuctionListQuery;
 import site.auctionservice.application.dto.AuctionSortType;
@@ -16,6 +24,7 @@ import site.auctionservice.exception.AuctionException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -54,40 +63,63 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 resolveSort(sortType));
         AuctionStatus status = query.status() == null ? null : AuctionStatus.from(query.status());
+
+        // CANCELED 경매는 서치 뷰에서 즉시 삭제되므로 조회 대상에 존재하지 않는다.
+        if (status == AuctionStatus.CANCELED) {
+            return new PageImpl<>(List.of(), sortedPageable, 0);
+        }
+
         LocalDateTime now = LocalDateTime.now();
+        Specification<AuctionSearchView> spec = (root, cq, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            addIfPresent(predicates, productIdEq(query.productId(), root, cb));
+            addIfPresent(predicates, genreEq(query.genre(), root, cb));
+            addIfPresent(predicates, pressTypeEq(query.pressType(), root, cb));
+            addIfPresent(predicates, statusEq(status, now, root, cb));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-        List<AuctionListSummary> content = findByStatus(query.productId(), query.genre(), query.pressType(), status,
-                now, sortedPageable);
-        long total = countByStatus(query.productId(), query.genre(), query.pressType(), status, now);
+        Page<AuctionSearchView> rows = searchViewJpaRepository.findAll(spec, sortedPageable);
 
-        return new PageImpl<>(content, sortedPageable, total);
+        return rows.map(v -> toSummary(v, status != null ? status : resolveStatus(v, now)));
     }
 
-    // status 컬럼 대신 startAt/endAt/bidCount로 상태별 결과를 나눠 조회한다.
-    // 상태 필터가 걸린 분기는 쿼리 자체가 이미 그 status만 골라온 것이므로 status를 그대로 넣어 매핑하고,
-    // 필터가 없는 전체 조회만 행별로 시간/bidCount를 보고 status를 계산한다.
-    // CANCELED는 애초에 삭제되는 행이라 조회 대상에서 항상 빈 결과를 반환한다.
-    private List<AuctionListSummary> findByStatus(Long productId, String genre, String pressType,
-                                                  AuctionStatus status,
-                                                  LocalDateTime now, Pageable pageable) {
+    private void addIfPresent(List<Predicate> predicates, Predicate predicate) {
+        if (predicate != null) {
+            predicates.add(predicate);
+        }
+    }
+
+    private Predicate productIdEq(Long productId, Root<AuctionSearchView> root, CriteriaBuilder cb) {
+        return productId == null ? null : cb.equal(root.get("productId"), productId);
+    }
+
+    private Predicate genreEq(String genre, Root<AuctionSearchView> root, CriteriaBuilder cb) {
+        return genre == null ? null : cb.equal(root.get("genre"), genre);
+    }
+
+    private Predicate pressTypeEq(String pressType, Root<AuctionSearchView> root, CriteriaBuilder cb) {
+        return pressType == null ? null : cb.equal(root.get("pressType"), pressType);
+    }
+
+    // status 컬럼이 없어 startAt/endAt/bidCount 조합으로 상태를 판별한다.
+    private Predicate statusEq(AuctionStatus status, LocalDateTime now, Root<AuctionSearchView> root,
+                               CriteriaBuilder cb) {
         if (status == null) {
-            return searchViewJpaRepository.searchAll(productId, genre, pressType, pageable).stream()
-                    .map(v -> toSummary(v, resolveStatus(v, now)))
-                    .toList();
+            return null;
         }
         return switch (status) {
-            case SCHEDULED ->
-                    searchViewJpaRepository.searchScheduled(productId, genre, pressType, now, pageable).stream()
-                            .map(v -> toSummary(v, AuctionStatus.SCHEDULED)).toList();
-            case RUNNING -> searchViewJpaRepository.searchRunning(productId, genre, pressType, now, pageable).stream()
-                    .map(v -> toSummary(v, AuctionStatus.RUNNING)).toList();
-            case ENDED_WON ->
-                    searchViewJpaRepository.searchEndedWon(productId, genre, pressType, now, pageable).stream()
-                            .map(v -> toSummary(v, AuctionStatus.ENDED_WON)).toList();
-            case ENDED_FAILED ->
-                    searchViewJpaRepository.searchEndedFailed(productId, genre, pressType, now, pageable).stream()
-                            .map(v -> toSummary(v, AuctionStatus.ENDED_FAILED)).toList();
-            case CANCELED -> List.of();
+            case SCHEDULED -> cb.greaterThan(root.get("startAt"), now);
+            case RUNNING -> cb.and(
+                    cb.lessThanOrEqualTo(root.get("startAt"), now),
+                    cb.greaterThan(root.get("endAt"), now));
+            case ENDED_WON -> cb.and(
+                    cb.lessThanOrEqualTo(root.get("endAt"), now),
+                    cb.greaterThan(root.get("bidCount"), 0));
+            case ENDED_FAILED -> cb.and(
+                    cb.lessThanOrEqualTo(root.get("endAt"), now),
+                    cb.equal(root.get("bidCount"), 0));
+            case CANCELED -> throw new IllegalStateException("CANCELED는 search()에서 이미 처리됨");
         };
     }
 
@@ -101,20 +133,6 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         return v.getBidCount() > 0 ? AuctionStatus.ENDED_WON : AuctionStatus.ENDED_FAILED;
     }
 
-    private long countByStatus(Long productId, String genre, String pressType, AuctionStatus status,
-                               LocalDateTime now) {
-        if (status == null) {
-            return searchViewJpaRepository.countSearchAll(productId, genre, pressType);
-        }
-        return switch (status) {
-            case SCHEDULED -> searchViewJpaRepository.countSearchScheduled(productId, genre, pressType, now);
-            case RUNNING -> searchViewJpaRepository.countSearchRunning(productId, genre, pressType, now);
-            case ENDED_WON -> searchViewJpaRepository.countSearchEndedWon(productId, genre, pressType, now);
-            case ENDED_FAILED -> searchViewJpaRepository.countSearchEndedFailed(productId, genre, pressType, now);
-            case CANCELED -> 0L;
-        };
-    }
-
     private AuctionListSummary toSummary(AuctionSearchView v, AuctionStatus status) {
         return new AuctionListSummary(v.getAuctionId(), v.getProductId(), v.getTitle(),
                 v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
@@ -123,12 +141,14 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     }
 
     private Sort resolveSort(AuctionSortType sortType) {
-        return switch (sortType) {
+        Sort primary = switch (sortType) {
             case PRICE_ASC -> Sort.by(Sort.Direction.ASC, "highestBidAmount");
             case PRICE_DESC -> Sort.by(Sort.Direction.DESC, "highestBidAmount");
             case MOST_BIDS -> Sort.by(Sort.Direction.DESC, "bidCount");
             case ENDING_SOON -> Sort.by(Sort.Direction.ASC, "endAt");   // 마감임박순 기본값
         };
+        // 정렬 기준 값이 동일할 때 페이지 경계에서 순서가 흔들리지 않도록 auctionId(auto increment)를 tie-breaker로 사용
+        return primary.and(Sort.by(Sort.Direction.ASC, "auctionId"));
     }
 
     @Override

@@ -107,9 +107,13 @@ management:
 member:
   service:
     base-url: ${MEMBER_SERVICE_BASE_URL}
+    connect-timeout-ms: 300
+    read-timeout-ms: 500
 product:
   service:
     base-url: ${PRODUCT_SERVICE_BASE_URL}
+    connect-timeout-ms: 500
+    read-timeout-ms: 1000
 wallet:
   service:
     base-url: ${WALLET_SERVICE_BASE_URL}

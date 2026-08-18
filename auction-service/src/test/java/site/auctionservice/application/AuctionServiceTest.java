@@ -386,6 +386,22 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("판매자 닉네임 조회에 실패해도 fallback 닉네임으로 대체하고 경매 상세 조회는 계속된다")
+    void testGetAuctionDetail_sellerNicknameLookupFails_fallsBackToUnknown() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willThrow(new RuntimeException("member-service down"));
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        assertThat(result.sellerNickname()).isEqualTo("알 수 없음");
+    }
+
+    @Test
     @DisplayName("RUNNING 상태여도 시작 시각 전이면 ScheduledDetail로 노출된다 (시작 스케줄러가 미리 상태를 바꿔둔 구간)")
     void testGetAuctionDetail_runningStatus_beforeStartTime_returnsScheduledDetail() {
         // given
@@ -510,6 +526,27 @@ class AuctionServiceTest {
         AuctionStatusDetail.EndedWonDetail endedWon = (AuctionStatusDetail.EndedWonDetail) result.detail();
         assertThat(endedWon.bidDetail().amount()).isEqualByComparingTo(BigDecimal.valueOf(15_000));
         assertThat(endedWon.bidDetail().bidderNickname()).isEqualTo("winner_3");
+    }
+
+    @Test
+    @DisplayName("낙찰자 닉네임 조회에 실패해도 fallback 닉네임으로 대체하고 경매 상세 조회는 계속된다")
+    void testGetAuctionDetail_endedWonStatus_winnerNicknameLookupFails_fallsBackToUnknown() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 3L, 20L);
+        Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END, highestBid);
+        Bid winningBid = Bid.place(1L, 3L, Money.of(15_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(productPort.getProductDetail(100L)).willReturn(productDetail);
+        given(memberPort.getNickname(1L)).willReturn("vinyl_king");
+        given(memberPort.getNickname(3L)).willThrow(new RuntimeException("member-service down"));
+        given(bidRepository.findById(20L)).willReturn(Optional.of(winningBid));
+
+        // when
+        AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
+
+        // then
+        AuctionStatusDetail.EndedWonDetail endedWon = (AuctionStatusDetail.EndedWonDetail) result.detail();
+        assertThat(endedWon.bidDetail().bidderNickname()).isEqualTo("알 수 없음");
     }
 
     @Test

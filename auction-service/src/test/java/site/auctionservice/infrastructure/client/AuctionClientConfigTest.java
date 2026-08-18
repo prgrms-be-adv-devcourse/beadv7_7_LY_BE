@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +57,25 @@ class AuctionClientConfigTest {
             assertThat(productRestClient).isNotSameAs(memberRestClient);
             assertThat(walletRestClient).isNotSameAs(memberRestClient);
         });
+    }
+
+    @Test
+    @DisplayName("member/product RestClient은 무한 대기를 막는 connect/read timeout을 갖는다 - fallback이 없는 product보다 fallback이 있는 member를 더 짧게 잡는다")
+    void memberAndProductRestClientsHaveTimeoutsConfigured() {
+        contextRunner.run(context -> {
+            RestClient productRestClient = context.getBean("auctionProductRestClient", RestClient.class);
+            RestClient memberRestClient = context.getBean("auctionMemberRestClient", RestClient.class);
+
+            assertTimeout(productRestClient, 500, 1000);
+            assertTimeout(memberRestClient, 300, 500);
+        });
+    }
+
+    private void assertTimeout(RestClient restClient, int expectedConnectTimeoutMs, int expectedReadTimeoutMs) {
+        Object requestFactory = ReflectionTestUtils.getField(restClient, "clientRequestFactory");
+        assertThat(requestFactory).isInstanceOf(SimpleClientHttpRequestFactory.class);
+        assertThat((int) ReflectionTestUtils.getField(requestFactory, "connectTimeout")).isEqualTo(expectedConnectTimeoutMs);
+        assertThat((int) ReflectionTestUtils.getField(requestFactory, "readTimeout")).isEqualTo(expectedReadTimeoutMs);
     }
 
     private RestClient getInjectedRestClient(Object client, String fieldName) {

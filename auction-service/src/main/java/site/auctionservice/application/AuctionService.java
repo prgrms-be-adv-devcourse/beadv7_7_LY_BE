@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 public class AuctionService {
 
     private static final int RECENT_BID_LIMIT = 5;
+    private static final String UNKNOWN_NICKNAME = "알 수 없음";
 
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
@@ -102,7 +103,7 @@ public class AuctionService {
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
 
         ProductDetail product = productPort.getProductDetail(auction.getProductId());
-        String sellerNickname = memberPort.getNickname(auction.getSellerId());
+        String sellerNickname = getNicknameOrFallback(auction.getSellerId());
         LocalDateTime now = LocalDateTime.now();
 
         AuctionStatusDetail auctionStatusDetail = auction.isEffectiveClosingAt(now)
@@ -122,19 +123,34 @@ public class AuctionService {
         List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(),
             RECENT_BID_LIMIT);
         HighestBid highestBid = auction.getHighestBid();
+        // 같은 입찰자가 recentBids 안에 여러 번 등장할 수 있어(outbid 후 재입찰), 중복 없이 한 번씩만 조회한다.
+        Map<Long, String> nicknamesByBidderId = recentBids.stream()
+            .map(Bid::getBidderId)
+            .distinct()
+            .collect(Collectors.toMap(bidderId -> bidderId, this::getNicknameOrFallback));
         return new AuctionStatusDetail.RunningDetail(
             highestBid == null ? null : highestBid.getAmount().getValue(),
             auction.getPricing().nextMinBidAmount(highestBid).getValue(),
             bidRepository.countByAuctionId(auction.getId()), recentBids.stream()
-            .map(bid -> BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())))
+            .map(bid -> BidDetailResult.of(bid, nicknamesByBidderId.get(bid.getBidderId())))
             .toList(), auction.isHighestBidder(viewerId));
+    }
+
+    // 닉네임은 경매 상세의 부가 표시 정보라, 조회 실패가 경매 상세 조회 전체를 막지 않도록 fallback 처리한다.
+    private String getNicknameOrFallback(Long memberId) {
+        try {
+            return memberPort.getNickname(memberId);
+        } catch (RuntimeException e) {
+            log.warn("닉네임 조회 실패 - fallback 처리: memberId={}", memberId, e);
+            return UNKNOWN_NICKNAME;
+        }
     }
 
     private AuctionStatusDetail.EndedWonDetail getEndedWonDetail(Long bidId) {
         Bid bid = bidRepository.findById(bidId)
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.BID_NOT_FOUND));
         return new AuctionStatusDetail.EndedWonDetail(
-            BidDetailResult.of(bid, memberPort.getNickname(bid.getBidderId())));
+            BidDetailResult.of(bid, getNicknameOrFallback(bid.getBidderId())));
     }
 
 
@@ -147,9 +163,7 @@ public class AuctionService {
         List<Long> auctionIds = latestBids.getContent().stream().map(Bid::getAuctionId).toList();
         Map<Long, Auction> auctionsById = auctionRepository.findAllByIds(auctionIds).stream()
             .collect(Collectors.toMap(Auction::getId, a -> a));
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
-                auctionIds).stream()
-            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, AuctionProductSummary> summaryById = summariesByAuctionId(auctionIds);
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<ParticipatedAuctionResult> items = latestBids.getContent().stream()
@@ -176,10 +190,7 @@ public class AuctionService {
         List<Long> auctionIds = auctions.getContent().stream().map(Auction::getId).toList();
         // highestBidAmount/bidCount는 Auction/Bid 원본에서 — SearchView 동기화 리스크를 안 탄다
         Map<Long, Long> bidCounts = bidRepository.countGroupedByAuctionIds(auctionIds);
-        // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
-        Map<Long, AuctionProductSummary> summaryById = searchViewRepository.findAllSummaryByIds(
-                auctionIds).stream()
-            .collect(Collectors.toMap(AuctionProductSummary::auctionId, d -> d));
+        Map<Long, AuctionProductSummary> summaryById = summariesByAuctionId(auctionIds);
 
         // 취소된 경매는 조회 결과에서 제외한다
         List<HostedAuctionResult> items = auctions.getContent().stream()
@@ -194,6 +205,12 @@ public class AuctionService {
             .toList();
 
         return PageResult.of(auctions, items);
+    }
+
+    // SearchView는 상품 표시정보(title/artistName)만 가져오는 용도 — ProductDisplaySummary(application 타입, 참여이력 PR에서 정의)로 받는다
+    private Map<Long, AuctionProductSummary> summariesByAuctionId(List<Long> auctionIds) {
+        return searchViewRepository.findAllSummaryByIds(auctionIds).stream()
+            .collect(Collectors.toMap(AuctionProductSummary::auctionId, s -> s));
     }
 
     @Transactional(readOnly = true)
