@@ -28,8 +28,14 @@ class PointTransactionRepositoryImplTest {
 
     // occurredAt은 updatable=false라 저장 후엔 못 바꾸지만, 최초 save(=insert) 전에 필드를 세팅해두면
     // 그대로 반영된다 — 시간 관련 테스트를 결정론적으로 만들기 위한 용도.
-    private PointTransaction saveTransaction(Long walletId, PointTransactionType type, long amount, LocalDateTime occurredAt) {
-        PointTransaction transaction = PointTransaction.record(walletId, type, Money.of(amount), Money.of(amount), 1L);
+    //
+    // relatedId는 이 테스트들의 검증 대상(walletId/type/기간/페이징 필터링)과 무관하지만,
+    // point_transaction(related_id, type) 유니크 제약 때문에 같은 type으로 여러 건 저장할 때는
+    // 서로 다른 값을 넘겨야 한다 — 실제 운영에서도 같은 relatedId+type 조합은 한 번만 존재하므로,
+    // 호출부가 매번 구분되는 값을 넘기는 게 더 현실적인 픽스처이기도 하다.
+    private PointTransaction saveTransaction(Long walletId, PointTransactionType type, long amount,
+                                             LocalDateTime occurredAt, Long relatedId) {
+        PointTransaction transaction = PointTransaction.record(walletId, type, Money.of(amount), Money.of(amount), relatedId);
         ReflectionTestUtils.setField(transaction, "occurredAt", occurredAt);
         return pointTransactionJpaRepository.save(transaction);
     }
@@ -39,9 +45,9 @@ class PointTransactionRepositoryImplTest {
     void search_walletId만() {
         // given
         LocalDateTime now = LocalDateTime.now();
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now.minusMinutes(1));
-        saveTransaction(WALLET_ID, PointTransactionType.HOLD, 3_000, now);
-        saveTransaction(999L, PointTransactionType.DEPOSIT, 5_000, now); // 다른 지갑 - 제외돼야 함
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now.minusMinutes(1), 1L);
+        saveTransaction(WALLET_ID, PointTransactionType.HOLD, 3_000, now, 2L);
+        saveTransaction(999L, PointTransactionType.DEPOSIT, 5_000, now, 3L); // 다른 지갑 - 제외돼야 함
 
         // when
         PointTransactionSearchPage result = pointTransactionRepository.search(WALLET_ID, null, null, null, 0, 20);
@@ -57,8 +63,8 @@ class PointTransactionRepositoryImplTest {
     void search_type_필터() {
         // given
         LocalDateTime now = LocalDateTime.now();
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now);
-        saveTransaction(WALLET_ID, PointTransactionType.HOLD, 3_000, now);
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now, 1L);
+        saveTransaction(WALLET_ID, PointTransactionType.HOLD, 3_000, now, 2L);
 
         // when
         PointTransactionSearchPage result =
@@ -74,7 +80,7 @@ class PointTransactionRepositoryImplTest {
     void search_기간_필터() {
         // given
         LocalDateTime now = LocalDateTime.now();
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now);
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 10_000, now, 1L);
         LocalDateTime past = now.minusDays(1);
         LocalDateTime future = now.plusDays(1);
 
@@ -92,9 +98,9 @@ class PointTransactionRepositoryImplTest {
     void search_페이징() {
         // given
         LocalDateTime now = LocalDateTime.now();
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 1_000, now.minusMinutes(2));
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 2_000, now.minusMinutes(1));
-        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 3_000, now);
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 1_000, now.minusMinutes(2), 1L);
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 2_000, now.minusMinutes(1), 2L);
+        saveTransaction(WALLET_ID, PointTransactionType.DEPOSIT, 3_000, now, 3L);
 
         // when
         PointTransactionSearchPage firstPage = pointTransactionRepository.search(WALLET_ID, null, null, null, 0, 2);
