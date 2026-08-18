@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -161,6 +162,117 @@ class CommissionPolicyServiceTest {
                     .extracting(e -> ((SettlementException) e).getErrorCode())
                     .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
             verify(commissionPolicyRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteCommissionPolicy")
+    class DeleteCommissionPolicy {
+
+        @Test
+        @DisplayName("predecessor가 있으면 reopen하고 대상을 삭제한다")
+        void deletesTargetAndReopensPredecessor() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().plusDays(1);
+            CommissionPolicy target = CommissionPolicy.of(BigDecimal.valueOf(0.1000), effectiveFrom, null);
+            CommissionPolicy predecessor = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(10), effectiveFrom);
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.of(target));
+            given(commissionPolicyRepository.findByEffectiveTo(effectiveFrom)).willReturn(Optional.of(predecessor));
+            given(commissionPolicyRepository.saveAndFlush(predecessor)).willReturn(predecessor);
+
+            // when
+            commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID);
+
+            // then
+            assertThat(predecessor.getEffectiveTo()).isNull();
+            verify(commissionPolicyRepository).deleteAndFlush(target);
+        }
+
+        @Test
+        @DisplayName("predecessor가 없으면 대상만 삭제한다")
+        void deletesTargetWithoutPredecessor() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().plusDays(1);
+            CommissionPolicy target = CommissionPolicy.of(BigDecimal.valueOf(0.1000), effectiveFrom, null);
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.of(target));
+            given(commissionPolicyRepository.findByEffectiveTo(effectiveFrom)).willReturn(Optional.empty());
+
+            // when
+            commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID);
+
+            // then
+            verify(commissionPolicyRepository, never()).saveAndFlush(any());
+            verify(commissionPolicyRepository).deleteAndFlush(target);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 id면 예외를 던진다")
+        void rejectsWhenNotFound() {
+            // given
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID))
+                    .isInstanceOf(SettlementException.class)
+                    .extracting(e -> ((SettlementException) e).getErrorCode())
+                    .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_NOT_FOUND);
+            verify(commissionPolicyRepository, never()).deleteAndFlush(any());
+        }
+
+        @Test
+        @DisplayName("적용 중이거나 과거인 정책은 삭제를 거부한다")
+        void rejectsWhenNotPending() {
+            // given
+            CommissionPolicy activePolicy = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.of(activePolicy));
+
+            // when & then
+            assertThatThrownBy(() -> commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID))
+                    .isInstanceOf(SettlementException.class)
+                    .extracting(e -> ((SettlementException) e).getErrorCode())
+                    .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_NOT_DELETABLE);
+            verify(commissionPolicyRepository, never()).deleteAndFlush(any());
+        }
+
+        @Test
+        @DisplayName("predecessor 저장 중 낙관적 락 충돌이 나면 정책 충돌 예외로 변환한다")
+        void translatesOptimisticLockConflictToConflictException() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().plusDays(1);
+            CommissionPolicy target = CommissionPolicy.of(BigDecimal.valueOf(0.1000), effectiveFrom, null);
+            CommissionPolicy predecessor = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(10), effectiveFrom);
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.of(target));
+            given(commissionPolicyRepository.findByEffectiveTo(effectiveFrom)).willReturn(Optional.of(predecessor));
+            given(commissionPolicyRepository.saveAndFlush(predecessor))
+                    .willThrow(new ObjectOptimisticLockingFailureException(CommissionPolicy.class, 2L));
+
+            // when & then
+            assertThatThrownBy(() -> commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID))
+                    .isInstanceOf(SettlementException.class)
+                    .extracting(e -> ((SettlementException) e).getErrorCode())
+                    .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
+            verify(commissionPolicyRepository, never()).deleteAndFlush(any());
+        }
+
+        @Test
+        @DisplayName("target 삭제 중 낙관적 락 충돌이 나면 정책 충돌 예외로 변환한다")
+        void translatesTargetDeleteOptimisticLockConflictToConflictException() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().plusDays(1);
+            CommissionPolicy target = CommissionPolicy.of(BigDecimal.valueOf(0.1000), effectiveFrom, null);
+            given(commissionPolicyRepository.findById(1L)).willReturn(Optional.of(target));
+            given(commissionPolicyRepository.findByEffectiveTo(effectiveFrom)).willReturn(Optional.empty());
+            willThrow(new ObjectOptimisticLockingFailureException(CommissionPolicy.class, 1L))
+                    .given(commissionPolicyRepository).deleteAndFlush(target);
+
+            // when & then
+            assertThatThrownBy(() -> commissionPolicyService.deleteCommissionPolicy(1L, ADMIN_ID))
+                    .isInstanceOf(SettlementException.class)
+                    .extracting(e -> ((SettlementException) e).getErrorCode())
+                    .isEqualTo(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
         }
     }
 }

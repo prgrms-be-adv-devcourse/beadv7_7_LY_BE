@@ -19,6 +19,8 @@ public enum SettlementErrorCode implements ErrorCode {
     COMMISSION_POLICY_CONFLICT(HttpStatus.CONFLICT, "SERR-7007", "다른 관리자가 먼저 처리한 정책입니다."),
     PENDING_COMMISSION_POLICY_ALREADY_EXISTS(HttpStatus.CONFLICT, "SERR-7008", "이미 등록 대기 중인 정책이 있습니다."),
     INVALID_COMMISSION_POLICY_EFFECTIVE_FROM_DATE(HttpStatus.BAD_REQUEST, "SERR-7009", "effectiveFromDate는 오늘 이후 날짜여야 합니다."),
+    COMMISSION_POLICY_NOT_DELETABLE(HttpStatus.CONFLICT, "SERR-7010", "적용 중이거나 과거인 정책은 삭제할 수 없습니다."),
+    COMMISSION_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "SERR-7011", "수수료 정책을 찾을 수 없습니다."),
     ;
 
     private final HttpStatus status;

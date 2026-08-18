@@ -1,5 +1,6 @@
 package site.fulfillmentservice.settlement.domain;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface CommissionPolicyRepository {
@@ -11,4 +12,8 @@ public interface CommissionPolicyRepository {
     Optional<CommissionPolicy> findById(Long id);
 
     Optional<CommissionPolicy> findByEffectiveToIsNull();
+
+    Optional<CommissionPolicy> findByEffectiveTo(LocalDateTime effectiveTo);
+
+    void deleteAndFlush(CommissionPolicy commissionPolicy);
 }

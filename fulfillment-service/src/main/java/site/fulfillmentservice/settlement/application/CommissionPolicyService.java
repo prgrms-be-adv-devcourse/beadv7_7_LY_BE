@@ -43,6 +43,36 @@ public class CommissionPolicyService {
         return CommissionPolicyResult.from(newPolicy);
     }
 
+    public void deleteCommissionPolicy(Long id, Long adminId) {
+        CommissionPolicy target = commissionPolicyRepository.findById(id)
+                .orElseThrow(() -> new SettlementException(SettlementErrorCode.COMMISSION_POLICY_NOT_FOUND));
+
+        if (!target.isPending(LocalDateTime.now())) {
+            throw new SettlementException(SettlementErrorCode.COMMISSION_POLICY_NOT_DELETABLE);
+        }
+
+        commissionPolicyRepository.findByEffectiveTo(target.getEffectiveFrom())
+                .ifPresent(this::reopenPredecessor);
+
+        try {
+            commissionPolicyRepository.deleteAndFlush(target);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new SettlementException(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
+        }
+
+        log.info("수수료 정책 삭제: adminId={}, commissionPolicyId={}, commissionRate={}, effectiveFrom={}",
+                adminId, target.getId(), target.getCommissionRate(), target.getEffectiveFrom());
+    }
+
+    private void reopenPredecessor(CommissionPolicy predecessor) {
+        predecessor.reopen();
+        try {
+            commissionPolicyRepository.saveAndFlush(predecessor);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new SettlementException(SettlementErrorCode.COMMISSION_POLICY_CONFLICT);
+        }
+    }
+
     private void closePredecessor(CommissionPolicy predecessor, LocalDateTime effectiveFrom) {
         predecessor.close(effectiveFrom);
         try {

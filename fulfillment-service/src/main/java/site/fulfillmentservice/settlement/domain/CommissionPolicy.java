@@ -82,4 +82,8 @@ public class CommissionPolicy extends BaseEntity {
         }
         this.effectiveTo = effectiveTo;
     }
+
+    public void reopen() {
+        this.effectiveTo = null;
+    }
 }

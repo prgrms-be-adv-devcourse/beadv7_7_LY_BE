@@ -71,4 +71,26 @@ class CommissionPolicyRepositoryImplTest {
         assertThatThrownBy(() -> commissionPolicyRepository.saveAndFlush(second))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
+
+    @Test
+    void reopen_낙관적_락_충돌시_예외를_던진다() {
+        CommissionPolicy saved = commissionPolicyJpaRepository.saveAndFlush(
+                CommissionPolicy.of(BigDecimal.valueOf(0.0500),
+                        LocalDateTime.now().minusDays(10), LocalDateTime.now().plusDays(1)));
+        entityManager.clear();
+
+        CommissionPolicy first = commissionPolicyRepository.findById(saved.getId()).orElseThrow();
+        entityManager.clear();
+
+        CommissionPolicy second = commissionPolicyRepository.findById(saved.getId()).orElseThrow();
+        entityManager.clear();
+
+        first.reopen();
+        commissionPolicyRepository.saveAndFlush(first);
+        entityManager.clear();
+
+        second.reopen();
+        assertThatThrownBy(() -> commissionPolicyRepository.saveAndFlush(second))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+    }
 }
