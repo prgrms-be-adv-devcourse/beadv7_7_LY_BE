@@ -16,6 +16,7 @@ public enum MemberErrorCode implements ErrorCode {
     MEMBER_NOT_FOUND(NOT_FOUND, "MERR-0002", "회원 정보가 존재하지 않습니다."),
     MEMBER_BANK_ACCOUNT_NOT_FOUND(NOT_FOUND, "MERR-0003", "회원 은행 계좌 정보가 존재하지 않습니다."),
     INVALID_RESTRICTION_REQUEST(BAD_REQUEST, "MERR-0004", "유효하지 않은 제제 요청입니다."),
+    INVALID_VIOLATION_HISTORY_REQUEST(BAD_REQUEST, "MERR-0005", "유효하지 않은 위반 이력 요청입니다."),
     ;
 
     private final HttpStatus status;
