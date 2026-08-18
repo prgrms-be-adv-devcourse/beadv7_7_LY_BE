@@ -1,6 +1,4 @@
-// wallet/application/WithdrawFeeEarnedEventHandler.java
 package site.pointwalletservice.wallet.application;
-import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,6 +19,14 @@ import site.pointwalletservice.withdraw.domain.event.WithdrawFeeEarnedEvent;
  * <p>
  * Kafka는 at-least-once라 같은 이벤트가 중복 전달될 수 있다 - withdrawId+FEE_INCOME 조합의
  * PointTransaction이 이미 있으면 중복 적립을 막기 위해 건너뛴다.
+ * <p>
+ * 주의: 아래 existsByRelatedIdAndType 체크는 check-then-act라 두 스레드가 동시에 같은 이벤트를
+ * 처리하면(예: 파티션 설정이 예상과 다르거나 리밸런싱 순간 등) 이 체크만으로는 중복 적립을 완전히
+ * 막지 못한다. 실제 안전망은 point_transaction(related_id, type) 유니크 제약이다 - record()가
+ * 그 제약을 위반하면 DataIntegrityViolationException이 터지고, 이 메서드가 @Transactional이라
+ * 방금 이 트랜잭션에서 한 charge()까지 통째로 롤백된다. 그 예외를 "중복 전달"로 해석해서 정상
+ * 종료시키는 건 이 클래스가 아니라 호출부(WithdrawFeeEarnedEventListener)의 책임이다 - 트랜잭션
+ * 프록시 바깥에서 잡아야 롤백된 상태를 조용히 넘길 수 있기 때문이다.
  */
 @Slf4j
 @Component
