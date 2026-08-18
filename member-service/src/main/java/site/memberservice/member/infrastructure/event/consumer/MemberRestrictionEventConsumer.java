@@ -4,12 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import site.common.event.contract.MemberBidRestrictedEvent;
+import site.common.event.contract.OrderCancelledEvent;
 import site.memberservice.member.application.MemberService;
-import site.memberservice.member.application.dto.RestrictMemberCommand;
-import site.memberservice.member.domain.RestrictionType;
-
-import java.time.LocalDateTime;
+import site.memberservice.member.application.dto.RecordWinningBidOrderCancellationCommand;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -19,22 +16,21 @@ public class MemberRestrictionEventConsumer {
     private final MemberService memberService;
 
     @KafkaListener(
-        topics = "#{T(site.common.event.contract.EventType).MEMBER_BID_RESTRICTED_EVENT.getValue()}",
+        topics = "#{T(site.common.event.contract.EventType).ORDER_CANCELLED_EVENT.getValue()}",
         groupId = "member-service"
     )
-    public void consumeMemberBidRestrictedEvent(final MemberBidRestrictedEvent event) {
+    public void consumeWinningBidOrderCanceledEvent(final OrderCancelledEvent event) {
         try {
-            final RestrictMemberCommand restrictMemberCommand = new RestrictMemberCommand(
-                event.getMemberId(),
-                RestrictionType.AUCTION_BIDDING,
-                "최근 30일간 낙찰 상품 주문 취소 3회 이상 누적",
-                LocalDateTime.now(),
-                LocalDateTime.now().plusDays(7)
+            final RecordWinningBidOrderCancellationCommand recordWinningBidOrderCancellationCommand = new RecordWinningBidOrderCancellationCommand(
+                event.getBuyerId(),
+                event.getOrderId(),
+                event.getAuctionId(),
+                event.getOccurredAt()
             );
 
-            memberService.restrictMember(restrictMemberCommand);
+            memberService.recordWinningBidOrderCancellation(recordWinningBidOrderCancellationCommand);
         } catch (final Exception e) {
-            log.warn("회원 입찰 제재 로직에 문제가 발생하였습니다.", e);
+            log.warn("낙찰된 주문 취소 이벤트 처리 과정에 문제가 발생하였습니다.", e);
         }
     }
 }
