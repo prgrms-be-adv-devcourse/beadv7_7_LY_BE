@@ -15,7 +15,13 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Component;
 import site.explorationservice.productindex.domain.ProductDocument;
 
-//테스트용
+/**
+ * 색인된 상품의 벡터를 되읽는다. {@link ProductDocumentRepositoryImpl}이 쓰는 부품이라 애플리케이션 계층에는 보이지 않는다.
+ * <p>
+ * <b>Spring Data Elasticsearch로는 이걸 할 수 없어서 저수준 클라이언트를 쓴다.</b> ES 9는 dense_vector를
+ * _source에서 제외하므로 문서를 조회해도 벡터 필드는 null로 온다. 값을 받으려면 검색의 fields 파라미터로 명시해야 하는데, NativeQuery에는
+ * fields를 지정할 통로가 없고 SearchHit도 그 응답을 노출하지 않는다.
+ */
 @Component
 @RequiredArgsConstructor
 public class ProductVectorReader {

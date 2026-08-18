@@ -1,6 +1,10 @@
 server:
   port: 8087
 
+exploration:
+  wishlist:
+    base-url: http://localhost:8084
+
 spring:
   elasticsearch:
     uris: http://localhost:9200

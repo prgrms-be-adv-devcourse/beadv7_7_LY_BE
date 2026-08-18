@@ -135,6 +135,18 @@ spring:
               filters:
                 - JwtAuthenticationFilter
 
+            # exploration (search·recommendation)
+            - id: exploration-service-actuator
+              uri: ${EXPLORATION_SERVICE_URI}
+              predicates:
+                - Path=/exploration-service/actuator/**
+            - id: exploration-service-recommendations
+              uri: ${EXPLORATION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/recommendations, /api/v*/recommendations/**
+              filters:
+                - JwtAuthenticationFilter
+
 app:
   jwt:
     access-token-secret-key: ${ACCESS_TOKEN_SECRET_KEY}

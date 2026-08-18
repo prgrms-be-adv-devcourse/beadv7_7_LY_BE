@@ -39,9 +39,13 @@ spring:
         model: text-embedding-3-large
         dimensions: 1024
 
+exploration:
+  wishlist:
+    base-url: ${PRODUCT_SERVICE_BASE_URL}
+
 management:
   endpoints:
     web:
       exposure:
         include: prometheus, health
-      base-path: /api/actuator
+      base-path: /exploration-service/actuator
