@@ -24,4 +24,9 @@ public class MemberViolationHistoryRepositoryImpl implements MemberViolationHist
     public long countByMemberAndViolationTypeSince(final Member member, final ViolationType violationType, final LocalDateTime since) {
         return memberViolationHistoryJpaRepository.countByMemberAndViolationTypeAndOccurredAtAfter(member, violationType, since);
     }
+
+    @Override
+    public boolean hasWinningBidOrderCancellationRecord(final Member member, final ViolationType violationType, final Long orderId) {
+        return memberViolationHistoryJpaRepository.countByMemberIdAndViolationTypeAndOrderId(member.getId(), violationType.toString(), orderId) >= 1;
+    }
 }

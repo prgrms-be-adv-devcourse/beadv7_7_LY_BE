@@ -19,7 +19,6 @@ import site.memberservice.member.domain.MemberRestriction;
 import site.memberservice.member.domain.MemberViolationHistory;
 import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.RestrictionType;
-import site.memberservice.member.domain.ViolationType;
 import site.memberservice.member.domain.repository.BankAccountRepository;
 import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.domain.repository.MemberRestrictionRepository;
@@ -36,7 +35,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static site.memberservice.member.domain.ViolationType.WINNING_BID_ORDER_CANCELED;
 import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER_INFO;
+import static site.memberservice.member.exception.MemberErrorCode.INVALID_VIOLATION_HISTORY_REQUEST;
 import static site.memberservice.member.exception.MemberErrorCode.MEMBER_BANK_ACCOUNT_NOT_FOUND;
 import static site.memberservice.member.exception.MemberErrorCode.MEMBER_NOT_FOUND;
 
@@ -162,9 +163,13 @@ public class MemberService {
         final Member member = getMember(command.memberId());
         final LocalDateTime since = command.occurredAt().minusDays(VIOLATION_HISTORY_LOOKBACK_DAYS);
 
+        if (memberViolationHistoryRepository.hasWinningBidOrderCancellationRecord(member, WINNING_BID_ORDER_CANCELED, command.orderId())) {
+            throw new MemberException(INVALID_VIOLATION_HISTORY_REQUEST, String.format("이미 해당 주문에 대한 취소 행위 기록 요청이 들어왔습니다. input: %d", command.orderId()));
+        }
+
         final long recentViolationCount = memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
             member,
-            ViolationType.WINNING_BID_ORDER_CANCELED,
+            WINNING_BID_ORDER_CANCELED,
             since
         );
 
@@ -181,7 +186,7 @@ public class MemberService {
         }
 
         final MemberViolationHistory memberViolationHistory = MemberViolationHistory.create(
-            ViolationType.WINNING_BID_ORDER_CANCELED,
+            WINNING_BID_ORDER_CANCELED,
             command.occurredAt(),
             Map.of("orderId", command.orderId(), "auctionId", command.auctionId()),
             member

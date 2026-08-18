@@ -11,4 +11,6 @@ public interface MemberViolationHistoryRepository {
     MemberViolationHistory save(MemberViolationHistory memberViolationHistory);
 
     long countByMemberAndViolationTypeSince(Member member, ViolationType violationType, LocalDateTime since);
+
+    boolean hasWinningBidOrderCancellationRecord(Member member, ViolationType violationType, Long orderId);
 }
