@@ -12,24 +12,30 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
+import org.mockito.ArgumentCaptor;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRegisterCommand;
 import site.memberservice.member.application.dto.MemberRestrictionDto;
+import site.memberservice.member.application.dto.RecordWinningBidOrderCancellationCommand;
 import site.memberservice.member.application.dto.RestrictMemberCommand;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.BankAccount;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.MemberRestriction;
+import site.memberservice.member.domain.MemberViolationHistory;
 import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.RestrictionType;
+import site.memberservice.member.domain.ViolationType;
 import site.memberservice.member.domain.repository.BankAccountRepository;
 import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.domain.repository.MemberRestrictionRepository;
+import site.memberservice.member.domain.repository.MemberViolationHistoryRepository;
 import site.memberservice.member.exception.MemberException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static java.lang.String.format;
@@ -38,6 +44,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +57,7 @@ class MemberServiceTest {
     private MemberRepository memberRepository;
     private BankAccountRepository bankAccountRepository;
     private MemberRestrictionRepository memberRestrictionRepository;
+    private MemberViolationHistoryRepository memberViolationHistoryRepository;
     private MemberService memberService;
 
     @BeforeEach
@@ -58,8 +66,15 @@ class MemberServiceTest {
         this.memberRepository = Mockito.mock(MemberRepository.class);
         this.bankAccountRepository = Mockito.mock(BankAccountRepository.class);
         this.memberRestrictionRepository = Mockito.mock(MemberRestrictionRepository.class);
+        this.memberViolationHistoryRepository = Mockito.mock(MemberViolationHistoryRepository.class);
 
-        memberService = new MemberService(passwordEncoder, memberRepository, bankAccountRepository, memberRestrictionRepository);
+        memberService = new MemberService(
+            passwordEncoder,
+            memberRepository,
+            bankAccountRepository,
+            memberRestrictionRepository,
+            memberViolationHistoryRepository
+        );
     }
 
     @Disabled("Mock 기반 테스트로 전환 예정 - #229")
@@ -454,6 +469,128 @@ class MemberServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> memberService.getMemberRestrictions(notFoundMemberId))
+            .isInstanceOf(MemberException.class)
+            .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
+    }
+
+    @DisplayName("낙찰 상품 주문 취소 시 최근 30일 이내 이력이 2회 미만이면 위반 이력만 저장하고 회원을 제재하지 않는다.")
+    @Test
+    void recordWinningBidOrderCancellationWithoutRestriction() {
+        // Given
+        final Member member = new Member(
+            1L,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+        final RecordWinningBidOrderCancellationCommand command = new RecordWinningBidOrderCancellationCommand(
+            member.getId(),
+            10L,
+            20L,
+            LocalDateTime.of(2026, 8, 13, 0, 0)
+        );
+
+        given(memberRepository.findById(member.getId()))
+            .willReturn(Optional.of(member));
+        given(memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
+            member,
+            ViolationType.WINNING_BID_ORDER_CANCELED,
+            LocalDateTime.of(2026, 7, 14, 0, 0)
+        ))
+            .willReturn(1L);
+
+        // When
+        memberService.recordWinningBidOrderCancellation(command);
+
+        // Then
+        final ArgumentCaptor<MemberViolationHistory> captor = ArgumentCaptor.forClass(MemberViolationHistory.class);
+        verify(memberViolationHistoryRepository).save(captor.capture());
+        verify(memberRestrictionRepository, never()).save(any(MemberRestriction.class));
+
+        final MemberViolationHistory savedHistory = captor.getValue();
+        assertSoftly(softly -> {
+            softly.assertThat(savedHistory.getViolationType()).isEqualTo(ViolationType.WINNING_BID_ORDER_CANCELED);
+            softly.assertThat(savedHistory.getOccurredAt()).isEqualTo(command.occurredAt());
+            softly.assertThat(savedHistory.getDetails()).isEqualTo(Map.of("orderId", command.orderId(), "auctionId", command.auctionId()));
+            softly.assertThat(savedHistory.getMember()).isEqualTo(member);
+        });
+    }
+
+    @DisplayName("낙찰 상품 주문 취소 시 최근 30일 이내 이력이 2회 이상이면 위반 이력을 저장하고 회원을 제재한다.")
+    @Test
+    void recordWinningBidOrderCancellationWithRestriction() {
+        // Given
+        final Member member = new Member(
+            1L,
+            new Email("test@email.com"),
+            "testPw1234!",
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address(
+                "06671",
+                "서울특별시 서초구 반포대로 45",
+                "4층(서초동, 명정빌딩)"
+            )
+        );
+        final RecordWinningBidOrderCancellationCommand command = new RecordWinningBidOrderCancellationCommand(
+            member.getId(),
+            10L,
+            20L,
+            LocalDateTime.of(2026, 8, 13, 0, 0)
+        );
+
+        given(memberRepository.findById(member.getId()))
+            .willReturn(Optional.of(member));
+        given(memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
+            member,
+            ViolationType.WINNING_BID_ORDER_CANCELED,
+            LocalDateTime.of(2026, 7, 14, 0, 0)
+        ))
+            .willReturn(2L);
+
+        // When
+        memberService.recordWinningBidOrderCancellation(command);
+
+        // Then
+        verify(memberViolationHistoryRepository).save(any(MemberViolationHistory.class));
+
+        final ArgumentCaptor<MemberRestriction> captor = ArgumentCaptor.forClass(MemberRestriction.class);
+        verify(memberRestrictionRepository).save(captor.capture());
+
+        final MemberRestriction savedRestriction = captor.getValue();
+        assertSoftly(softly -> {
+            softly.assertThat(savedRestriction.getRestrictionType()).isEqualTo(RestrictionType.AUCTION_BIDDING);
+            softly.assertThat(savedRestriction.getRestrictedAt()).isEqualTo(command.occurredAt());
+            softly.assertThat(savedRestriction.getRestrictedUntil()).isEqualTo(command.occurredAt().plusDays(7));
+            softly.assertThat(savedRestriction.getMember()).isEqualTo(member);
+        });
+    }
+
+    @DisplayName("낙찰 상품 주문 취소 이력 저장 시 존재하지 않는 회원 id를 입력하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenRecordWinningBidOrderCancellationInputNotFoundMemberId() {
+        // Given
+        final Long notFoundMemberId = -99999L;
+        final RecordWinningBidOrderCancellationCommand command = new RecordWinningBidOrderCancellationCommand(
+            notFoundMemberId,
+            10L,
+            20L,
+            LocalDateTime.of(2026, 8, 13, 0, 0)
+        );
+
+        given(memberRepository.findById(notFoundMemberId))
+            .willReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.recordWinningBidOrderCancellation(command))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", notFoundMemberId));
     }
