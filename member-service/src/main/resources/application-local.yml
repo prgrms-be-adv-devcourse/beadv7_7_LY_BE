@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:33340/lp_auction
+    url: jdbc:mysql://localhost:33340/member_db
     username: root
     password: root
 
