@@ -20,7 +20,7 @@ class MemberViolationHistoryTest {
     @Test
     void createMemberViolationHistory() {
         // Given
-        final ViolationType violationType = ViolationType.ORDER_CANCELLED;
+        final ViolationType violationType = ViolationType.WINNING_BID_ORDER_CANCELED;
         final LocalDateTime occurredAt = LocalDateTime.of(2026, 8, 13, 0, 0);
         final Map<String, Object> details = Map.of("orderId", 1, "auctionId", 2);
         final Member member = createMember();
@@ -61,7 +61,7 @@ class MemberViolationHistoryTest {
     @Test
     void throwExceptionWhenInputOccurredAtNull() {
         // Given
-        final ViolationType violationType = ViolationType.ORDER_CANCELLED;
+        final ViolationType violationType = ViolationType.WINNING_BID_ORDER_CANCELED;
         final LocalDateTime occurredAt = null;
         final Map<String, Object> details = Map.of("orderId", 1, "auctionId", 2);
         final Member member = createMember();
@@ -82,7 +82,7 @@ class MemberViolationHistoryTest {
     @ParameterizedTest
     void throwExceptionWhenInputDetailsNullOrEmpty(final Map<String, Object> details) {
         // Given
-        final ViolationType violationType = ViolationType.ORDER_CANCELLED;
+        final ViolationType violationType = ViolationType.WINNING_BID_ORDER_CANCELED;
         final LocalDateTime occurredAt = LocalDateTime.of(2026, 8, 13, 0, 0);
         final Member member = createMember();
 
@@ -101,7 +101,7 @@ class MemberViolationHistoryTest {
     @Test
     void throwExceptionWhenInputDetailsEmpty() {
         // Given
-        final ViolationType violationType = ViolationType.ORDER_CANCELLED;
+        final ViolationType violationType = ViolationType.WINNING_BID_ORDER_CANCELED;
         final LocalDateTime occurredAt = LocalDateTime.of(2026, 8, 13, 0, 0);
         final Map<String, Object> details = Map.of();
         final Member member = createMember();
@@ -121,7 +121,7 @@ class MemberViolationHistoryTest {
     @Test
     void throwExceptionWhenInputMemberNull() {
         // Given
-        final ViolationType violationType = ViolationType.ORDER_CANCELLED;
+        final ViolationType violationType = ViolationType.WINNING_BID_ORDER_CANCELED;
         final LocalDateTime occurredAt = LocalDateTime.of(2026, 8, 13, 0, 0);
         final Map<String, Object> details = Map.of("orderId", 1, "auctionId", 2);
         final Member member = null;
