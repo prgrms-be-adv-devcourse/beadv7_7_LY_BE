@@ -45,6 +45,11 @@ public class CommissionPolicyRepositoryImpl implements CommissionPolicyRepositor
     }
 
     @Override
+    public Optional<CommissionPolicy> findEffectiveAt(LocalDateTime dateTime) {
+        return commissionPolicyJpaRepository.findEffectiveAt(dateTime);
+    }
+
+    @Override
     public void deleteAndFlush(CommissionPolicy commissionPolicy) {
         commissionPolicyJpaRepository.delete(commissionPolicy);
         commissionPolicyJpaRepository.flush();

@@ -107,4 +107,40 @@ class CommissionPolicyRepositoryImplTest {
         assertThat(result).extracting(CommissionPolicy::getId)
                 .containsExactly(newer.getId(), older.getId());
     }
+
+    @Test
+    void findEffectiveAt_과거에_종료된_정책_구간도_찾는다() {
+        CommissionPolicy closed = commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(30), LocalDateTime.now().minusDays(10)));
+        commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(10), null));
+
+        Optional<CommissionPolicy> result = commissionPolicyRepository.findEffectiveAt(LocalDateTime.now().minusDays(20));
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo(closed.getId());
+    }
+
+    @Test
+    void findEffectiveAt_미래에_등록된_pending_정책이_있어도_현재_활성_정책을_찾는다() {
+        CommissionPolicy active = commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(10), LocalDateTime.now().plusDays(1)));
+        commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.1000), LocalDateTime.now().plusDays(1), null));
+
+        Optional<CommissionPolicy> result = commissionPolicyRepository.findEffectiveAt(LocalDateTime.now());
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo(active.getId());
+    }
+
+    @Test
+    void findEffectiveAt_커버하는_정책이_없으면_빈값을_반환한다() {
+        commissionPolicyJpaRepository.save(CommissionPolicy.of(
+                BigDecimal.valueOf(0.0500), LocalDateTime.now().minusDays(10), LocalDateTime.now().minusDays(1)));
+
+        Optional<CommissionPolicy> result = commissionPolicyRepository.findEffectiveAt(LocalDateTime.now());
+
+        assertThat(result).isEmpty();
+    }
 }

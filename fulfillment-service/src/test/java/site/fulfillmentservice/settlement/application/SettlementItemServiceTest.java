@@ -70,7 +70,7 @@ class SettlementItemServiceTest {
             CommissionPolicy policy = CommissionPolicy.of(
                     BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.of(policy));
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.of(policy));
             given(settlementItemRepository.save(settlementItemCaptor.capture()))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -88,28 +88,11 @@ class SettlementItemServiceTest {
         }
 
         @Test
-        @DisplayName("적용 가능한 수수료 정책이 없으면 예외를 던진다")
-        void throwsWhenNoEffectiveCommissionPolicy() {
+        @DisplayName("적용 가능한 수수료 정책을 찾지 못하면 예외를 던진다")
+        void throwsWhenNoEffectivePolicyFound() {
             // given
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> settlementItemService.createSettlementItem(orderCompletedEvent))
-                    .isInstanceOf(SettlementException.class)
-                    .extracting(e -> ((SettlementException) e).getErrorCode())
-                    .isEqualTo(SettlementErrorCode.EFFECTIVE_COMMISSION_POLICY_NOT_FOUND);
-            verify(settlementItemRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("정책은 있지만 완료 시각에 유효하지 않으면 예외를 던진다")
-        void throwsWhenPolicyNotEffectiveAtCompletedAt() {
-            // given
-            CommissionPolicy futurePolicy = CommissionPolicy.of(
-                    BigDecimal.valueOf(0.1000), LocalDateTime.now().plusDays(1), null);
-            given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.of(futurePolicy));
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> settlementItemService.createSettlementItem(orderCompletedEvent))
@@ -129,7 +112,7 @@ class SettlementItemServiceTest {
             settlementItemService.createSettlementItem(orderCompletedEvent);
 
             // then
-            verify(commissionPolicyRepository, never()).findByEffectiveToIsNull();
+            verify(commissionPolicyRepository, never()).findEffectiveAt(any());
             verify(settlementItemRepository, never()).save(any());
         }
 
@@ -140,7 +123,7 @@ class SettlementItemServiceTest {
             CommissionPolicy policy = CommissionPolicy.of(
                     BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.of(policy));
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.of(policy));
             given(settlementItemRepository.save(any()))
                     .willThrow(new DataIntegrityViolationException("duplicate order_id"));
 

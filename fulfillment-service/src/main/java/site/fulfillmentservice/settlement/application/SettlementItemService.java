@@ -49,8 +49,7 @@ public class SettlementItemService {
     }
 
     private BigDecimal findEffectiveCommissionRate(LocalDateTime completedAt) {
-        return commissionPolicyRepository.findByEffectiveToIsNull()
-            .filter(policy -> policy.isEffectiveAt(completedAt))
+        return commissionPolicyRepository.findEffectiveAt(completedAt)
             .map(CommissionPolicy::getCommissionRate)
             .orElseThrow(() -> new SettlementException(SettlementErrorCode.EFFECTIVE_COMMISSION_POLICY_NOT_FOUND));
     }

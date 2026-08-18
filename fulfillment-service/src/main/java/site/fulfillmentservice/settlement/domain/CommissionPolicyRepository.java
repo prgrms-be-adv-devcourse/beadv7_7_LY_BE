@@ -18,5 +18,7 @@ public interface CommissionPolicyRepository {
 
     List<CommissionPolicy> findAllByOrderByEffectiveFromDesc();
 
+    Optional<CommissionPolicy> findEffectiveAt(LocalDateTime dateTime);
+
     void deleteAndFlush(CommissionPolicy commissionPolicy);
 }
