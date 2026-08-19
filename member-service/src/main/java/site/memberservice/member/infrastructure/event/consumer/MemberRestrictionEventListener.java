@@ -11,7 +11,7 @@ import site.memberservice.member.application.dto.RecordWinningBidOrderCancellati
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class MemberRestrictionEventConsumer {
+public class MemberRestrictionEventListener {
 
     private final MemberService memberService;
 
