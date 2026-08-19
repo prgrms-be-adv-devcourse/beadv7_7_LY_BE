@@ -111,4 +111,64 @@ class PointTransactionRepositoryImplTest {
         assertThat(secondPage.content()).hasSize(1);
         assertThat(firstPage.totalElements()).isEqualTo(3L);
     }
+
+    @Test
+    @DisplayName("existsByRelatedIdAndType는 related_id+type 조합이 이미 있으면 true, 없으면 false를 반환한다")
+    void existsByRelatedIdAndType_존재여부() {
+        // given
+        saveTransaction(WALLET_ID, PointTransactionType.FEE_INCOME, 2_000, LocalDateTime.now(), 777L);
+
+        // when & then
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(777L, PointTransactionType.FEE_INCOME)).isTrue();
+        // 같은 relatedId라도 type이 다르면 별개 취급
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(777L, PointTransactionType.WITHDRAW)).isFalse();
+        // 존재하지 않는 relatedId
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(999_999L, PointTransactionType.FEE_INCOME)).isFalse();
+    }
+
+    @Test
+    @DisplayName("findLatestByAuctionIdAndType는 같은 경매에 재입찰로 HOLD 원장이 여러 건이어도 가장 최근 것 하나만 반환한다")
+    void findLatestByAuctionIdAndType_재입찰시_최신건만_반환() {
+        // given: 같은 auctionId에 재입찰로 HOLD가 두 번 쌓인 상황 (관행상 이전 입찰은 RELEASE 처리되고
+        // 다음 HOLD가 새로 생김 - 여기선 조회 대상인 auctionId+HOLD 필터링/정렬만 검증)
+        Long auctionId = 5001L;
+        LocalDateTime now = LocalDateTime.now();
+        PointTransaction firstBid = PointTransaction.recordForAuction(
+                WALLET_ID, PointTransactionType.HOLD, Money.of(10_000), Money.of(90_000), 1L, auctionId);
+        ReflectionTestUtils.setField(firstBid, "occurredAt", now.minusMinutes(5));
+        pointTransactionJpaRepository.save(firstBid);
+
+        PointTransaction winningBid = PointTransaction.recordForAuction(
+                WALLET_ID, PointTransactionType.HOLD, Money.of(15_000), Money.of(85_000), 2L, auctionId);
+        ReflectionTestUtils.setField(winningBid, "occurredAt", now);
+        pointTransactionJpaRepository.save(winningBid);
+
+        // when
+        var result = pointTransactionRepository.findLatestByAuctionIdAndType(auctionId, PointTransactionType.HOLD);
+
+        // then
+        assertThat(result).isPresent();
+        assertThat(result.get().getAmount()).isEqualTo(Money.of(15_000));
+        assertThat(result.get().getRelatedId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("findLatestByAuctionIdAndType는 다른 경매나 다른 타입의 원장은 무시한다")
+    void findLatestByAuctionIdAndType_다른경매나_다른타입은_제외() {
+        // given
+        Long auctionId = 5001L;
+        LocalDateTime now = LocalDateTime.now();
+        PointTransaction otherAuction = PointTransaction.recordForAuction(
+                WALLET_ID, PointTransactionType.HOLD, Money.of(20_000), Money.of(80_000), 3L, 9999L);
+        pointTransactionJpaRepository.save(otherAuction);
+        PointTransaction releaseOfSameAuction = PointTransaction.recordForAuction(
+                WALLET_ID, PointTransactionType.RELEASE, Money.of(10_000), Money.of(90_000), 4L, auctionId);
+        pointTransactionJpaRepository.save(releaseOfSameAuction);
+
+        // when
+        var result = pointTransactionRepository.findLatestByAuctionIdAndType(auctionId, PointTransactionType.HOLD);
+
+        // then
+        assertThat(result).isEmpty();
+    }
 }

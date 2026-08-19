@@ -66,6 +66,75 @@ class PointTransactionApplicationServiceTest {
         assertThat(saved.getRelatedId()).isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("recordForAuction을 호출하면 auctionId까지 채워서 저장한다")
+    void recordForAuction_auctionId까지_채워서_저장한다() {
+        // when
+        sut.recordForAuction(100L, PointTransactionType.HOLD, Money.of(15_000), Money.of(85_000), 1L, 5001L);
+
+        // then
+        ArgumentCaptor<PointTransaction> captor = ArgumentCaptor.forClass(PointTransaction.class);
+        verify(pointTransactionRepository).save(captor.capture());
+
+        PointTransaction saved = captor.getValue();
+        assertThat(saved.getWalletId()).isEqualTo(100L);
+        assertThat(saved.getType()).isEqualTo(PointTransactionType.HOLD);
+        assertThat(saved.getRelatedId()).isEqualTo(1L);
+        assertThat(saved.getAuctionId()).isEqualTo(5001L);
+    }
+
+    @Test
+    @DisplayName("existsForRelatedId는 저장소의 existsByRelatedIdAndType 결과를 그대로 반환한다")
+    void existsForRelatedId_저장소_결과를_그대로_반환한다() {
+        // given
+        when(pointTransactionRepository.existsByRelatedIdAndType(1L, PointTransactionType.FEE_INCOME))
+                .thenReturn(true);
+        when(pointTransactionRepository.existsByRelatedIdAndType(2L, PointTransactionType.FEE_INCOME))
+                .thenReturn(false);
+
+        // when & then
+        assertThat(sut.existsForRelatedId(1L, PointTransactionType.FEE_INCOME)).isTrue();
+        assertThat(sut.existsForRelatedId(2L, PointTransactionType.FEE_INCOME)).isFalse();
+    }
+
+    @Nested
+    @DisplayName("낙찰 홀드 금액 조회 (findLatestHoldAmountByAuctionId)")
+    class FindLatestHoldAmountByAuctionId {
+
+        private static final Long AUCTION_ID = 5001L;
+
+        @Test
+        @DisplayName("해당 경매의 HOLD 원장이 있으면 그 금액을 반환한다")
+        void 원장이_있으면_금액을_반환한다() {
+            // given
+            PointTransaction winningHold = PointTransaction.recordForAuction(
+                    WALLET_ID, PointTransactionType.HOLD, Money.of(15_000), Money.of(85_000), 999L, AUCTION_ID
+            );
+            when(pointTransactionRepository.findLatestByAuctionIdAndType(AUCTION_ID, PointTransactionType.HOLD))
+                    .thenReturn(Optional.of(winningHold));
+
+            // when
+            Optional<Money> result = sut.findLatestHoldAmountByAuctionId(AUCTION_ID);
+
+            // then
+            assertThat(result).contains(Money.of(15_000));
+        }
+
+        @Test
+        @DisplayName("해당 경매의 HOLD 원장이 없으면 빈 Optional을 반환한다 - PointTransaction 엔티티를 그대로 노출하지 않는다")
+        void 원장이_없으면_빈값을_반환한다() {
+            // given
+            when(pointTransactionRepository.findLatestByAuctionIdAndType(AUCTION_ID, PointTransactionType.HOLD))
+                    .thenReturn(Optional.empty());
+
+            // when
+            Optional<Money> result = sut.findLatestHoldAmountByAuctionId(AUCTION_ID);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
     @Nested
     @DisplayName("거래내역 조회 (findTransactions)")
     class FindTransactions {
