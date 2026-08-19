@@ -63,6 +63,27 @@ public enum ProductEmbeddingTemplate {
     public abstract String build(ProductIndexCommand command);
 
     /**
+     * 3-벡터 구조(identity·origin·edition)용 보조 텍스트. COMPACT/LABELED 구분과 무관하게 항상 나열형으로 만든다 — 두 필드짜리 조합은
+     * 라벨이 없어도 모호할 일이 거의 없어서(예: "Kraftwerk · Electronic"), {@link #build}처럼 형식을 두고 고민할 이유가 없다. 근거는
+     * docs/search-recommendation-design-notes.md "클러스터링 · 가중치 최종 목표 아키텍처" 참고.
+     */
+    public static String buildIdentity(final ProductIndexCommand command) {
+        return joinNonBlank(" · ", command.genre(), command.artistName());
+    }
+
+    public static String buildOrigin(final ProductIndexCommand command) {
+        return joinNonBlank(" · ", decade(command.releaseYear()), command.releaseCountry());
+    }
+
+    /**
+     * pressType은 다른 3-벡터 텍스트와 달리 한국어로 바꾸지 않고 원본 값(ORIGINAL/REISSUE)을 그대로 쓴다 — {@link #pressType}
+     * 변환은 {@link #build}(combined)에만 적용된다.
+     */
+    public static String buildEdition(final ProductIndexCommand command) {
+        return joinNonBlank(" · ", command.label(), command.pressType());
+    }
+
+    /**
      * 값이 비어 있는 필드는 통째로 빠진다 — "장르: null" 같은 문구가 벡터에 섞이면 안 된다.
      */
     private static String joinNonBlank(final String delimiter, final String... parts) {

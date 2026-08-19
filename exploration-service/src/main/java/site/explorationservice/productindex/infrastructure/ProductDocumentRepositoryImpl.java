@@ -55,6 +55,9 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
                 .filter(f -> f.bool(b -> b
                     .filter(active -> active.term(t -> t.field("active").value(true)))
                     .mustNot(excluded -> excluded.ids(i -> i.values(toStringIds(excludeIds)))))))
+            // knn.k는 ES 내부적으로 몇 개를 후보로 추릴지일 뿐, 응답에 담기는 hit 개수는 별도(top-level size)다 —
+            // 이걸 안 정하면 ES가 기본값 10으로 조용히 잘라서 반환한다. k와 같은 값으로 맞춰야 size 파라미터가 실제로 먹는다.
+            .withMaxResults(size)
             .build();
 
         return elasticsearchOperations.search(query, ProductDocument.class).getSearchHits().stream()

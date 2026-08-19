@@ -78,10 +78,13 @@ class ProductIndexIntegrationTest {
         // 앞선 실행이 중간에 죽어 문서를 남겼을 수 있으므로 시작할 때도 지운다.
         deleteTestDocument();
 
-        vector = randomUnitVector();
+        // ProductIndexService가 상품 1건당 텍스트 4개(combined·identity·origin·edition)를 만들어 한 번에
+        // 임베딩하므로, 목도 4개를 돌려줘야 한다 — vector는 그중 combined(contentVector)에 해당한다.
+        vector = randomUnitVector(1);
         given(embeddingService.embed(anyList(), any(), any()))
             .willReturn(new EmbeddingResult(
-                List.of(vector), "text-embedding-3-large", 25, 25));
+                List.of(vector, randomUnitVector(2), randomUnitVector(3), randomUnitVector(4)),
+                "text-embedding-3-large", 25, 25));
     }
 
     @AfterEach
@@ -203,10 +206,10 @@ class ProductIndexIntegrationTest {
     }
 
     /**
-     * 실제 임베딩과 같은 성격(단위 길이)의 벡터를 만들어 둔다.
+     * 실제 임베딩과 같은 성격(단위 길이)의 벡터를 만들어 둔다. seed로 combined·identity·origin·edition을 서로 다른 값으로 구분한다.
      */
-    private float[] randomUnitVector() {
-        final Random random = new Random(42);
+    private float[] randomUnitVector(final long seed) {
+        final Random random = new Random(42 * seed);
         final float[] values = new float[DIMENSIONS];
         double sumOfSquares = 0;
         for (int i = 0; i < DIMENSIONS; i++) {
