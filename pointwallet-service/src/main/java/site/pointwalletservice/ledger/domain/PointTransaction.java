@@ -62,19 +62,40 @@ public class PointTransaction {
     @Column(name = "related_id", nullable = false, updatable = false)
     private Long relatedId;
 
+    /**
+     * HOLD/RELEASE 타입에 한해 채워지는 경매 id. 그 외 타입은 null.
+     * <p>
+     * related_id(=holdId)만으로는 Hold 로우가 삭제된 뒤(주문완료 시 consume()이 하드 딜리트) 원장이
+     * 자기 자신만으로 "이 변동이 어느 경매 건이었는지"를 재구성할 수 없다 — append-only 원장이
+     * 살아있는 다른 테이블에 의존해야만 과거 사실을 설명할 수 있다는 뜻이라 원장의 목적에 어긋난다.
+     * 그래서 조회 전용으로 auction_id를 별도 컬럼에 남긴다. related_id는 그대로 holdId를 쓴다 —
+     * 한 경매에 입찰이 여러 번 갈아치워지며 HOLD 원장이 반복 생성되므로, 유니크 제약
+     * (related_id+type)을 auction_id로 바꾸면 재입찰마다 제약을 위반하게 된다.
+     */
+    @Column(name = "auction_id", updatable = false)
+    private Long auctionId;
+
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
 
-    private PointTransaction(Long walletId, PointTransactionType type, Money amount, Money balanceAfter, Long relatedId) {
+    private PointTransaction(Long walletId, PointTransactionType type, Money amount, Money balanceAfter,
+                             Long relatedId, Long auctionId) {
         this.walletId = walletId;
         this.type = type;
         this.amount = amount;
         this.balanceAfter = balanceAfter;
         this.relatedId = relatedId;
+        this.auctionId = auctionId;
         this.occurredAt = LocalDateTime.now();
     }
 
     public static PointTransaction record(Long walletId, PointTransactionType type, Money amount, Money balanceAfter, Long relatedId) {
-        return new PointTransaction(walletId, type, amount, balanceAfter, relatedId);
+        return new PointTransaction(walletId, type, amount, balanceAfter, relatedId, null);
+    }
+
+    /** HOLD/RELEASE처럼 경매 원장 조회가 필요한 타입 전용 — auctionId까지 같이 남긴다. */
+    public static PointTransaction recordForAuction(Long walletId, PointTransactionType type, Money amount,
+                                                    Money balanceAfter, Long relatedId, Long auctionId) {
+        return new PointTransaction(walletId, type, amount, balanceAfter, relatedId, auctionId);
     }
 }

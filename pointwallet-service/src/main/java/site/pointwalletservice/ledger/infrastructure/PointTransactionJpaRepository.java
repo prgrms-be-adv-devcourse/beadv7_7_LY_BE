@@ -27,4 +27,7 @@ public interface PointTransactionJpaRepository extends JpaRepository<PointTransa
 
     // infrastructure/PointTransactionJpaRepository.java 에 추가
     boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type);
+
+    java.util.Optional<PointTransaction> findFirstByAuctionIdAndTypeOrderByOccurredAtDesc(
+            Long auctionId, PointTransactionType type);
 }

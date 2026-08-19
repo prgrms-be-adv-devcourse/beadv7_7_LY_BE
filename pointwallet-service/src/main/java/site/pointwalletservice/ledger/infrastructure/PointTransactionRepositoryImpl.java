@@ -33,4 +33,9 @@ public class PointTransactionRepositoryImpl implements PointTransactionRepositor
     public boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type) {
         return pointTransactionJpaRepository.existsByRelatedIdAndType(relatedId, type);
     }
+
+    @Override
+    public java.util.Optional<PointTransaction> findLatestByAuctionIdAndType(Long auctionId, PointTransactionType type) {
+        return pointTransactionJpaRepository.findFirstByAuctionIdAndTypeOrderByOccurredAtDesc(auctionId, type);
+    }
 }

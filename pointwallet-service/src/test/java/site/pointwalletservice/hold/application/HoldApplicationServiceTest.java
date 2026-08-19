@@ -89,8 +89,8 @@ class HoldApplicationServiceTest {
             assertThat(holdCaptor.getValue().getAuctionId()).isEqualTo(AUCTION_ID);
             assertThat(holdCaptor.getValue().getUserId()).isEqualTo(BIDDER_ID);
 
-            verify(pointTransactionService).record(
-                    WALLET_ID, PointTransactionType.HOLD, AMOUNT, Money.of(85_000), newHoldId
+            verify(pointTransactionService).recordForAuction(
+                    WALLET_ID, PointTransactionType.HOLD, AMOUNT, Money.of(85_000), newHoldId, AUCTION_ID
             );
         }
 
@@ -108,7 +108,7 @@ class HoldApplicationServiceTest {
                     .isEqualTo(HoldErrorCode.INSUFFICIENT_BALANCE);
 
             verify(holdRepository, never()).save(any(Hold.class));
-            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+            verify(pointTransactionService, never()).recordForAuction(any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -125,7 +125,7 @@ class HoldApplicationServiceTest {
                     .isEqualTo(HoldErrorCode.INSUFFICIENT_BALANCE);
 
             verify(holdRepository, never()).save(any(Hold.class));
-            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+            verify(pointTransactionService, never()).recordForAuction(any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -208,15 +208,15 @@ class HoldApplicationServiceTest {
 
             // then: 이전 입찰자 지갑에 환입 위임 + 원장기록(RELEASE) + 홀드 레코드 삭제
             verify(walletService).credit(PREVIOUS_BIDDER_ID, PREVIOUS_AMOUNT);
-            verify(pointTransactionService).record(
-                    PREVIOUS_WALLET_ID, PointTransactionType.RELEASE, PREVIOUS_AMOUNT, PREVIOUS_AMOUNT, PREVIOUS_HOLD_ID
+            verify(pointTransactionService).recordForAuction(
+                    PREVIOUS_WALLET_ID, PointTransactionType.RELEASE, PREVIOUS_AMOUNT, PREVIOUS_AMOUNT, PREVIOUS_HOLD_ID, AUCTION_ID
             );
             verify(holdRepository).delete(previousHold);
 
             // then: 새 입찰자 지갑 차감 + 원장기록(HOLD)
             verify(walletService).deduct(BIDDER_ID, AMOUNT);
-            verify(pointTransactionService).record(
-                    WALLET_ID, PointTransactionType.HOLD, AMOUNT, Money.of(85_000), newHoldId
+            verify(pointTransactionService).recordForAuction(
+                    WALLET_ID, PointTransactionType.HOLD, AMOUNT, Money.of(85_000), newHoldId, AUCTION_ID
             );
         }
 
@@ -280,8 +280,8 @@ class HoldApplicationServiceTest {
 
             // then
             verify(walletService).credit(BIDDER_ID, AMOUNT);
-            verify(pointTransactionService).record(
-                    WALLET_ID, PointTransactionType.RELEASE, AMOUNT, AMOUNT, 1L
+            verify(pointTransactionService).recordForAuction(
+                    WALLET_ID, PointTransactionType.RELEASE, AMOUNT, AMOUNT, 1L, AUCTION_ID
             );
             verify(holdRepository).delete(hold);
         }
@@ -297,7 +297,7 @@ class HoldApplicationServiceTest {
 
             verify(walletService, never()).credit(any(), any());
             verify(holdRepository, never()).delete(any());
-            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+            verify(pointTransactionService, never()).recordForAuction(any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -335,7 +335,7 @@ class HoldApplicationServiceTest {
             verify(holdRepository).delete(hold);
             verify(walletService, never()).credit(any(), any());
             verify(walletService, never()).deduct(any(), any());
-            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+            verify(pointTransactionService, never()).recordForAuction(any(), any(), any(), any(), any(), any());
         }
 
         @Test
