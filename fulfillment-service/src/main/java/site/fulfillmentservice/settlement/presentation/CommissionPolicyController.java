@@ -1,0 +1,49 @@
+package site.fulfillmentservice.settlement.presentation;
+
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import site.common.response.ApiResponse;
+import site.common.web.MemberId;
+import site.fulfillmentservice.settlement.application.CommissionPolicyService;
+import site.fulfillmentservice.settlement.presentation.dto.CommissionPolicyResponse;
+import site.fulfillmentservice.settlement.presentation.dto.CreateCommissionPolicyRequest;
+
+// TODO (209) : 관리자 인증 없이 우선 열어둠. 관리자 인증 도입 시 보호 추가
+@RestController
+@RequestMapping("/api/admin/v1/settlements/commission-policies")
+@RequiredArgsConstructor
+public class CommissionPolicyController {
+
+    private final CommissionPolicyService commissionPolicyService;
+
+    @PostMapping
+    public ApiResponse<CommissionPolicyResponse> createCommissionPolicy(
+            @MemberId Long adminId,
+            @RequestBody CreateCommissionPolicyRequest request
+    ) {
+        CommissionPolicyResponse response = CommissionPolicyResponse.from(
+                commissionPolicyService.createCommissionPolicy(request.toCommand(), adminId));
+        return ApiResponse.success(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteCommissionPolicy(@MemberId Long adminId, @PathVariable Long id) {
+        commissionPolicyService.deleteCommissionPolicy(id, adminId);
+        return ApiResponse.success();
+    }
+
+    @GetMapping
+    public ApiResponse<List<CommissionPolicyResponse>> getCommissionPolicies() {
+        List<CommissionPolicyResponse> response = commissionPolicyService.getCommissionPolicies().stream()
+                .map(CommissionPolicyResponse::from)
+                .toList();
+        return ApiResponse.success(response);
+    }
+}

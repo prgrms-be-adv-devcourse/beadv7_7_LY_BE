@@ -1,6 +1,7 @@
 package site.fulfillmentservice.settlement.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,8 @@ import site.fulfillmentservice.settlement.domain.CommissionPolicy;
 import site.fulfillmentservice.settlement.domain.CommissionPolicyRepository;
 import site.fulfillmentservice.settlement.domain.SettlementItem;
 import site.fulfillmentservice.settlement.domain.SettlementItemRepository;
+import site.fulfillmentservice.settlement.exception.SettlementErrorCode;
+import site.fulfillmentservice.settlement.exception.SettlementException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SettlementItemService")
@@ -67,7 +70,7 @@ class SettlementItemServiceTest {
             CommissionPolicy policy = CommissionPolicy.of(
                     BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.of(policy));
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.of(policy));
             given(settlementItemRepository.save(settlementItemCaptor.capture()))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -85,39 +88,18 @@ class SettlementItemServiceTest {
         }
 
         @Test
-        @DisplayName("유효한 정책이 없으면 기본 수수료율(5%)을 사용한다")
-        void fallsBackToDefaultRateWhenNoPolicy() {
+        @DisplayName("적용 가능한 수수료 정책을 찾지 못하면 예외를 던진다")
+        void throwsWhenNoEffectivePolicyFound() {
             // given
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.empty());
-            given(settlementItemRepository.save(settlementItemCaptor.capture()))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.empty());
 
-            // when
-            settlementItemService.createSettlementItem(orderCompletedEvent);
-
-            // then
-            assertThat(settlementItemCaptor.getValue().getCommissionRate())
-                    .isEqualByComparingTo(BigDecimal.valueOf(0.0500));
-        }
-
-        @Test
-        @DisplayName("정책은 있지만 완료 시각에 유효하지 않으면 기본 수수료율을 사용한다")
-        void fallsBackToDefaultRateWhenPolicyNotEffective() {
-            // given
-            CommissionPolicy futurePolicy = CommissionPolicy.of(
-                    BigDecimal.valueOf(0.1000), LocalDateTime.now().plusDays(1), null);
-            given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.of(futurePolicy));
-            given(settlementItemRepository.save(settlementItemCaptor.capture()))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-
-            // when
-            settlementItemService.createSettlementItem(orderCompletedEvent);
-
-            // then
-            assertThat(settlementItemCaptor.getValue().getCommissionRate())
-                    .isEqualByComparingTo(BigDecimal.valueOf(0.0500));
+            // when & then
+            assertThatThrownBy(() -> settlementItemService.createSettlementItem(orderCompletedEvent))
+                    .isInstanceOf(SettlementException.class)
+                    .extracting(e -> ((SettlementException) e).getErrorCode())
+                    .isEqualTo(SettlementErrorCode.EFFECTIVE_COMMISSION_POLICY_NOT_FOUND);
+            verify(settlementItemRepository, never()).save(any());
         }
 
         @Test
@@ -130,7 +112,7 @@ class SettlementItemServiceTest {
             settlementItemService.createSettlementItem(orderCompletedEvent);
 
             // then
-            verify(commissionPolicyRepository, never()).findByEffectiveToIsNull();
+            verify(commissionPolicyRepository, never()).findEffectiveAt(any());
             verify(settlementItemRepository, never()).save(any());
         }
 
@@ -138,8 +120,10 @@ class SettlementItemServiceTest {
         @DisplayName("저장 중 동시성으로 유니크 제약을 위반해도 예외를 던지지 않는다")
         void swallowsConcurrentDuplicateSave() {
             // given
+            CommissionPolicy policy = CommissionPolicy.of(
+                    BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findByEffectiveToIsNull()).willReturn(Optional.empty());
+            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.of(policy));
             given(settlementItemRepository.save(any()))
                     .willThrow(new DataIntegrityViolationException("duplicate order_id"));
 

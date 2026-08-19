@@ -143,6 +143,44 @@ class CommissionPolicyTest {
     }
 
     @Nested
+    @DisplayName("pending 판단 (isPending)")
+    class IsPending {
+
+        @Test
+        @DisplayName("effectiveFrom이 미래면 pending이다")
+        void futureEffectiveFrom_isPending() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().plusDays(1);
+            CommissionPolicy policy = CommissionPolicy.of(RATE, effectiveFrom, null);
+
+            // when & then
+            assertThat(policy.isPending(LocalDateTime.now())).isTrue();
+        }
+
+        @Test
+        @DisplayName("effectiveFrom이 현재 시각과 같으면 pending이 아니다")
+        void effectiveFromEqualToNow_notPending() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now();
+            CommissionPolicy policy = CommissionPolicy.of(RATE, effectiveFrom, null);
+
+            // when & then
+            assertThat(policy.isPending(effectiveFrom)).isFalse();
+        }
+
+        @Test
+        @DisplayName("effectiveFrom이 과거면 pending이 아니다")
+        void pastEffectiveFrom_notPending() {
+            // given
+            LocalDateTime effectiveFrom = LocalDateTime.now().minusDays(1);
+            CommissionPolicy policy = CommissionPolicy.of(RATE, effectiveFrom, null);
+
+            // when & then
+            assertThat(policy.isPending(LocalDateTime.now())).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("종료 (close)")
     class Close {
 

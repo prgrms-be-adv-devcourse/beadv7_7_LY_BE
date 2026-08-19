@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,9 @@ public class CommissionPolicy extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 4)
     private BigDecimal commissionRate;
@@ -64,6 +68,10 @@ public class CommissionPolicy extends BaseEntity {
         return afterStart && beforeEnd;
     }
 
+    public boolean isPending(LocalDateTime dateTime) {
+        return effectiveFrom.isAfter(dateTime);
+    }
+
     public void close(LocalDateTime effectiveTo) {
         Objects.requireNonNull(effectiveTo, "effectiveTo는 null일 수 없습니다.");
         if (this.effectiveTo != null) {
@@ -73,5 +81,9 @@ public class CommissionPolicy extends BaseEntity {
             throw new SettlementException(SettlementErrorCode.INVALID_EFFECTIVE_PERIOD);
         }
         this.effectiveTo = effectiveTo;
+    }
+
+    public void reopen() {
+        this.effectiveTo = null;
     }
 }
