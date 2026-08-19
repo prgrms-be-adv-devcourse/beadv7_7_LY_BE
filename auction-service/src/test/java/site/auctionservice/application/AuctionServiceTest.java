@@ -57,6 +57,9 @@ class AuctionServiceTest {
     @Mock
     private WalletPort walletPort;
 
+    @Mock
+    private AuctionEventPublisher auctionEventPublisher;
+
     @InjectMocks
     private AuctionService auctionService;
 
@@ -364,6 +367,132 @@ class AuctionServiceTest {
                 .extracting(e -> ((AuctionException) e).getErrorCode())
                 .isEqualTo(AuctionErrorCode.AUCTION_NOT_EDITABLE);
         verify(searchViewRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("관리자가 SCHEDULED 상태의 경매를 강제 취소하면 상태를 변경하고 서치 뷰를 삭제한다")
+    void testForceCancelAuction_scheduledStatus_forceCancelsAndDeletesSearchView() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+
+        // when
+        auctionService.forceCancelAuction(1L);
+
+        // then
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+        verify(searchViewRepository).deleteById(1L);
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
+    }
+
+    @Test
+    @DisplayName("관리자는 RUNNING 상태이고 시작 시각이 지난 경매도 강제 취소할 수 있다")
+    void testForceCancelAuction_runningStatus_afterStartTime_succeeds() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+
+        // when
+        auctionService.forceCancelAuction(1L);
+
+        // then
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+        verify(searchViewRepository).deleteById(1L);
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
+    }
+
+    @Test
+    @DisplayName("활성 입찰이 있는 경매를 강제 취소하면 해당 입찰도 CANCELED로 전이하고 예치금 홀드 해제 이벤트를 발행한다")
+    void testForceCancelAuction_withActiveBid_cancelsActiveBid() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
+
+        // when
+        auctionService.forceCancelAuction(1L);
+
+        // then
+        assertThat(activeBid.getOutcome()).isEqualTo(BidOutcome.CANCELED);
+        verify(auctionEventPublisher).publishForceCanceled(1L, 5L);
+    }
+
+    @Test
+    @DisplayName("이벤트 발행이 실패해도 강제 취소 자체는 예외 없이 커밋된다")
+    void testForceCancelAuction_eventPublishFails_stillCommits() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
+        willThrow(new RuntimeException("kafka down"))
+                .given(auctionEventPublisher).publishForceCanceled(1L, 5L);
+
+        // when & then
+        auctionService.forceCancelAuction(1L);
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+        assertThat(activeBid.getOutcome()).isEqualTo(BidOutcome.CANCELED);
+        verify(searchViewRepository).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("활성 입찰이 없는 경매를 강제 취소해도 예외 없이 처리된다")
+    void testForceCancelAuction_withoutActiveBid_succeeds() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+
+        // when & then
+        auctionService.forceCancelAuction(1L);
+        assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FORCE_CANCELED);
+        verify(bidRepository, never()).findActiveBid(any());
+        verify(auctionEventPublisher, never()).publishForceCanceled(any(), any());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 경매를 강제 취소하려 하면 예외를 던진다")
+    void testForceCancelAuction_auctionNotFound_throws() {
+        // given
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
+        verify(searchViewRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("이미 종료된 경매는 강제 취소할 수 없다")
+    void testForceCancelAuction_alreadyEnded_throws() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+        verify(searchViewRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("강제 취소된 경매는 상세 조회 시 찾을 수 없다는 예외를 던진다")
+    void testGetAuctionDetail_forceCanceledStatus_throwsNotFound() {
+        // given: status는 FORCE_CANCELED이지만 시작~종료 시각 사이라, 실효 상태 계산에 버그가 있으면 RUNNING으로 잘못 조회된다
+        Auction auction = auctionWith(AuctionStatus.FORCE_CANCELED, PAST_START, FUTURE_END);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.getAuctionDetail(1L, 1L))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_NOT_FOUND);
     }
 
     @Test

@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.common.event.Event;
 import site.common.event.EventPublisher;
+import site.common.event.contract.AuctionForceCanceledEvent;
 import site.common.event.contract.AuctionWonEvent;
 import site.auctionservice.domain.*;
 
@@ -77,6 +78,20 @@ class AuctionEventPublisherTest {
         final ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
         verify(eventPublisher).publish(captor.capture());
         assertThat(captor.getValue()).isInstanceOf(AuctionWonEvent.class);
+    }
+
+    @Test
+    void publishForceCanceled은_auctionId와_bidderId를_담아_이벤트를_발행한다() {
+        final AuctionEventPublisher auctionEventPublisher = new AuctionEventPublisher(
+            eventPublisher);
+        auctionEventPublisher.publishForceCanceled(10L, 99L);
+
+        final ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
+        verify(eventPublisher).publish(captor.capture());
+
+        final AuctionForceCanceledEvent event = (AuctionForceCanceledEvent) captor.getValue();
+        assertThat(event.getAuctionId()).isEqualTo(10L);
+        assertThat(event.getBidderId()).isEqualTo(99L);
     }
 
     private Auction registerRunningAuction(final HighestBid highestBid,

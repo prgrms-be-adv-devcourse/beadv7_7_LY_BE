@@ -126,7 +126,7 @@ public class Auction extends BaseEntity {
     }
 
     public AuctionStatus getEffectiveStatusAt(LocalDateTime now) {
-        if (isCanceled() || isEndedWon() || isEndedFailed()) {
+        if (isCancelledOrForceCancelled() || isEndedWon() || isEndedFailed()) {
             return this.status;
         }
         if (!schedule.isStartedAt(now)) {
@@ -167,6 +167,13 @@ public class Auction extends BaseEntity {
         return status == AuctionStatus.CANCELED;
     }
 
+    public boolean isForceCanceled() {
+        return status == AuctionStatus.FORCE_CANCELED;
+    }
+
+    public boolean isCancelledOrForceCancelled() {
+        return isCanceled() || isForceCanceled();
+    }
 
     /* 입찰 검증 + 최고입찰 갱신 */
     public void applyBid(Long bidderId, Money amount, Long newBidId, LocalDateTime now) {
@@ -207,5 +214,14 @@ public class Auction extends BaseEntity {
         if (amount.isLessThan(minimum)) {
             throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
         }
+    }
+
+    public void forceCancel(LocalDateTime now) {
+        AuctionStatus effective = getEffectiveStatusAt(now);
+        // SCHEDULED와 RUNNING일 때만 허용
+        if (effective != AuctionStatus.SCHEDULED && effective != AuctionStatus.RUNNING) {
+            throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FORCE_CANCELABLE);
+        }
+        changeStatus(AuctionStatus.FORCE_CANCELED);
     }
 }

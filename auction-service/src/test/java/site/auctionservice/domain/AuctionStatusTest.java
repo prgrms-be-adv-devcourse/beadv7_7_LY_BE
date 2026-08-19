@@ -15,6 +15,7 @@ class AuctionStatusTest {
         // then
         assertThat(AuctionStatus.SCHEDULED.canTransitTo(AuctionStatus.RUNNING)).isTrue();
         assertThat(AuctionStatus.SCHEDULED.canTransitTo(AuctionStatus.CANCELED)).isTrue();
+        assertThat(AuctionStatus.SCHEDULED.canTransitTo(AuctionStatus.FORCE_CANCELED)).isTrue();
         assertThat(AuctionStatus.SCHEDULED.canTransitTo(AuctionStatus.ENDED_WON)).isFalse();
         assertThat(AuctionStatus.SCHEDULED.canTransitTo(AuctionStatus.ENDED_FAILED)).isFalse();
     }
@@ -24,12 +25,13 @@ class AuctionStatusTest {
         // then
         assertThat(AuctionStatus.RUNNING.canTransitTo(AuctionStatus.ENDED_WON)).isTrue();
         assertThat(AuctionStatus.RUNNING.canTransitTo(AuctionStatus.ENDED_FAILED)).isTrue();
+        assertThat(AuctionStatus.RUNNING.canTransitTo(AuctionStatus.FORCE_CANCELED)).isTrue();
         assertThat(AuctionStatus.RUNNING.canTransitTo(AuctionStatus.SCHEDULED)).isFalse();
         assertThat(AuctionStatus.RUNNING.canTransitTo(AuctionStatus.CANCELED)).isFalse();
     }
 
     @ParameterizedTest
-    @EnumSource(value = AuctionStatus.class, names = {"ENDED_WON", "ENDED_FAILED", "CANCELED"})
+    @EnumSource(value = AuctionStatus.class, names = {"ENDED_WON", "ENDED_FAILED", "CANCELED", "FORCE_CANCELED"})
     void testTerminalStatuses_cannotTransitToAnything(AuctionStatus terminal) {
         // then
         for (AuctionStatus next : EnumSet.allOf(AuctionStatus.class)) {

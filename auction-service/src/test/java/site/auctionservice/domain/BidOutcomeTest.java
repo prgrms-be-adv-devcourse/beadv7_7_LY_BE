@@ -11,15 +11,16 @@ class BidOutcomeTest {
 
     @ParameterizedTest
     @EnumSource(value = BidOutcome.class, names = "ACTIVE")
-    void testActive_canTransitToOutbidOrWon(BidOutcome active) {
+    void testActive_canTransitToOutbidOrWonOrCanceled(BidOutcome active) {
         // then
         assertThat(active.canTransitTo(BidOutcome.OUTBID)).isTrue();
         assertThat(active.canTransitTo(BidOutcome.WON)).isTrue();
+        assertThat(active.canTransitTo(BidOutcome.CANCELED)).isTrue();
         assertThat(active.canTransitTo(BidOutcome.ACTIVE)).isFalse();
     }
 
     @ParameterizedTest
-    @EnumSource(value = BidOutcome.class, names = {"OUTBID", "WON"})
+    @EnumSource(value = BidOutcome.class, names = {"OUTBID", "WON", "CANCELED"})
     void testTerminalOutcomes_cannotTransitToAnything(BidOutcome terminal) {
         // then
         for (BidOutcome next : EnumSet.allOf(BidOutcome.class)) {

@@ -36,7 +36,7 @@ public class CartService {
         .thenComparing((a, b) -> switch (a.status()) {
             case RUNNING -> a.endAt().compareTo(b.endAt());
             case SCHEDULED -> a.startAt().compareTo(b.startAt());
-            case ENDED_WON, ENDED_FAILED, CANCELED -> b.endAt().compareTo(a.endAt());
+            case ENDED_WON, ENDED_FAILED, CANCELED, FORCE_CANCELED -> b.endAt().compareTo(a.endAt());
         });
 
     private final CartItemRepository cartItemRepository;
@@ -128,7 +128,7 @@ public class CartService {
             case SCHEDULED -> 1;
             case ENDED_WON -> 2;
             case ENDED_FAILED -> 3;
-            case CANCELED -> 4;
+            case CANCELED, FORCE_CANCELED -> 4;
         };
     }
 }

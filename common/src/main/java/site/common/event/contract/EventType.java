@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum EventType {
     // Auction
     AUCTION_WON_EVENT("auction.won"),
+    AUCTION_FORCE_CANCELED_EVENT("auction.force_canceled"),
 
     // Order
     ORDER_CANCELLED_EVENT("order.cancelled"),
