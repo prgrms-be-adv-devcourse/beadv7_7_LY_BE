@@ -13,6 +13,8 @@ public enum RecommendationErrorCode implements ErrorCode {
     WISHLIST_LOOKUP_FAILED(HttpStatus.BAD_GATEWAY, "RERR-5001", "위시리스트 조회에 실패했습니다."),
     WISHLIST_REQUEST_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "RERR-5002",
         "위시리스트 조회 요청이 올바르지 않습니다."),
+    INTEREST_WEIGHT_INFERENCE_FAILED(HttpStatus.BAD_GATEWAY, "RERR-5003",
+        "관심사 가중치 추론에 실패했습니다."),
 
     ;
 
