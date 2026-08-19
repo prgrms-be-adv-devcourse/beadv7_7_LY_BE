@@ -42,3 +42,8 @@ wallet:
     base-url: http://localhost:8086
     pool:
       max-connections: 10
+
+s3:
+  image:
+    bucket: team04-ly
+    public-url-prefix: https://team04-ly.s3.ap-northeast-2.amazonaws.com
