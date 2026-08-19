@@ -18,9 +18,11 @@ import site.explorationservice.productindex.application.ProductEmbeddingTemplate
 import site.explorationservice.productindex.application.ProductIndexService;
 import site.explorationservice.productindex.application.dto.BackfillResult;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
+import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.productindex.domain.ProductDocument;
 import site.explorationservice.productindex.domain.ProductDocumentRepository;
 import site.explorationservice.productindex.presentation.dto.BackfillResponse;
+import site.explorationservice.productindex.domain.ProductVectors;
 import site.explorationservice.productindex.presentation.dto.IndexedProductResponse;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeRequest;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeResponse;
@@ -51,41 +53,31 @@ public class ProductIndexProbeController {
     @PostMapping
     public ApiResponse<ProductIndexProbeResponse> index(
         @RequestBody final ProductIndexProbeRequest request) {
-        final ProductEmbeddingTemplate template = request.templateOrDefault();
-
         final long startedAt = System.nanoTime();
-        final ProductIndexResult result =
-            productIndexService.index(request.toCommand(), template);
+        final ProductIndexResult result = productIndexService.index(request.toCommand());
         final long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
 
         // 손으로 넣고 바로 확인할 수 있게 강제로 refresh한다. ES는 기본적으로 1초 주기로 refresh하므로
         // 운영 경로에서는 필요 없고, 그래서 ProductIndexService가 아니라 여기서만 한다.
         elasticsearchOperations.indexOps(ProductDocument.class).refresh();
 
-        return ApiResponse.success(
-            ProductIndexProbeResponse.from(result, template, elapsedMs));
+        return ApiResponse.success(ProductIndexProbeResponse.from(result, elapsedMs));
     }
 
     /**
      * 예시 상품 15건을 한 번에 색인한다. 상품 한 건만 넣어서는 추천이 제대로 도는지 볼 수 없어서다 — kNN은 이웃을 찾는 검색이라 비교 대상이 있어야 결과에 의미가
      * 생긴다.
-     * <p>
-     * 같은 id로 다시 넣으면 덮어써지므로, template을 바꿔가며 반복 호출해 두 형식을 비교할 수 있다.
      */
     @PostMapping("/samples")
-    public ApiResponse<SampleIndexResponse> indexSamples(
-        @RequestParam(required = false) final ProductEmbeddingTemplate template) {
-        final ProductEmbeddingTemplate applied =
-            template == null ? ProductEmbeddingTemplate.COMPACT : template;
-
+    public ApiResponse<SampleIndexResponse> indexSamples() {
         final long startedAt = System.nanoTime();
         final List<ProductIndexResult> results =
-            productIndexService.indexAll(SampleProducts.all(), applied);
+            productIndexService.indexAll(SampleProducts.all());
         final long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
 
         elasticsearchOperations.indexOps(ProductDocument.class).refresh();
 
-        return ApiResponse.success(SampleIndexResponse.from(results, applied, elapsedMs));
+        return ApiResponse.success(SampleIndexResponse.from(results, elapsedMs));
     }
 
     /**
@@ -119,16 +111,19 @@ public class ProductIndexProbeController {
     public ApiResponse<List<SimilarProductResponse>> findSimilar(
         @PathVariable final Long productId,
         @RequestParam(defaultValue = "5") final int size) {
-        final float[] vector =
+        final ProductVectors vectors =
             productDocumentRepository.findVectors(List.of(productId)).get(productId);
 
-        if (vector == null) {
+        if (vectors == null) {
             return ApiResponse.success(List.of());
         }
 
-        // 기준 상품 자신은 항상 1위로 나오므로 제외 목록에 넣는다.
+        // 축마다 균등 가중치 — 이 프로브는 특정 상품과 "전반적으로" 가까운 걸 보려는 것이지 추천의 가중치 로직을
+        // 확인하려는 게 아니다. 기준 상품 자신은 항상 1위로 나오므로 제외 목록에 넣는다.
+        final AxisWeights equalWeights = new AxisWeights(1, 1, 1);
         return ApiResponse.success(
-            productDocumentRepository.findSimilar(vector, List.of(productId), size).stream()
+            productDocumentRepository.findSimilar(vectors, equalWeights, List.of(productId), size)
+                .stream()
                 .map(SimilarProductResponse::from)
                 .toList());
     }
@@ -142,17 +137,19 @@ public class ProductIndexProbeController {
             return ApiResponse.success(null);
         }
         return ApiResponse.success(
-            IndexedProductResponse.of(document, hasVector(productId)));
+            IndexedProductResponse.of(document, hasVectors(productId)));
     }
 
     /**
-     * 벡터가 _source에 안 담기므로 값으로는 확인할 수 없다. 대신 그 필드에 값이 있는 문서만 매칭되는 exists 질의로 색인 여부를 판정한다.
+     * 벡터가 _source에 안 담기므로 값으로는 확인할 수 없다. 대신 3벡터 모두 값이 있는 문서만 매칭되는 exists 질의로 색인 여부를 판정한다.
      */
-    private boolean hasVector(final Long productId) {
+    private boolean hasVectors(final Long productId) {
         final NativeQuery query = NativeQuery.builder()
             .withQuery(q -> q.bool(b -> b
                 .filter(f -> f.term(t -> t.field("productId").value(productId)))
-                .filter(f -> f.exists(e -> e.field("contentVector")))))
+                .filter(f -> f.exists(e -> e.field("identityVector")))
+                .filter(f -> f.exists(e -> e.field("originVector")))
+                .filter(f -> f.exists(e -> e.field("editionVector")))))
             .build();
 
         return elasticsearchOperations.count(query, ProductDocument.class) > 0;

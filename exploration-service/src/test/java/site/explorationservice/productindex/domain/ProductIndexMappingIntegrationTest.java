@@ -60,18 +60,8 @@ class ProductIndexMappingIntegrationTest {
     }
 
     @Test
-    @DisplayName("content_vector가 dense_vector 1024차원 cosine으로 만들어진다")
+    @DisplayName("identity·origin·edition 3벡터가 전부 dense_vector 1024차원 cosine으로 만들어진다")
     void 벡터_필드_매핑() {
-        final Map<String, Object> vector = fieldMapping("contentVector");
-
-        assertThat(vector.get("type")).isEqualTo("dense_vector");
-        assertThat(vector.get("dims")).isEqualTo(1024);
-        assertThat(vector.get("similarity")).isEqualTo("cosine");
-    }
-
-    @Test
-    @DisplayName("identity·origin·edition 3벡터도 같은 규격(dense_vector 1024차원 cosine)으로 만들어진다")
-    void 삼벡터_필드_매핑() {
         for (final String field : new String[]{"identityVector", "originVector", "editionVector"}) {
             final Map<String, Object> vector = fieldMapping(field);
 
@@ -103,7 +93,7 @@ class ProductIndexMappingIntegrationTest {
         // _class는 Spring Data ES가 자동으로 넣는 타입 힌트다. 우리가 선언한 필드가 아니라서 여기 함께 적어둔다
         // — 검색 담당자가 이 인덱스를 볼 때 "이건 뭐지" 할 수 있는 자바 구현 세부사항이기도 하다.
         assertThat(properties())
-            .containsOnlyKeys("title", "artistName", "active", "contentVector",
+            .containsOnlyKeys("title", "artistName", "active",
                 "identityVector", "originVector", "editionVector", "_class");
     }
 

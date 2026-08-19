@@ -65,7 +65,7 @@ class ProductIndexIntegrationTest {
     @Autowired
     private ElasticsearchOperations elasticsearchOperations;
 
-    private float[] vector;
+    private float[] identityVector;
 
     @BeforeEach
     void setUp() {
@@ -78,12 +78,12 @@ class ProductIndexIntegrationTest {
         // 앞선 실행이 중간에 죽어 문서를 남겼을 수 있으므로 시작할 때도 지운다.
         deleteTestDocument();
 
-        // ProductIndexService가 상품 1건당 텍스트 4개(combined·identity·origin·edition)를 만들어 한 번에
-        // 임베딩하므로, 목도 4개를 돌려줘야 한다 — vector는 그중 combined(contentVector)에 해당한다.
-        vector = randomUnitVector(1);
+        // ProductIndexService가 상품 1건당 텍스트 3개(identity·origin·edition)를 만들어 한 번에 임베딩하므로,
+        // 목도 3개를 돌려줘야 한다.
+        identityVector = randomUnitVector(1);
         given(embeddingService.embed(anyList(), any(), any()))
             .willReturn(new EmbeddingResult(
-                List.of(vector, randomUnitVector(2), randomUnitVector(3), randomUnitVector(4)),
+                List.of(identityVector, randomUnitVector(2), randomUnitVector(3)),
                 "text-embedding-3-large", 25, 25));
     }
 
@@ -100,8 +100,8 @@ class ProductIndexIntegrationTest {
      * 색인한 벡터가 실제로 kNN 검색에 쓰이는지 확인한다.
      * <p>
      * <b>ES 9는 dense_vector를 _source에서 제외한다.</b> 그래서 {@code get()}으로 문서를 읽으면 다른 필드는
-     * 다 오는데 contentVector만 null이다. 벡터가 저장되지 않은 것처럼 보이지만 실제로는 별도 구조에 원본 값 그대로 들어 있고, 검색의 fields
-     * 파라미터로 꺼낼 수 있다.
+     * 다 오는데 identity·origin·editionVector는 null이다. 벡터가 저장되지 않은 것처럼 보이지만 실제로는 별도 구조에 원본 값 그대로 들어
+     * 있고, 검색의 fields 파라미터로 꺼낼 수 있다.
      * <p>
      * 그래서 "저장한 float 배열이 그대로 되읽히는가" 대신 <b>"그 벡터로 검색이 되는가"</b>를 검증한다. 우리가 실제로 필요한 능력이 그쪽이고, 매핑이 잘못돼
      * 벡터가 검색에 안 걸리는 상황도 이 단언이 잡아낸다.
@@ -109,11 +109,11 @@ class ProductIndexIntegrationTest {
     @Test
     @DisplayName("색인한 벡터가 kNN 검색으로 찾아진다")
     void 벡터_검색() {
-        productIndexService.index(command(), ProductEmbeddingTemplate.COMPACT);
+        productIndexService.index(command());
         elasticsearchOperations.indexOps(ProductDocument.class).refresh();
 
         final List<Float> queryVector = new ArrayList<>(DIMENSIONS);
-        for (final float value : vector) {
+        for (final float value : identityVector) {
             queryVector.add(value);
         }
 
@@ -121,7 +121,7 @@ class ProductIndexIntegrationTest {
         // 밀려 결과가 흔들리지 않는다.
         final NativeQuery knnQuery = NativeQuery.builder()
             .withKnnSearches(knn -> knn
-                .field("contentVector")
+                .field("identityVector")
                 .queryVector(queryVector)
                 .k(1)
                 .numCandidates(10)
@@ -140,7 +140,7 @@ class ProductIndexIntegrationTest {
     @Test
     @DisplayName("표시용 필드가 함께 저장된다")
     void 표시용_필드() {
-        productIndexService.index(command(), ProductEmbeddingTemplate.COMPACT);
+        productIndexService.index(command());
 
         final ProductDocument found = elasticsearchOperations.get(
             String.valueOf(PRODUCT_ID), ProductDocument.class);
@@ -154,12 +154,11 @@ class ProductIndexIntegrationTest {
     @Test
     @DisplayName("실제로 임베딩에 넣은 텍스트를 결과로 돌려준다")
     void 임베딩_텍스트_반환() {
-        final ProductIndexResult result =
-            productIndexService.index(command(), ProductEmbeddingTemplate.COMPACT);
+        final ProductIndexResult result = productIndexService.index(command());
 
-        assertThat(result.embeddedText()).isEqualTo("""
-            Miles Davis · Jazz · Columbia
-            1950년대 · 미국 · 오리지널 프레스""");
+        assertThat(result.identityText()).isEqualTo("Jazz · Miles Davis");
+        assertThat(result.originText()).isEqualTo("1950년대 · 미국");
+        assertThat(result.editionText()).isEqualTo("Columbia · ORIGINAL");
         assertThat(result.dimensions()).isEqualTo(DIMENSIONS);
         assertThat(result.embeddingModel()).isEqualTo("text-embedding-3-large");
     }
@@ -171,11 +170,10 @@ class ProductIndexIntegrationTest {
     @Test
     @DisplayName("같은 상품을 다시 색인해도 문서가 늘지 않고 덮어써진다")
     void 재색인_멱등() {
-        productIndexService.index(command(), ProductEmbeddingTemplate.COMPACT);
+        productIndexService.index(command());
         productIndexService.index(
             new ProductIndexCommand(PRODUCT_ID, "바뀐 제목", "Miles Davis", "Jazz", "Columbia",
-                1959, "미국", "ORIGINAL", true),
-            ProductEmbeddingTemplate.COMPACT);
+                1959, "미국", "ORIGINAL", true));
 
         final ProductDocument found = elasticsearchOperations.get(
             String.valueOf(PRODUCT_ID), ProductDocument.class);
@@ -191,8 +189,7 @@ class ProductIndexIntegrationTest {
     void active_기본값() {
         productIndexService.index(
             new ProductIndexCommand(PRODUCT_ID, "Kind of Blue", "Miles Davis", "Jazz", "Columbia",
-                1959, "미국", "ORIGINAL", null),
-            ProductEmbeddingTemplate.COMPACT);
+                1959, "미국", "ORIGINAL", null));
 
         final ProductDocument found = elasticsearchOperations.get(
             String.valueOf(PRODUCT_ID), ProductDocument.class);
