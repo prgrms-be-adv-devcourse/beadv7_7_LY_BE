@@ -11,6 +11,10 @@ import site.memberservice.member.application.MemberService;
 import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
+import site.memberservice.member.application.dto.MemberRestrictionDto;
+import site.memberservice.member.presentation.response.RestrictionsResponse;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @RequestMapping("/internal/v1")
@@ -38,5 +42,12 @@ public class MemberInternalController {
         final BankAccountDto memberBankAccount = memberService.getMemberBankAccount(memberId);
 
         return ResponseEntity.ok(ApiResponse.success(memberBankAccount));
+    }
+
+    @GetMapping("/members/{memberId}/restrictions")
+    public ResponseEntity<ApiResponse<RestrictionsResponse>> getMemberRestrictions(@PathVariable final Long memberId) {
+        final List<MemberRestrictionDto> restrictions = memberService.getMemberRestrictions(memberId);
+
+        return ResponseEntity.ok(ApiResponse.success(RestrictionsResponse.of(memberId, restrictions)));
     }
 }

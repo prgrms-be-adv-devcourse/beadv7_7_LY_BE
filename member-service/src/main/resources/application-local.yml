@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:33340/lp_auction
+    url: jdbc:mysql://localhost:33340/member_db
     username: root
     password: root
 
@@ -17,3 +17,5 @@ app:
     refresh-token-secret-key: cmVmcmVzaC10b2tlbi1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1lbnZpcm9ubWVudDEyMzQ=
     access-token-expiration-time: 1200000 # 20분
     refresh-token-expiration-time: 604800000 # 7일
+
+KAFKA_BOOTSTRAP_SERVERS: localhost:9092
