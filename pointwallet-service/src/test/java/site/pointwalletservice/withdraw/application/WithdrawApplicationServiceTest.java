@@ -14,13 +14,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
+import site.pointwalletservice.outbox.application.OutboxEventStore;
 import site.pointwalletservice.shared.Money;
-import site.pointwalletservice.shared.PlatformAccount;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
+import site.pointwalletservice.wallet.exception.WalletLockFailedException;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 import site.pointwalletservice.withdraw.application.dto.WithdrawRequestResult;
 import site.pointwalletservice.withdraw.application.dto.WithdrawStatusResult;
@@ -29,8 +34,10 @@ import site.pointwalletservice.withdraw.application.port.MemberBankAccountPort;
 import site.pointwalletservice.withdraw.domain.Withdraw;
 import site.pointwalletservice.withdraw.domain.WithdrawRepository;
 import site.pointwalletservice.withdraw.domain.WithdrawStatus;
+import site.pointwalletservice.withdraw.domain.event.WithdrawFeeEarnedEvent;
 import site.pointwalletservice.withdraw.exception.WithdrawErrorCode;
 import site.pointwalletservice.withdraw.exception.WithdrawException;
+import site.pointwalletservice.withdraw.exception.WithdrawLockContentionException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WithdrawApplicationService")
@@ -48,11 +55,17 @@ class WithdrawApplicationServiceTest {
     @Mock
     private MemberBankAccountPort memberBankAccountPort;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
+    @Mock
+    private OutboxEventStore outboxEventStore;
+
     private WithdrawApplicationService sut;
 
     private static final Long USER_ID = 1L;
     private static final Long WALLET_ID = 100L;
-    private static final Long PLATFORM_WALLET_ID = 999L;
+    private static final Long WITHDRAW_ID = 1L;
     private static final Money AMOUNT = Money.of(100_000);
     private static final Money FEE_AMOUNT = Money.of(2_000);  // 100,000 * 2%
     private static final Money NET_AMOUNT = Money.of(98_000);
@@ -60,23 +73,164 @@ class WithdrawApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        sut = new WithdrawApplicationService(withdrawRepository, walletService, pointTransactionService, memberBankAccountPort);
+        // TransactionTemplate.execute()가 실제 트랜잭션 없이 콜백을 즉시 실행하도록 스텁 —
+        // DepositApplicationServiceTest와 동일한 패턴.
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction((TransactionStatus) null);
+        }).when(transactionTemplate).execute(any());
+
+        sut = new WithdrawApplicationService(
+                withdrawRepository, walletService, pointTransactionService,
+                memberBankAccountPort, transactionTemplate, outboxEventStore
+        );
+    }
+
+    /** save() 시점에 ID를 채워준다 — requestWithdraw()가 이후 withdraw.getId()를 outbox 파티션 키로 쓰기 때문에 필요. */
+    private void stubSaveWithId(Long id) {
+        when(withdrawRepository.save(any(Withdraw.class))).thenAnswer(invocation -> {
+            Withdraw w = invocation.getArgument(0);
+            ReflectionTestUtils.setField(w, "id", id);
+            return w;
+        });
     }
 
     @Nested
-    @DisplayName("인출 신청 (requestWithdraw)")
+    @DisplayName("계좌 검증 (validateBankAccount) — 재시도 루프 바깥에서 1회만 호출되는 부분")
+    class ValidateBankAccount {
+
+        @Test
+        @DisplayName("등록된 계좌가 있으면 조용히 통과한다")
+        void 계좌있으면_통과() {
+            // given
+            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
+
+            // when & then — 예외 없이 끝나야 한다
+            sut.validateBankAccount(USER_ID);
+        }
+
+        @Test
+        @DisplayName("등록된 계좌가 없으면 BANK_ACCOUNT_NOT_FOUND를 던진다")
+        void 계좌없으면_예외() {
+            // given
+            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.validateBankAccount(USER_ID))
+                    .isInstanceOf(WithdrawException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("지갑 차감 트랜잭션 (executeDeductionAndOutbox) — 락 경합 시 재시도되는 부분")
+    class ExecuteDeductionAndOutbox {
+
+        @Test
+        @DisplayName("정상 흐름이면 수수료(2%, 내림)를 계산해 사용자 지갑만 차감하고, " +
+                "플랫폼 계정 적립은 WithdrawFeeEarnedEvent를 Outbox에 저장하는 것으로 넘긴다")
+        void 정상흐름() {
+            // given — 계좌 조회 호출 자체가 없다(이 메서드 책임이 아니므로 memberBankAccountPort는 스텁도 안 함)
+            when(walletService.deduct(USER_ID, AMOUNT))
+                    .thenReturn(new WalletBalanceResult(WALLET_ID, Money.of(0)));
+            stubSaveWithId(WITHDRAW_ID);
+
+            // when
+            Withdraw withdraw = sut.executeDeductionAndOutbox(USER_ID, AMOUNT);
+
+            // then
+            assertThat(withdraw.getStatus()).isEqualTo(WithdrawStatus.SUCCESS);
+
+            ArgumentCaptor<Withdraw> captor = ArgumentCaptor.forClass(Withdraw.class);
+            verify(withdrawRepository).save(captor.capture());
+            assertThat(captor.getValue().getUserId()).isEqualTo(USER_ID);
+            assertThat(captor.getValue().getAmount()).isEqualTo(AMOUNT);
+
+            verify(pointTransactionService).record(
+                    WALLET_ID, PointTransactionType.WITHDRAW, AMOUNT, Money.of(0), WITHDRAW_ID
+            );
+
+            // 플랫폼 계정 charge()는 더 이상 이 트랜잭션 안에서 직접 호출되지 않는다
+            verify(walletService, never()).charge(any(), any());
+
+            // 대신 같은 트랜잭션 안에서 WithdrawFeeEarnedEvent가 Outbox에 저장된다
+            ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+            verify(outboxEventStore).store(
+                    org.mockito.ArgumentMatchers.eq(WithdrawFeeEarnedEvent.TOPIC),
+                    org.mockito.ArgumentMatchers.eq(WITHDRAW_ID.toString()),
+                    eventCaptor.capture()
+            );
+            assertThat(eventCaptor.getValue()).isInstanceOf(WithdrawFeeEarnedEvent.class);
+            WithdrawFeeEarnedEvent event = (WithdrawFeeEarnedEvent) eventCaptor.getValue();
+            assertThat(event.withdrawId()).isEqualTo(WITHDRAW_ID);
+            assertThat(event.feeAmount()).isEqualByComparingTo(FEE_AMOUNT.getValue());
+
+            // 계좌 조회는 이 메서드 책임이 아니므로 한 번도 호출되지 않는다
+            verify(memberBankAccountPort, never()).getBankAccount(any());
+        }
+
+        @Test
+        @DisplayName("지갑이 없으면 WALLET_NOT_FOUND로 번역된다")
+        void 지갑없으면_WALLET_NOT_FOUND() {
+            // given
+            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new WalletNotFoundException());
+
+            // when & then
+            assertThatThrownBy(() -> sut.executeDeductionAndOutbox(USER_ID, AMOUNT))
+                    .isInstanceOf(WithdrawException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.WALLET_NOT_FOUND);
+
+            verify(withdrawRepository, never()).save(any());
+            verify(outboxEventStore, never()).store(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("잔액이 부족하면 INSUFFICIENT_BALANCE로 번역된다")
+        void 잔액부족() {
+            // given
+            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new InsufficientBalanceException());
+
+            // when & then
+            assertThatThrownBy(() -> sut.executeDeductionAndOutbox(USER_ID, AMOUNT))
+                    .isInstanceOf(WithdrawException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.INSUFFICIENT_BALANCE);
+
+            verify(withdrawRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("사용자 본인 지갑 락 경합이면 WithdrawLockContentionException으로 번역된다 " +
+                "(RetryingWithdrawService가 이 타입만 골라 재시도한다)")
+        void 지갑락경합() {
+            // given
+            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new WalletLockFailedException());
+
+            // when & then
+            assertThatThrownBy(() -> sut.executeDeductionAndOutbox(USER_ID, AMOUNT))
+                    .isInstanceOf(WithdrawLockContentionException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.LOCK_ACQUISITION_FAILED);
+
+            verify(withdrawRepository, never()).save(any());
+            verify(outboxEventStore, never()).store(any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("인출 신청 (requestWithdraw) — validateBankAccount + executeDeductionAndOutbox 조합")
     class RequestWithdraw {
 
         @Test
-        @DisplayName("정상 흐름이면 수수료(2%, 내림)를 계산해 사용자 지갑 차감 + 플랫폼 계정 적립 + 즉시 SUCCESS 처리한다")
+        @DisplayName("계좌 검증 후 지갑 차감까지 이어져서 최종 결과를 반환한다")
         void requestWithdraw_정상흐름() {
             // given
             when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
             when(walletService.deduct(USER_ID, AMOUNT))
                     .thenReturn(new WalletBalanceResult(WALLET_ID, Money.of(0)));
-            when(walletService.charge(PlatformAccount.PLATFORM_USER_ID, FEE_AMOUNT))
-                    .thenReturn(new WalletBalanceResult(PLATFORM_WALLET_ID, FEE_AMOUNT));
-            when(withdrawRepository.save(any(Withdraw.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            stubSaveWithId(WITHDRAW_ID);
 
             // when
             WithdrawRequestResult result = sut.requestWithdraw(USER_ID, AMOUNT);
@@ -85,23 +239,11 @@ class WithdrawApplicationServiceTest {
             assertThat(result.status()).isEqualTo(WithdrawStatus.SUCCESS);
             assertThat(result.feeAmount()).isEqualByComparingTo(FEE_AMOUNT.getValue());
             assertThat(result.netAmount()).isEqualByComparingTo(NET_AMOUNT.getValue());
-
-            ArgumentCaptor<Withdraw> captor = ArgumentCaptor.forClass(Withdraw.class);
-            verify(withdrawRepository).save(captor.capture());
-            assertThat(captor.getValue().getUserId()).isEqualTo(USER_ID);
-            assertThat(captor.getValue().getAmount()).isEqualTo(AMOUNT);
-
-            verify(pointTransactionService).record(
-                    WALLET_ID, PointTransactionType.WITHDRAW, AMOUNT, Money.of(0), captor.getValue().getId()
-            );
-            verify(pointTransactionService).record(
-                    PLATFORM_WALLET_ID, PointTransactionType.FEE_INCOME, FEE_AMOUNT, FEE_AMOUNT, captor.getValue().getId()
-            );
         }
 
         @Test
-        @DisplayName("등록된 계좌가 없으면 BANK_ACCOUNT_NOT_FOUND를 던지고 지갑에는 손도 안 댄다")
-        void requestWithdraw_계좌없으면_예외() {
+        @DisplayName("등록된 계좌가 없으면 트랜잭션 자체를 시작하지 않는다")
+        void requestWithdraw_계좌없으면_트랜잭션_미시작() {
             // given
             when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.empty());
 
@@ -111,40 +253,8 @@ class WithdrawApplicationServiceTest {
                     .extracting(e -> ((WithdrawException) e).getErrorCode())
                     .isEqualTo(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
 
+            verify(transactionTemplate, never()).execute(any());
             verify(walletService, never()).deduct(any(), any());
-            verify(withdrawRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("지갑이 없으면 WALLET_NOT_FOUND로 번역된다")
-        void requestWithdraw_지갑없으면_WALLET_NOT_FOUND() {
-            // given
-            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
-            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new WalletNotFoundException());
-
-            // when & then
-            assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT))
-                    .isInstanceOf(WithdrawException.class)
-                    .extracting(e -> ((WithdrawException) e).getErrorCode())
-                    .isEqualTo(WithdrawErrorCode.WALLET_NOT_FOUND);
-
-            verify(withdrawRepository, never()).save(any());
-            verify(walletService, never()).charge(any(), any());
-        }
-
-        @Test
-        @DisplayName("잔액이 부족하면 INSUFFICIENT_BALANCE로 번역된다")
-        void requestWithdraw_잔액부족() {
-            // given
-            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
-            when(walletService.deduct(USER_ID, AMOUNT)).thenThrow(new InsufficientBalanceException());
-
-            // when & then
-            assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT))
-                    .isInstanceOf(WithdrawException.class)
-                    .extracting(e -> ((WithdrawException) e).getErrorCode())
-                    .isEqualTo(WithdrawErrorCode.INSUFFICIENT_BALANCE);
-
             verify(withdrawRepository, never()).save(any());
         }
     }
@@ -158,7 +268,7 @@ class WithdrawApplicationServiceTest {
         void getStatus_정상조회() {
             // given
             Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
-            org.springframework.test.util.ReflectionTestUtils.setField(withdraw, "id", 1L);
+            ReflectionTestUtils.setField(withdraw, "id", 1L);
             when(withdrawRepository.findById(1L)).thenReturn(Optional.of(withdraw));
 
             // when

@@ -14,6 +14,7 @@ public enum WithdrawErrorCode implements ErrorCode {
     BANK_ACCOUNT_NOT_FOUND(HttpStatus.BAD_REQUEST, "WDERR-3003", "등록된 계좌 정보가 없습니다."),
     WITHDRAW_NOT_FOUND(HttpStatus.NOT_FOUND, "WDERR-3004", "인출 신청 내역을 찾을 수 없습니다."),
     ALREADY_PROCESSED(HttpStatus.CONFLICT, "WDERR-3005", "이미 처리된 인출 신청입니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "WDERR-3006", "인출 요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
     ;
 
     private final HttpStatus status;
