@@ -4,6 +4,8 @@ server:
 exploration:
   wishlist:
     base-url: http://localhost:8084
+  product:
+    base-url: http://localhost:8084
 
 spring:
   elasticsearch:
