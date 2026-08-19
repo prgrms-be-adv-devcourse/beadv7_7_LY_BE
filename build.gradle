@@ -29,6 +29,10 @@ subprojects {
         imports {
             mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:2025.1.2"
+            // common이 쓰는 AWS SDK(KMS)의 버전을 여기서 통일한다. BOM import는 선언한
+            // 프로젝트에만 적용되고 의존 프로젝트로 전파되지 않아서, common에만 넣으면
+            // common을 쓰는 서비스의 runtimeClasspath에서 버전을 못 찾아 빌드가 깨진다.
+            mavenBom "software.amazon.awssdk:bom:2.53.3"
         }
     }
 
