@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -29,6 +30,7 @@ import site.pointwalletservice.deposit.domain.PgApproveResult;
 import site.pointwalletservice.deposit.domain.PgCancelResult;
 import site.pointwalletservice.deposit.exception.DepositErrorCode;
 import site.pointwalletservice.deposit.exception.DepositException;
+import site.pointwalletservice.deposit.exception.DepositLockContentionException;
 import site.pointwalletservice.deposit.reconciliation.application.DepositReconciliationLogRecorder;
 import site.pointwalletservice.deposit.reconciliation.domain.ReconciliationFailureType;
 import site.pointwalletservice.ledger.application.PointTransactionService;
@@ -37,6 +39,7 @@ import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
+import site.pointwalletservice.wallet.exception.WalletLockFailedException;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 
 
@@ -170,6 +173,50 @@ class DepositApplicationServiceTest {
             verify(paymentGatewayClient, never()).approve(any(), any(), any());
             verify(walletService, never()).charge(anyLong(), any());
             verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("지갑 락 경합이면 보정 취소 없이 DepositLockContentionException을 던진다")
+        void confirmDeposit_지갑락경합이면_보정취소없이_예외를던진다() {
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
+            when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
+
+            PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+            when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+
+            // 동시에 들어온 다른 요청이 지갑 락을 선점한 상황을 시뮬레이션
+            when(walletService.charge(USER_ID, AMOUNT)).thenThrow(new WalletLockFailedException());
+
+            assertThatThrownBy(() -> sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT))
+                    .isInstanceOf(DepositLockContentionException.class)
+                    .extracting(e -> ((DepositException) e).getErrorCode())
+                    .isEqualTo(DepositErrorCode.LOCK_ACQUISITION_FAILED);
+
+            // 보정 취소도, 정합성 로그도 타면 안 된다 — RetryingDepositService가 재시도할 몫이라
+            verify(paymentGatewayClient, never()).cancel(any(), any(), any());
+            verify(reconciliationLogRecorder, never()).record(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("point_transaction 유니크 제약 위반이면 보정 취소 없이 조용히 스킵한다")
+        void confirmDeposit_유니크제약위반이면_보정취소없이_스킵한다() {
+            Deposit deposit = Deposit.request(USER_ID, ORDER_ID, AMOUNT);
+            when(depositRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(deposit));
+
+            PgApproveResult approveResult = new PgApproveResult(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+            when(paymentGatewayClient.approve(PROVIDER_TX_ID, ORDER_ID, AMOUNT)).thenReturn(approveResult);
+            when(walletService.charge(USER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+
+            // 동시에 들어온 다른 요청이 이미 point_transaction을 반영 완료해 유니크 제약에 걸린 상황
+            org.mockito.Mockito.doThrow(new DataIntegrityViolationException("uk_point_transaction_related_id_type 위반(시뮬레이션)"))
+                    .when(pointTransactionService).record(any(), any(), any(), any(), any());
+
+            // 예외 없이 정상 종료돼야 한다 — 이미 다른 요청이 처리 완료한 것이므로
+            sut.confirmDeposit(PROVIDER_TX_ID, ORDER_ID, AMOUNT);
+
+            // 보정 취소도, 정합성 로그도 타면 안 된다 — 실제로는 실패가 아니기 때문
+            verify(paymentGatewayClient, never()).cancel(any(), any(), any());
+            verify(reconciliationLogRecorder, never()).record(any(), any(), any(), any());
         }
 
         @Test

@@ -2,6 +2,7 @@ package site.pointwalletservice.deposit.application;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -11,6 +12,7 @@ import site.pointwalletservice.deposit.domain.PaymentGatewayClient;
 import site.pointwalletservice.deposit.domain.PgApproveResult;
 import site.pointwalletservice.deposit.exception.DepositErrorCode;
 import site.pointwalletservice.deposit.exception.DepositException;
+import site.pointwalletservice.deposit.exception.DepositLockContentionException;
 import site.pointwalletservice.deposit.reconciliation.application.DepositReconciliationLogRecorder;
 import site.pointwalletservice.deposit.reconciliation.domain.ReconciliationFailureType;
 import site.pointwalletservice.ledger.application.PointTransactionService;
@@ -19,6 +21,7 @@ import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
+import site.pointwalletservice.wallet.exception.WalletLockFailedException;
 import site.pointwalletservice.wallet.exception.WalletNotFoundException;
 
 /**
@@ -26,6 +29,15 @@ import site.pointwalletservice.wallet.exception.WalletNotFoundException;
  * 보정마저 실패 시 정합성 로그"라는 동일한 모양의 4단계 보상 흐름(간이 saga)을 따른다. 최상위
  * 메서드는 이 네 단계를 이름 있는 private 메서드 호출로만 보여주고, 각 단계의 구체적인 방법
  * (트랜잭션 경계를 어디서 끊는지, PG를 어떻게 부르는지)은 해당 private 메서드 안에 감춘다.
+ * <p>
+ * confirmDeposit()의 DB 반영 단계에서 실패 원인이 셋으로 갈린다는 점만 예외다 —
+ * ① 지갑 락 경합(DepositLockContentionException): 보정 취소 없이 재시도(RetryingDepositService)
+ * ② point_transaction 유니크 제약 위반(DataIntegrityViolationException): 동시 요청 중 다른 쪽이
+ *    이미 반영 완료했다는 뜻이라 보정 취소 없이 스킵
+ * ③ 그 외: 기존과 동일하게 보정 취소 → 실패하면 정합성 로그
+ * ①②를 굳이 나누는 이유 - PG 승인이 Idempotency-Key로 멱등해서 동시 확정 요청 자체가 "중복 결제"를
+ * 만들지 않는다. 그런데 이 둘을 구분 안 하고 무조건 보정 취소를 태우면, 방금 다른 스레드가 정상
+ * 반영한 확정 건을 오취소하게 된다.
  */
 @Service
 @RequiredArgsConstructor
@@ -67,6 +79,14 @@ public class DepositApplicationService implements DepositService {
 
         try {
             applyConfirmedDeposit(deposit, result);
+        } catch (DepositLockContentionException e) {
+            // 보정 취소 없이 그대로 위로 던진다 — RetryingDepositService가 재시도.
+            throw e;
+        } catch (DataIntegrityViolationException e) {
+            // 동시 확정 요청 중 다른 요청이 이미 반영 완료함 — PG 승인도 멱등해서 실제 중복 결제가
+            // 존재하지 않는다. 보정 취소를 태우면 방금 성공한 정상 확정 건을 오취소하게 되니 스킵.
+            log.info("동시 확정 요청 중 다른 요청이 이미 반영 완료함 - 스킵. orderId={}, providerTxId={}",
+                    orderId, result.providerTxId());
         } catch (Exception e) {
             log.error("PG 승인 성공 후 DB 반영 실패 - 보정 취소 시도. orderId={}, providerTxId={}",
                     orderId, result.providerTxId(), e);
@@ -113,12 +133,26 @@ public class DepositApplicationService implements DepositService {
             deposit.confirm(result.providerTxId(), result.orderId(), result.approvedAmount());
             depositRepository.save(deposit);
 
-            WalletBalanceResult walletResult = walletService.charge(deposit.getUserId(), result.approvedAmount());
+            WalletBalanceResult walletResult = chargeOrThrowLockContention(deposit, result);
             pointTransactionService.record(
                     walletResult.walletId(), PointTransactionType.DEPOSIT,
                     result.approvedAmount(), walletResult.balanceAfter(), deposit.getId()
             );
         });
+    }
+
+    /**
+     * 지갑 락 NOWAIT 경합 — 같은 orderId 중복 확정 요청이나 같은 유저의 다른 지갑 작업과 동시에
+     * 몰린 것. PG 승인은 멱등해서 재시도해도 안전하니, 여기서 보정 취소로 가지 않고
+     * DepositLockContentionException으로 번역해 RetryingDepositService가 confirmDeposit() 자체를
+     * 재시도하게 한다.
+     */
+    private WalletBalanceResult chargeOrThrowLockContention(Deposit deposit, PgApproveResult result) {
+        try {
+            return walletService.charge(deposit.getUserId(), result.approvedAmount());
+        } catch (WalletLockFailedException e) {
+            throw new DepositLockContentionException();
+        }
     }
 
     /** PG는 이미 승인됨 — DB 반영 실패 → 즉시 보정 취소 시도. 보정마저 실패하면 정합성 로그로 넘긴다. */

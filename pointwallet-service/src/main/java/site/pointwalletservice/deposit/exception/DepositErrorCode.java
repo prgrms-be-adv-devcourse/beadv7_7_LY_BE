@@ -18,6 +18,7 @@ public enum DepositErrorCode implements ErrorCode {
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "DERR-3007", "지갑을 찾을 수 없습니다."),
     PG_API_ERROR(HttpStatus.BAD_GATEWAY, "DERR-3008", "결제 대행사 처리 중 오류가 발생했습니다."),
     RECONCILIATION_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "DERR-3009", "정합성 확인 기록을 찾을 수 없습니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "DERR-3010", "충전 확정 요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
     ;
 
     private final HttpStatus status;
