@@ -19,17 +19,17 @@ import site.explorationservice.recommendation.exception.RecommendationException;
 @Component
 public class WishlistHttpClient implements WishlistPort {
 
-    private final RestClient explorationWishlistRestClient;
+    private final RestClient recommendationWishlistRestClient;
 
     public WishlistHttpClient(
-        @Qualifier("explorationWishlistRestClient") final RestClient explorationWishlistRestClient) {
-        this.explorationWishlistRestClient = explorationWishlistRestClient;
+        @Qualifier("recommendationWishlistRestClient") final RestClient recommendationWishlistRestClient) {
+        this.recommendationWishlistRestClient = recommendationWishlistRestClient;
     }
 
     @Override
     public List<WishlistProduct> findRecentProducts(final Long memberId, final int limit) {
         final WishlistProductsPage page = RestClientTemplate.executeWithRetry(
-            () -> explorationWishlistRestClient.get()
+            () -> recommendationWishlistRestClient.get()
                 .uri("/internal/v1/members/{memberId}/liked-products?limit={limit}", memberId,
                     limit)
                 .retrieve()

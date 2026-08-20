@@ -42,6 +42,8 @@ spring:
 exploration:
   wishlist:
     base-url: ${PRODUCT_SERVICE_BASE_URL}
+  product:
+    base-url: ${PRODUCT_SERVICE_BASE_URL}
 
 management:
   endpoints:

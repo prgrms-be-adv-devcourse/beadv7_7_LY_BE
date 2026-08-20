@@ -27,4 +27,10 @@ public interface ProductRepository {
     Optional<Product> findById(Long id);
 
     List<Product> findAllByIds(List<Long> ids);
+
+    /**
+     * id 오름차순으로 순회한다(cursor가 null이면 처음부터). 상품 백필처럼 전체를 빠짐없이 훑을 때 쓴다 — 위시리스트
+     * 커서 페이징과 달리 최신순이 아니라 처음부터 끝까지 도는 게 목적이라 오름차순이다.
+     */
+    List<Product> findAllOrderByIdAfter(Long cursor, int limit);
 }

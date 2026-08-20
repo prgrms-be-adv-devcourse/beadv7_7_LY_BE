@@ -2,6 +2,7 @@ package site.productservice.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -95,5 +96,68 @@ class ProductRepositoryImplTest {
 
         // then
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("전체 순회는 cursor가 없으면 id 오름차순으로 처음부터 준다")
+    void findAllOrderByIdAfter_cursor_없으면_처음부터() {
+        // given
+        Product first = productJpaRepository.save(product("Abbey Road"));
+        Product second = productJpaRepository.save(product("Let It Be"));
+
+        // when
+        List<Product> result = productRepository.findAllOrderByIdAfter(null, 10);
+
+        // then
+        assertThat(result).extracting(Product::getId)
+                .containsExactly(first.getId(), second.getId());
+    }
+
+    @Test
+    @DisplayName("전체 순회는 cursor보다 큰 id만 준다(cursor 자신은 제외)")
+    void findAllOrderByIdAfter_cursor_초과만() {
+        // given
+        Product first = productJpaRepository.save(product("Abbey Road"));
+        Product second = productJpaRepository.save(product("Let It Be"));
+
+        // when
+        List<Product> result = productRepository.findAllOrderByIdAfter(first.getId(), 10);
+
+        // then
+        assertThat(result).extracting(Product::getId).containsExactly(second.getId());
+    }
+
+    @Test
+    @DisplayName("전체 순회는 limit만큼만 준다")
+    void findAllOrderByIdAfter_limit_적용() {
+        // given
+        productJpaRepository.save(product("Abbey Road"));
+        productJpaRepository.save(product("Let It Be"));
+
+        // when
+        List<Product> result = productRepository.findAllOrderByIdAfter(null, 1);
+
+        // then
+        assertThat(result).hasSize(1);
+    }
+
+    // active 필터가 없다는 걸 실제로 증명한다 — 백필이 비활성 상품도 훑어야 ES의 active 상태가 실제와 맞는다.
+    @Test
+    @DisplayName("전체 순회는 비활성 상품도 포함한다")
+    void findAllOrderByIdAfter_비활성_상품도_포함() {
+        // given
+        Product inactive = product("Yesterday and Today");
+        inactive.deactivate();
+        productJpaRepository.save(inactive);
+
+        // when
+        List<Product> result = productRepository.findAllOrderByIdAfter(null, 10);
+
+        // then
+        assertThat(result).extracting(Product::isActive).containsExactly(false);
+    }
+
+    private Product product(String title) {
+        return Product.of(null, 1L, title, "UK", 1969, PressType.ORIGINAL, "LP", null, "Rock", null, null);
     }
 }

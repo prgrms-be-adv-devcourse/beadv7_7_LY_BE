@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 public class RecommendationClientConfig {
 
     @Bean
-    RestClient explorationWishlistRestClient(
+    RestClient recommendationWishlistRestClient(
         @Value("${exploration.wishlist.base-url}") final String baseUrl) {
         return RestClient.builder().baseUrl(baseUrl).build();
     }
