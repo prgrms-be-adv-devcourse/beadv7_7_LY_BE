@@ -522,11 +522,14 @@ jobs:
             DB_USER_NAME=${{ secrets.MEMBER_DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.MEMBER_DB_PASSWORD }}
             KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-
+가
             ACCESS_TOKEN_SECRET_KEY=${{ secrets.ACCESS_TOKEN_SECRET_KEY }}
             REFRESH_TOKEN_SECRET_KEY=${{ secrets.REFRESH_TOKEN_SECRET_KEY }}
             ACCESS_TOKEN_EXPIRATION_TIME=${{ secrets.ACCESS_TOKEN_EXPIRATION_TIME }}
             REFRESH_TOKEN_EXPIRATION_TIME=${{ secrets.REFRESH_TOKEN_EXPIRATION_TIME }}
+
+            AWS_KMS_REGION=${{ secrets.AWS_KMS_REGION }}
+            AWS_KMS_KEY_ID=${{ secrets.AWS_KMS_KEY_ID }}
 
       - name: Start new server application
         id: start-new-server-application

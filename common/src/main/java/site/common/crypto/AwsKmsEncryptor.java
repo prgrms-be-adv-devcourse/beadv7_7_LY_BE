@@ -1,5 +1,6 @@
 package site.common.crypto;
 
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
@@ -9,12 +10,14 @@ import software.amazon.awssdk.services.kms.model.EncryptResponse;
 
 import java.util.Base64;
 
+@Slf4j
 public class AwsKmsEncryptor implements KmsEncryptor {
 
     private final KmsClient kmsClient;
     private final KmsProperties properties;
 
     public AwsKmsEncryptor(final KmsClient kmsClient, final KmsProperties properties) {
+        log.info("실제 KMS를 연동하는 클라이언트 빈 객체 생성");
         this.kmsClient = kmsClient;
         this.properties = properties;
     }
