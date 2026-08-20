@@ -447,6 +447,7 @@ jobs:
           service: gateway-service
           secret-body: |
             PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
 
             PRODUCT_SERVICE_URI=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
             MEMBER_SERVICE_URI=${{ secrets.MEMBER_SERVICE_BASE_URL }}
@@ -518,6 +519,7 @@ jobs:
           service: member-service
           secret-body: |
             PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
             DB_URL=${{ secrets.MEMBER_DB_URL }}
             DB_USER_NAME=${{ secrets.MEMBER_DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.MEMBER_DB_PASSWORD }}
@@ -592,6 +594,7 @@ jobs:
           service: product-service
           secret-body: |
             PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
             DB_URL=${{ secrets.PRODUCT_DB_URL }}
             DB_USER_NAME=${{ secrets.PRODUCT_DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.PRODUCT_DB_PASSWORD }}
@@ -660,6 +663,7 @@ jobs:
           service: auction-service
           secret-body: |
             PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
             DB_URL=${{ secrets.DB_URL }}
             DB_USER_NAME=${{ secrets.DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -738,6 +742,7 @@ jobs:
           service: fulfillment-service
           secret-body: |
             PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
             DB_URL=${{ secrets.DB_URL }}
             DB_USER_NAME=${{ secrets.DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -810,6 +815,7 @@ jobs:
             DB_URL=${{ secrets.POINTWALLET_DB_URL }}
             DB_USER_NAME=${{ secrets.POINTWALLET_DB_USER_NAME }}
             DB_PASSWORD=${{ secrets.POINTWALLET_DB_PASSWORD }}
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
 
             KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
