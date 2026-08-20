@@ -3,6 +3,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.resilience.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import site.pointwalletservice.hold.exception.HoldLockContentionException;
+import site.pointwalletservice.hold.exception.HoldRowLockContentionException;
 import site.pointwalletservice.shared.Money;
 
 /**
@@ -59,5 +60,27 @@ public class RetryingHoldService implements HoldService {
     @Override
     public void consume(Long auctionId) {
         holdApplicationService.consume(auctionId);
+    }
+
+    /**
+     * rollback()은 release()/consume()과 달리 재시도를 붙인다 — 저 둘은 Kafka 리스너의 at-least-once
+     * 재전송이 사실상의 재시도 역할을 하지만, rollback()은 auction-service가 동기 HTTP로 한 번 부르고
+     * 끝나는 호출이라 여기서 흡수하지 않으면 락 경합만으로도 보상이 영구히 누락된 채 남는다.
+     * HoldRowLockContentionException까지 재시도 대상에 포함한 것도 hold()와 다른 점이다 —
+     * hold()에서는 그 예외가 "auction-service가 즉시 알아야 하는 신호"였지만, 여기서는 호출자가
+     * 이미 실패를 알고 뒷정리를 하는 경로라 즉시 알려줘야 할 대상이 없다. 대신 원장 불일치로 보는
+     * HOLD_ALREADY_FINALIZED(HoldException)는 재시도해도 결과가 안 바뀌므로 대상에서 제외한다.
+     */
+    @Override
+    @Retryable(
+            includes = {HoldLockContentionException.class, HoldRowLockContentionException.class},
+            maxRetries = 5,
+            delay = 50,
+            jitter = 25,
+            multiplier = 2,
+            maxDelay = 800
+    )
+    public void rollback(Long holdId, Long auctionId, Long userId, Money amount) {
+        holdApplicationService.rollback(holdId, auctionId, userId, amount);
     }
 }

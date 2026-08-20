@@ -320,7 +320,6 @@ class HoldApplicationServiceTest {
     @Nested
     @DisplayName("홀드 소멸 (consume) - 주문 완료 대응")
     class Consume {
-
         @Test
         @DisplayName("활성 홀드가 있으면 지갑은 건드리지 않고 삭제만 한다")
         void consume_정상흐름() {
@@ -360,6 +359,196 @@ class HoldApplicationServiceTest {
             // when & then
             assertThatThrownBy(() -> sut.consume(AUCTION_ID))
                     .isInstanceOf(HoldRowLockContentionException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
+
+            verify(holdRepository, never()).delete(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("롤백 (rollback) - auction-service 자기 트랜잭션 실패 시 보상")
+    class Rollback {
+
+        private static final Long HOLD_ID = 1L;
+
+        @Test
+        @DisplayName("요청값(auctionId/userId/amount)이 실제 홀드와 일치하면 지갑에 환급하고 RELEASE 원장 기록 후 삭제한다")
+        void rollback_정상흐름() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            ReflectionTestUtils.setField(hold, "id", HOLD_ID);
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(hold));
+            when(walletService.credit(BIDDER_ID, AMOUNT)).thenReturn(new WalletBalanceResult(WALLET_ID, AMOUNT));
+
+            // when
+            sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+            // then
+            verify(walletService).credit(BIDDER_ID, AMOUNT);
+            verify(pointTransactionService).recordForAuction(
+                    WALLET_ID, PointTransactionType.RELEASE, AMOUNT, AMOUNT, HOLD_ID, AUCTION_ID
+            );
+            verify(holdRepository).delete(hold);
+        }
+
+        @Test
+        @DisplayName("이미 RELEASE 원장이 있으면(자연 교체 또는 재시도로 이미 처리됨) 아무것도 건드리지 않고 조용히 스킵한다")
+        void rollback_이미_되돌려졌으면_스킵() {
+            // given
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(true);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+
+            // when & then
+            assertThatCode(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT)).doesNotThrowAnyException();
+
+            verify(holdRepository, never()).findByAuctionIdForUpdate(any());
+            verify(walletService, never()).credit(any(), any());
+            verify(holdRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("이미 되돌려졌고, 요청의 auctionId가 원장과도 다르면 - 스킵은 하되 불일치를 로그로 남긴다(자금은 이미 안전하므로 차단하진 않음)")
+        void rollback_이미_되돌려졌는데_auctionId도_불일치하면_스킵하되_로그만() {
+            // given: 호출자(auction-service)가 엉뚱한 auctionId를 실어 보낸 상황을 가정
+            Long wrongAuctionId = AUCTION_ID + 1;
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(true);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+
+            // when & then: 예외 없이 스킵된다 - 이미 자금 처리가 끝난 상태라 막을 이유가 없다
+            assertThatCode(() -> sut.rollback(HOLD_ID, wrongAuctionId, BIDDER_ID, AMOUNT)).doesNotThrowAnyException();
+
+            verify(holdRepository, never()).findByAuctionIdForUpdate(any());
+            verify(walletService, never()).credit(any(), any());
+        }
+
+        @Test
+        @DisplayName("원장에 이 holdId의 HOLD 기록 자체가 없으면 HOLD_NOT_FOUND")
+        void rollback_원장에_HOLD기록없으면_HOLD_NOT_FOUND() {
+            // given
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_NOT_FOUND);
+
+            verify(holdRepository, never()).findByAuctionIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("요청의 auctionId가 원장 기록과 다르면 뒤져서 맞추지 않고 HOLD_MISMATCH로 거부한다")
+        void rollback_auctionId_불일치시_HOLD_MISMATCH() {
+            // given
+            Long wrongAuctionId = AUCTION_ID + 1;
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, wrongAuctionId, BIDDER_ID, AMOUNT))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_MISMATCH);
+
+            // auctionId부터 어긋났으니 Hold 락 조회까지 갈 필요가 없다
+            verify(holdRepository, never()).findByAuctionIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("Hold가 이미 다른 홀드로 교체/소멸돼서 holdId가 일치하지 않으면 HOLD_ALREADY_FINALIZED")
+        void rollback_홀드가_이미_교체소멸됐으면_HOLD_ALREADY_FINALIZED() {
+            // given: 같은 경매에 다른 holdId의 새 홀드가 걸려있는 상태(교체됐지만 무슨 이유로 RELEASE가 없는 비정상 케이스)
+            Hold replacedHold = Hold.place(AUCTION_ID, 999L, Money.of(20_000));
+            ReflectionTestUtils.setField(replacedHold, "id", HOLD_ID + 1);
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(replacedHold));
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_ALREADY_FINALIZED);
+
+            verify(walletService, never()).credit(any(), any());
+            verify(holdRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("Hold 자체가 이미 소멸(consume)돼서 없으면 HOLD_ALREADY_FINALIZED")
+        void rollback_Hold가_이미_소멸됐으면_HOLD_ALREADY_FINALIZED() {
+            // given
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_ALREADY_FINALIZED);
+
+            verify(walletService, never()).credit(any(), any());
+        }
+
+        @Test
+        @DisplayName("holdId는 맞는데 요청의 userId가 실제 홀드와 다르면 HOLD_MISMATCH")
+        void rollback_userId_불일치시_HOLD_MISMATCH() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            ReflectionTestUtils.setField(hold, "id", HOLD_ID);
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(hold));
+
+            // when & then: BIDDER_ID가 아니라 엉뚱한 유저로 요청
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, 999L, AMOUNT))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_MISMATCH);
+
+            verify(walletService, never()).credit(any(), any());
+            verify(holdRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("holdId는 맞는데 요청의 amount가 실제 홀드와 다르면 HOLD_MISMATCH")
+        void rollback_amount_불일치시_HOLD_MISMATCH() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            ReflectionTestUtils.setField(hold, "id", HOLD_ID);
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(hold));
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, Money.of(1)))
+                    .isInstanceOf(HoldException.class)
+                    .extracting(e -> ((HoldException) e).getErrorCode())
+                    .isEqualTo(HoldErrorCode.HOLD_MISMATCH);
+
+            verify(walletService, never()).credit(any(), any());
+            verify(holdRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("환급 중 지갑 락 획득에 실패하면 HoldLockContentionException으로 번역된다(재시도 대상)")
+        void rollback_환급중_락획득실패시_HoldLockContentionException() {
+            // given
+            Hold hold = Hold.place(AUCTION_ID, BIDDER_ID, AMOUNT);
+            ReflectionTestUtils.setField(hold, "id", HOLD_ID);
+            when(pointTransactionService.existsForRelatedId(HOLD_ID, PointTransactionType.RELEASE)).thenReturn(false);
+            when(pointTransactionService.findAuctionIdByHoldId(HOLD_ID)).thenReturn(Optional.of(AUCTION_ID));
+            when(holdRepository.findByAuctionIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(hold));
+            when(walletService.credit(BIDDER_ID, AMOUNT)).thenThrow(new WalletLockFailedException());
+
+            // when & then
+            assertThatThrownBy(() -> sut.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT))
+                    .isInstanceOf(HoldLockContentionException.class)
                     .extracting(e -> ((HoldException) e).getErrorCode())
                     .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
 

@@ -96,4 +96,30 @@ class HoldServiceFacadeTest {
         verify(retryingHoldService).release(AUCTION_ID);
         verify(retryingHoldService).consume(AUCTION_ID);
     }
+
+    @Test
+    @DisplayName("rollback()은 성공하면 그대로 위임하고, 재시도 소진 시 hold()와 동일하게 언래핑해서 던진다")
+    void rollback_위임및_재시도소진시_언래핑() {
+        // given: 정상 위임
+        Long holdId = 1L;
+
+        // when
+        sut.rollback(holdId, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // then
+        verify(retryingHoldService).rollback(holdId, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // given: 재시도 소진 시나리오
+        HoldLockContentionException domainCause = new HoldLockContentionException();
+        RetryException retryException = new RetryException("재시도 소진", domainCause);
+        org.mockito.Mockito.doThrow(new UndeclaredThrowableException(retryException))
+                .when(retryingHoldService).rollback(holdId, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // when & then
+        assertThatThrownBy(() -> sut.rollback(holdId, AUCTION_ID, BIDDER_ID, AMOUNT))
+                .isSameAs(domainCause)
+                .isInstanceOf(HoldException.class)
+                .extracting(e -> ((HoldException) e).getErrorCode())
+                .isEqualTo(HoldErrorCode.LOCK_ACQUISITION_FAILED);
+    }
 }
