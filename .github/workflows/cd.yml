@@ -669,6 +669,10 @@ jobs:
             S3_IMAGE_BUCKET=${{ secrets.S3_IMAGE_BUCKET}}
             S3_IMAGE_PUBLIC_URL_PREFIX=${{ secrets.S3_IMAGE_PUBLIC_URL_PREFIX }}
 
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+
             MEMBER_SERVICE_BASE_URL=${{ secrets.MEMBER_SERVICE_BASE_URL }}
             PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
             WALLET_SERVICE_BASE_URL=${{ secrets.POINTWALLET_SERVICE_BASE_URL }}

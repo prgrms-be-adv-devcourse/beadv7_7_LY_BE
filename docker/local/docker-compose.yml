@@ -113,6 +113,23 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  redis:
+    image: redis:7.4
+    # 락+캐시 혼용. noeviction으로 락 키가 evict되는 걸 막는다(캐시 쓰기 실패는 감수). 운영값과 동일.
+    command: [ "redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction" ]
+    mem_limit: 640m
+    ports:
+      - "6379:6379"
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   # 볼륨 이름을 명시한다. 안 적으면 "<프로젝트명>_mysql-data"가 되는데,
   # 예전에 mysql만 다른 프로젝트명(-p lp-auction-local-mysql)으로 띄운 적이 있어
@@ -122,3 +139,4 @@ volumes:
     name: lp-auction-local-mysql_mysql-data
   kafka-data:
   elasticsearch-data:
+  redis-data:
