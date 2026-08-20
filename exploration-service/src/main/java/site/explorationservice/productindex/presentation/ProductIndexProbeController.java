@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
 import site.explorationservice.productindex.application.ProductBackfillService;
-import site.explorationservice.productindex.application.ProductEmbeddingTemplate;
 import site.explorationservice.productindex.application.ProductIndexService;
 import site.explorationservice.productindex.application.dto.BackfillResult;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
@@ -88,13 +87,8 @@ public class ProductIndexProbeController {
     @PostMapping("/backfill")
     public ApiResponse<BackfillResponse> backfill(
         @RequestParam(required = false) final Long startCursor,
-        @RequestParam(defaultValue = "10000") final int maxProducts,
-        @RequestParam(required = false) final ProductEmbeddingTemplate template) {
-        final ProductEmbeddingTemplate applied =
-            template == null ? ProductEmbeddingTemplate.COMPACT : template;
-
-        final BackfillResult result = productBackfillService.backfill(startCursor, maxProducts,
-            applied);
+        @RequestParam(defaultValue = "10000") final int maxProducts) {
+        final BackfillResult result = productBackfillService.backfill(startCursor, maxProducts);
 
         elasticsearchOperations.indexOps(ProductDocument.class).refresh();
 

@@ -34,8 +34,7 @@ public class ProductBackfillService {
      * @param maxProducts 이번 호출에서 처리할 상한 — 페이지 경계에서 멈추므로 실제로는 이 값 이상으로 넘어갈 수 있다(마지막 페이지를 끝까지 처리하기
      *                    때문)
      */
-    public BackfillResult backfill(final Long startCursor, final int maxProducts,
-        final ProductEmbeddingTemplate template) {
+    public BackfillResult backfill(final Long startCursor, final int maxProducts) {
         Long cursor = startCursor;
         Long resumeCursor = startCursor;
         int totalIndexed = 0;
@@ -48,7 +47,7 @@ public class ProductBackfillService {
                 break;
             }
 
-            totalIndexed += indexPage(page, template, failedProductIds);
+            totalIndexed += indexPage(page, failedProductIds);
             log.info("백필 진행 — {}건 처리, 실패 {}건, 사용 cursor: {}", totalIndexed,
                 failedProductIds.size(), cursor);
 
@@ -66,10 +65,9 @@ public class ProductBackfillService {
      * 페이지 하나가 실패해도(임베딩 API 오류 등) 백필 전체를 멈추지 않는다 — 실패한 상품 id를 모아두고 다음 페이지로 계속 진행한다. 크래시로 이 결과 자체가
      * 유실돼도 복구할 수 있게 실패마다 로그를 남긴다.
      */
-    private int indexPage(final ProductPage page, final ProductEmbeddingTemplate template,
-        final List<Long> failedProductIds) {
+    private int indexPage(final ProductPage page, final List<Long> failedProductIds) {
         try {
-            productIndexService.indexAll(page.items(), template);
+            productIndexService.indexAll(page.items());
             return page.items().size();
         } catch (final RuntimeException e) {
             final List<Long> pageProductIds =
