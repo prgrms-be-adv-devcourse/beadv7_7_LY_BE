@@ -22,28 +22,31 @@ public class RecommendationService {
 
     private final ProductDocumentRepository productDocumentRepository;
     private final WishlistPort wishlistPort;
-
-    public List<RecommendationResult> recommendForMember(final Long memberId, final int size) {
-        final List<Long> productIds = wishlistPort
-            .findRecentProducts(memberId, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT)
-            .stream()
-            .map(WishlistProduct::productId)
-            .toList();
-
-        return recommendFrom(productIds, size);
-    }
+    private final InterestWeightService interestWeightService;
 
     /**
-     * 가중치를 지정하지 않는 경로 — 지금은 항상 기본값(균등)을 쓴다. LLM 가중치를 운영 경로에 연결하는 건 나중 단계다(프로브에서는 이미 가능 —
-     * {@code RecommendationProbeController} 참고).
+     * 운영 추천 경로. 위시리스트를 보고 LLM으로 축 가중치를 산출하되 느리거나 실패하면 자동으로 기본값 폴백.
+     * <p>
+     * 지금은 요청마다 동기로 계산한다. 위시리스트 변경 시점에 미리 계산해 캐시해두는 구조는 나중 단계
+     * <p>
+     * 위시리스트가 비면 LLM도 호출하지 않는다
      */
-    public List<RecommendationResult> recommendFrom(final List<Long> productIds, final int size) {
-        return recommendFrom(productIds, size, RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
+    public List<RecommendationResult> recommendForMember(final Long memberId, final int size) {
+        final List<WishlistProduct> wishlistProducts =
+            wishlistPort.findRecentProducts(memberId, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT);
+        if (wishlistProducts.isEmpty()) {
+            return List.of();
+        }
+
+        final List<Long> productIds =
+            wishlistProducts.stream().map(WishlistProduct::productId).toList();
+        final AxisWeights weights = interestWeightService.analyzeWeightsOrDefault(wishlistProducts);
+
+        return recommendFrom(productIds, size, weights);
     }
 
     /**
-     * 가중치를 명시적으로 받는 경로 — LLM이 산출한 가중치든 기본값이든, 병합 로직은 가중치가 어디서 왔는지 몰라도 된다. 근거는
-     * docs/search-recommendation-design-notes.md "클러스터링 · 가중치 최종 목표 아키텍처" 참고.
+     * 가중치를 명시적으로 받는 경로
      */
     public List<RecommendationResult> recommendFrom(final List<Long> productIds, final int size,
         final AxisWeights weights) {
