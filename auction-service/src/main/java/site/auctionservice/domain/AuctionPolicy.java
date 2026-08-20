@@ -35,4 +35,7 @@ public final class AuctionPolicy {
 
     //최대 이미지 업로드 수
     public static final int MAX_IMAGE_COUNT = 5;
+
+    // 이미지 한 장의 최대 크기 (5MB)
+    public static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 }

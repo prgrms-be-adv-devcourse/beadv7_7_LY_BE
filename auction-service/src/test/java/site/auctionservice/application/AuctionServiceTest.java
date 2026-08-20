@@ -60,6 +60,9 @@ class AuctionServiceTest {
     @Mock
     private AuctionEventPublisher auctionEventPublisher;
 
+    @Mock
+    private ImageUrlValidator imageUrlValidator;
+
     @InjectMocks
     private AuctionService auctionService;
 
