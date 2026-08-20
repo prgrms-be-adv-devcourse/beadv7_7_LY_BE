@@ -14,8 +14,11 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class ProductIndexClientConfig {
 
+    // RestClient.builder()로 직접 생성하면 Boot가 관측/트레이싱을 붙여둔 오토컨피규어드 RestClient.Builder를
+    // 우회하게 되어 W3C traceparent 헤더가 하위 서비스 호출에 전파되지 않는다.
     @Bean
     RestClient productIndexProductRestClient(
+        RestClient.Builder builder,
         @Value("${exploration.product.base-url}") final String baseUrl,
         @Value("${exploration.product.connect-timeout-ms:1000}") final long connectTimeoutMs,
         @Value("${exploration.product.read-timeout-ms:2000}") final long readTimeoutMs) {
@@ -23,6 +26,6 @@ public class ProductIndexClientConfig {
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
-        return RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
+        return builder.baseUrl(baseUrl).requestFactory(requestFactory).build();
     }
 }
