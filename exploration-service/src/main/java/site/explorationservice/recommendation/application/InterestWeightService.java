@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import site.explorationservice.ai.chat.application.ChatService;
-import site.explorationservice.ai.chat.application.ChatTemperature;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.recommendation.application.dto.InterestWeightResult;
 import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
@@ -53,7 +52,7 @@ public class InterestWeightService {
 
         final InterestWeightResult result;
         try {
-            result = chatService.call(prompt, InterestWeightResult.class, ChatTemperature.LOW);
+            result = chatService.call(prompt, InterestWeightResult.class);
         } catch (final RuntimeException e) {
             log.warn("관심사 가중치 추론 실패 — 상품 {}건", products.size(), e);
             throw new RecommendationException(

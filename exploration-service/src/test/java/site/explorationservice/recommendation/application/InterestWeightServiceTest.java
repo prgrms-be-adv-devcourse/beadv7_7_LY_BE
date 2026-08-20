@@ -2,11 +2,9 @@ package site.explorationservice.recommendation.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.explorationservice.ai.chat.application.ChatService;
-import site.explorationservice.ai.chat.application.ChatTemperature;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.recommendation.application.dto.InterestWeightResult;
 import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
@@ -43,7 +40,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("정상 값이면 그대로 돌려준다")
     void 정상_값() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(0.5, 0.3, 0.2, "장르·아티스트가 일관됨"));
 
         final InterestWeightResult result = interestWeightService.analyzeWeights(products());
@@ -54,21 +51,9 @@ class InterestWeightServiceTest {
     }
 
     @Test
-    @DisplayName("구조화된 답을 요청할 때 낮은 temperature를 쓴다")
-    void 낮은_temperature() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
-            .willReturn(new InterestWeightResult(0.5, 0.3, 0.2, "근거"));
-
-        interestWeightService.analyzeWeights(products());
-
-        then(chatService).should()
-            .call(anyString(), eq(InterestWeightResult.class), eq(ChatTemperature.LOW));
-    }
-
-    @Test
     @DisplayName("ChatService 호출 자체가 실패하면 INTEREST_WEIGHT_INFERENCE_FAILED로 감싼다")
     void 호출_실패() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willThrow(new RuntimeException("OpenAI 401"));
 
         assertThatThrownBy(() -> interestWeightService.analyzeWeights(products()))
@@ -80,7 +65,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("음수 가중치는 INTEREST_WEIGHT_INVALID로 거부한다")
     void 음수_가중치() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(-0.1, 0.6, 0.5, "근거"));
 
         assertThatThrownBy(() -> interestWeightService.analyzeWeights(products()))
@@ -92,7 +77,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("가중치 합이 1에서 너무 벗어나면(범위 밖) INTEREST_WEIGHT_INVALID로 거부한다")
     void 합_이상() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(5.0, 3.0, 2.0, "근거"));
 
         assertThatThrownBy(() -> interestWeightService.analyzeWeights(products()))
@@ -104,7 +89,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("합이 1은 아니지만 범위(0.8~1.2) 안이면 거부하지 않고 합이 1이 되도록 재정규화한다")
     void 범위_안이면_재정규화() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(0.5, 0.3, 0.3, "근거")); // 합 1.1
 
         final InterestWeightResult result = interestWeightService.analyzeWeights(products());
@@ -119,7 +104,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("근거가 비어 있으면 INTEREST_WEIGHT_INVALID로 거부한다")
     void 빈_근거() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(0.5, 0.3, 0.2, "  "));
 
         assertThatThrownBy(() -> interestWeightService.analyzeWeights(products()))
@@ -131,7 +116,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("analyzeWeightsOrDefault — 성공하면 실제 LLM 결과를 축 가중치로 돌려준다")
     void 폴백_성공시_실제값() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(0.5, 0.3, 0.2, "근거"));
 
         final AxisWeights weights = interestWeightService.analyzeWeightsOrDefault(products());
@@ -142,7 +127,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("analyzeWeightsOrDefault — 추론 실패해도 예외 대신 기본 가중치(균등)를 돌려준다")
     void 폴백_실패시_기본값() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willThrow(new RuntimeException("OpenAI 401"));
 
         final AxisWeights weights = interestWeightService.analyzeWeightsOrDefault(products());
@@ -153,7 +138,7 @@ class InterestWeightServiceTest {
     @Test
     @DisplayName("analyzeWeightsOrDefault — 값이 유효하지 않아도 예외 대신 기본 가중치로 폴백한다")
     void 폴백_무효값도_기본값() {
-        given(chatService.call(anyString(), eq(InterestWeightResult.class), any()))
+        given(chatService.call(anyString(), eq(InterestWeightResult.class)))
             .willReturn(new InterestWeightResult(-0.1, 0.6, 0.5, "근거"));
 
         final AxisWeights weights = interestWeightService.analyzeWeightsOrDefault(products());
