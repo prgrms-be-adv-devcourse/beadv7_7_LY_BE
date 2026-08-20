@@ -45,4 +45,8 @@ public class RefreshToken extends BaseEntity {
     public static RefreshToken create(final String value, final Long memberId) {
         return new RefreshToken(null, value, memberId);
     }
+
+    public void updateValue(final String value) {
+        this.value = value;
+    }
 }
