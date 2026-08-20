@@ -19,6 +19,9 @@ dependencies {
     // H2 (테스트)
     testRuntimeOnly 'com.h2database:h2'
 
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // AOP
     implementation 'org.springframework.boot:spring-boot-starter-aspectj'       // spring boot 4.1.0 이후
 
