@@ -1,6 +1,5 @@
 package site.pointwalletservice.ledger.application;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,13 +43,6 @@ public class PointTransactionApplicationService implements PointTransactionServi
     @Transactional(readOnly = true)
     public boolean existsForRelatedId(Long relatedId, PointTransactionType type) {
         return pointTransactionRepository.existsByRelatedIdAndType(relatedId, type);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Money> findLatestHoldAmountByAuctionId(Long auctionId) {
-        return pointTransactionRepository.findLatestByAuctionIdAndType(auctionId, PointTransactionType.HOLD)
-                .map(PointTransaction::getAmount);
     }
 
     @Override

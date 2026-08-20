@@ -98,44 +98,6 @@ class PointTransactionApplicationServiceTest {
     }
 
     @Nested
-    @DisplayName("낙찰 홀드 금액 조회 (findLatestHoldAmountByAuctionId)")
-    class FindLatestHoldAmountByAuctionId {
-
-        private static final Long AUCTION_ID = 5001L;
-
-        @Test
-        @DisplayName("해당 경매의 HOLD 원장이 있으면 그 금액을 반환한다")
-        void 원장이_있으면_금액을_반환한다() {
-            // given
-            PointTransaction winningHold = PointTransaction.recordForAuction(
-                    WALLET_ID, PointTransactionType.HOLD, Money.of(15_000), Money.of(85_000), 999L, AUCTION_ID
-            );
-            when(pointTransactionRepository.findLatestByAuctionIdAndType(AUCTION_ID, PointTransactionType.HOLD))
-                    .thenReturn(Optional.of(winningHold));
-
-            // when
-            Optional<Money> result = sut.findLatestHoldAmountByAuctionId(AUCTION_ID);
-
-            // then
-            assertThat(result).contains(Money.of(15_000));
-        }
-
-        @Test
-        @DisplayName("해당 경매의 HOLD 원장이 없으면 빈 Optional을 반환한다 - PointTransaction 엔티티를 그대로 노출하지 않는다")
-        void 원장이_없으면_빈값을_반환한다() {
-            // given
-            when(pointTransactionRepository.findLatestByAuctionIdAndType(AUCTION_ID, PointTransactionType.HOLD))
-                    .thenReturn(Optional.empty());
-
-            // when
-            Optional<Money> result = sut.findLatestHoldAmountByAuctionId(AUCTION_ID);
-
-            // then
-            assertThat(result).isEmpty();
-        }
-    }
-
-    @Nested
     @DisplayName("거래내역 조회 (findTransactions)")
     class FindTransactions {
 
