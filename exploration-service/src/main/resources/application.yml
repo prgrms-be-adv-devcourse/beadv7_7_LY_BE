@@ -38,6 +38,8 @@ spring:
       embedding:
         model: text-embedding-3-large
         dimensions: 1024
+      chat:
+        model: gpt-5-mini
 
 exploration:
   wishlist:

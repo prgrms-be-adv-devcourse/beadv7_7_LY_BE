@@ -11,12 +11,11 @@ import site.common.response.ApiResponse;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.recommendation.application.InterestWeightService;
 import site.explorationservice.recommendation.application.RecommendationService;
-import site.explorationservice.recommendation.application.dto.InterestWeightResult;
 import site.explorationservice.recommendation.domain.RecommendationPolicy;
 import site.explorationservice.recommendation.presentation.dto.RecommendationProbeRequest;
 import site.explorationservice.recommendation.presentation.dto.RecommendationResponse;
 
-// 테스트용, 추천 로직을 수동 실행. useLlm으로 LLM 가중치와 기본값(균등)을 같은 씨앗으로 나란히 비교할 수 있다.
+// 테스트용, 추천 로직을 수동 실행. useLlm으로 LLM 가중치와 기본값(균등)을 같은 시드로 나란히 비교할 수 있다.
 @Profile("local")
 @RestController
 @RequiredArgsConstructor
@@ -30,7 +29,7 @@ public class RecommendationProbeController {
     public ApiResponse<List<RecommendationResponse>> recommend(
         @RequestBody final RecommendationProbeRequest request) {
         final AxisWeights weights = request.useLlmOrDefault()
-            ? toAxisWeights(interestWeightService.analyzeWeights(request.products()))
+            ? interestWeightService.analyzeWeights(request.products()).toAxisWeights()
             : RecommendationPolicy.DEFAULT_AXIS_WEIGHTS;
 
         return ApiResponse.success(
@@ -39,10 +38,5 @@ public class RecommendationProbeController {
                 .stream()
                 .map(RecommendationResponse::from)
                 .toList());
-    }
-
-    private AxisWeights toAxisWeights(final InterestWeightResult result) {
-        return new AxisWeights(result.identityWeight(), result.originWeight(),
-            result.editionWeight());
     }
 }

@@ -15,6 +15,8 @@ public enum RecommendationErrorCode implements ErrorCode {
         "위시리스트 조회 요청이 올바르지 않습니다."),
     INTEREST_WEIGHT_INFERENCE_FAILED(HttpStatus.BAD_GATEWAY, "RERR-5003",
         "관심사 가중치 추론에 실패했습니다."),
+    INTEREST_WEIGHT_INVALID(HttpStatus.BAD_GATEWAY, "RERR-5004",
+        "관심사 가중치 값이 유효하지 않습니다."),
 
     ;
 

@@ -1,10 +1,12 @@
 package site.explorationservice.recommendation.application.dto;
 
+import site.explorationservice.productindex.domain.AxisWeights;
+
 /**
- * 위시리스트를 보고 LLM이 산출한 3축 가중치. 세 값의 합이 1이 되도록 프롬프트에서 요청하지만, LLM 출력은 강제되지 않으므로 호출자가 정규화해서 써야 한다.
+ * 위시리스트를 보고 LLM이 산출한 3축 가중치. 가중치 합은 1
  * <p>
- * 세 축은 서로 배타적인 "사용자 타입"이 아니라 비율이다 — 한 사용자 안에서도 섞여 있을 수 있다. 근거는
- * docs/search-recommendation-design-notes.md의 "클러스터링 · 가중치 최종 목표 아키텍처" 참고.
+ * 세 축은 서로 배타적인 "사용자 타입"이 아니라 비율이다 — 한 사용자 안에서도 섞여 있을 수 있다. 예를 들어 identity 0.5, origin 0.5, edition
+ * 0.0이면 "음악적 정체성"과 "시공간적 배경"을 반반으로 보는 타입이다.
  */
 public record InterestWeightResult(
     // 장르 + 아티스트 ("음악적 정체성")
@@ -17,4 +19,7 @@ public record InterestWeightResult(
     String rationale
 ) {
 
+    public AxisWeights toAxisWeights() {
+        return new AxisWeights(identityWeight, originWeight, editionWeight);
+    }
 }

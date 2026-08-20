@@ -4,31 +4,31 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.stereotype.Service;
 import site.explorationservice.ai.chat.application.ChatService;
+import site.explorationservice.ai.chat.application.ChatTemperature;
+import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.recommendation.application.dto.InterestWeightResult;
 import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
+import site.explorationservice.recommendation.domain.RecommendationPolicy;
 import site.explorationservice.recommendation.exception.RecommendationErrorCode;
 import site.explorationservice.recommendation.exception.RecommendationException;
 
 /**
- * 위시리스트를 보고 3축(identity·origin·edition) 가중치를 LLM으로 산출한다.
- * <p>
- * 통계(필드별 distinct 개수)만으로는 부족하다는 게 실측으로 확인됐다 — 예를 들어 "레이블이 다양하다"는 통계는 같아도 전부 메이저 재발매반인지 희귀 인디
- * 오리지널반인지에 따라 뜻이 다른데, 이 구분은 음악 씬 지식이 있어야 가능하다. 근거는 docs/recommendation-avg-test-results.md 5차,
- * docs/search-recommendation-design-notes.md "클러스터링 · 가중치 최종 목표 아키텍처" 참고.
- * <p>
- * 관심사 클러스터링(무관한 관심사를 나누는 것)과는 다른 층위의 문제를 푼다 — 이 서비스는 이미 한 클러스터로 묶인 상품들 <b>안에서</b>의 가중치를 정하는 것이지,
- * 클러스터를 나누는 로직이 아니다.
+ * 위시리스트를 보고 3축(identity·origin·edition) 가중치를 LLM으로 산출한다. 통계(필드별 distinct 개수)만으로는 부족하다는 게 실측으로 확인됐다
+ * 예를 들어 "레이블이 다양하다"는 통계는 같아도 전부 메이저 재발매반인지 희귀 인디 오리지널반인지에 따라 뜻이 다른데, 이 구분은 음악 씬 지식이 있어야 가능하다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class InterestWeightService {
 
-    private static final BeanOutputConverter<InterestWeightResult> OUTPUT_CONVERTER =
-        new BeanOutputConverter<>(InterestWeightResult.class);
+    /**
+     * 가중치 합이 이 범위를 벗어나면 아예 신뢰하지 않는다. 범위 안이면 형식만 살짝 어긋난 것으로 보고 합이 정확히 1이 되도록 재정규화해서 쓴다 — 프롬프트로 "합이
+     * 1이 되도록"이라고 요청해도 LLM 출력은 강제되지 않으므로, 어느 정도 벗어나는 건 정상적인 오차로 본다.
+     */
+    private static final double MIN_WEIGHT_SUM = 0.8;
+    private static final double MAX_WEIGHT_SUM = 1.2;
 
     private static final String PROMPT_TEMPLATE = """
         당신은 LP(바이닐 레코드) 수집 취향을 분석하는 어시스턴트입니다.
@@ -44,25 +44,67 @@ public class InterestWeightService {
         
         위시리스트:
         %s
-        
-        %s
         """;
 
     private final ChatService chatService;
 
     public InterestWeightResult analyzeWeights(final List<WishlistProduct> products) {
-        final String itemsText = describeItems(products);
-        final String prompt = PROMPT_TEMPLATE.formatted(itemsText, OUTPUT_CONVERTER.getFormat());
+        final String prompt = PROMPT_TEMPLATE.formatted(describeItems(products));
 
+        final InterestWeightResult result;
         try {
-            final String content = chatService.call(prompt);
-            return OUTPUT_CONVERTER.convert(content);
+            result = chatService.call(prompt, InterestWeightResult.class, ChatTemperature.LOW);
         } catch (final RuntimeException e) {
             log.warn("관심사 가중치 추론 실패 — 상품 {}건", products.size(), e);
             throw new RecommendationException(
                 RecommendationErrorCode.INTEREST_WEIGHT_INFERENCE_FAILED,
                 "관심사 가중치 추론에 실패했습니다 — 상품 " + products.size() + "건", e);
         }
+
+        return normalize(result);
+    }
+
+    /**
+     * {@link #analyzeWeights}가 실패하면(호출 실패든 값이 유효하지 않든) 기본 가중치(균등)로 폴백.
+     */
+    public AxisWeights analyzeWeightsOrDefault(final List<WishlistProduct> products) {
+        try {
+            return analyzeWeights(products).toAxisWeights();
+        } catch (final RecommendationException e) {
+            log.warn("관심사 가중치 추론 실패, 기본값(균등)으로 폴백합니다 — {}", e.getMessage());
+            return RecommendationPolicy.DEFAULT_AXIS_WEIGHTS;
+        }
+    }
+
+    /**
+     * 형식은 맞지만 의미가 이상한 값을 걸러내고(음수 가중치, 합이 크게 벗어난 경우, 빈 근거), 통과한 값은 합이 정확히 1이 되도록 재정규화한다
+     */
+    private InterestWeightResult normalize(final InterestWeightResult result) {
+        if (result.identityWeight() < 0 || result.originWeight() < 0
+            || result.editionWeight() < 0) {
+            throw invalid("음수 가중치 — " + result);
+        }
+
+        final double sum = result.identityWeight() + result.originWeight() + result.editionWeight();
+        if (sum < MIN_WEIGHT_SUM || sum > MAX_WEIGHT_SUM) {
+            throw invalid("가중치 합이 1에서 너무 벗어남(%.3f) — %s".formatted(sum, result));
+        }
+
+        if (result.rationale() == null || result.rationale().isBlank()) {
+            throw invalid("근거가 비어 있음 — " + result);
+        }
+
+        return new InterestWeightResult(
+            result.identityWeight() / sum,
+            result.originWeight() / sum,
+            result.editionWeight() / sum,
+            result.rationale());
+    }
+
+    private RecommendationException invalid(final String message) {
+        log.warn("관심사 가중치 값이 유효하지 않습니다 — {}", message);
+        return new RecommendationException(RecommendationErrorCode.INTEREST_WEIGHT_INVALID,
+            message);
     }
 
     private String describeItems(final List<WishlistProduct> products) {
