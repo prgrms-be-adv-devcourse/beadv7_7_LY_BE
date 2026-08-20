@@ -1,7 +1,5 @@
 package site.common.crypto;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
@@ -11,8 +9,6 @@ import software.amazon.awssdk.services.kms.model.EncryptResponse;
 
 import java.util.Base64;
 
-@Component
-@ConditionalOnBean(KmsClient.class)
 public class AwsKmsEncryptor implements KmsEncryptor {
 
     private final KmsClient kmsClient;
