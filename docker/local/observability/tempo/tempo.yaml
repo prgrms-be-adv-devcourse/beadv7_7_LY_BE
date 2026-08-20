@@ -1,0 +1,36 @@
+# docker/prod/tempo/tempo.yaml과 동일 설정. 서비스들이 기본값(management.opentelemetry.tracing.export.otlp.endpoint의
+# ${TEMPO_OTLP_ENDPOINT:http://localhost:4318/v1/traces})으로 이 컨테이너의 published
+# 포트에 바로 붙는다 — 로컬 서비스가 호스트 프로세스라 localhost로 컨테이너 포트에 닿는다.
+#
+# ⚠️ 환경변수 이름은 TEMPO_OTLP_ENDPOINT다, OTEL_EXPORTER_OTLP_ENDPOINT가 아니다 — 후자는
+# OpenTelemetry SDK가 자체적으로 감지하는 예약 환경변수라, 실제 OS 환경변수로 주입되면(컨테이너
+# 환경에서는 항상 그렇게 됨) Spring의 명시적 설정과 별개로 SDK가 자체 익스포터를 하나 더 만들고
+# 그쪽은 경로를 자동으로 이어붙여서(.../v1/traces/v1/traces) 404가 난다. 로컬에서 컨테이너로
+# 검증하다가 실제로 걸렸던 문제다.
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/blocks
+    wal:
+      path: /tmp/tempo/wal

@@ -130,6 +130,63 @@ services:
       timeout: 5s
       retries: 5
 
+  # --- 관측 스택 (모니터링) ---
+  # 로컬 7개 서비스는 평소 컨테이너가 아니라 gradlew bootRun 프로세스라 Prometheus는
+  # host.docker.internal로 스크레이프한다. Alloy(로그 수집)는 별도 파일(docker-compose.alloy.yml)로
+  # 뺐다 — infra EC2(전체가 docker-compose.yml 하나) / app EC2(alloy만 별도 파일) 구조를 로컬에서도
+  # 그대로 재현한 것. 컬렉터 없이 각 서비스가 Tempo에 직접 OTLP export한다(운영과 동일 구조).
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      # Docker Desktop(mac/Windows)은 host.docker.internal을 자동 제공하지만, 리눅스에서
+      # docker compose를 직접 쓰는 경우엔 이 매핑이 없어서 명시한다 — 있어도 무해하다.
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:13.1.4
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin   # 로컬 전용 기본값 — 운영에서는 절대 이 값 쓰지 말 것
+      GF_FEATURE_TOGGLES_ENABLE: traceToMetrics
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  tempo:
+    image: grafana/tempo:2.10.8
+    user: "0:0"
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+
+  loki:
+    image: grafana/loki:3.7.0
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
 volumes:
   # 볼륨 이름을 명시한다. 안 적으면 "<프로젝트명>_mysql-data"가 되는데,
   # 예전에 mysql만 다른 프로젝트명(-p lp-auction-local-mysql)으로 띄운 적이 있어
@@ -139,4 +196,8 @@ volumes:
     name: lp-auction-local-mysql_mysql-data
   kafka-data:
   elasticsearch-data:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+  loki-data:
   redis-data:

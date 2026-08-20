@@ -1,0 +1,38 @@
+# docker/prod/loki/loki-config.yaml과 동일. 다만 로컬 앱 서비스는 컨테이너가 아니라 gradlew bootRun
+# 프로세스라 Alloy의 Docker 로그 discovery로 못 잡는다 — 로컬에서는 Loki에 로그가 안 쌓이는 게
+# 정상이다(로컬용 Alloy compose를 일부러 안 만든 이유, docker/local/README 참고 없음 — 이 주석이 설명).
+# Metrics/Tracing만 로컬에서 검증하고, Logging은 실제로 컨테이너로 뜨는 운영(app EC2)에서 검증한다.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
