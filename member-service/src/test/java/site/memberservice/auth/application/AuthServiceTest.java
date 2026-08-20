@@ -91,6 +91,45 @@ class AuthServiceTest {
         });
     }
 
+    @DisplayName("이미 refresh token이 있는 회원이 로그인하면 기존 row를 갱신한다.")
+    @Test
+    void loginUpdatesExistingRefreshToken() {
+        // Given
+        final Member member = new Member(
+            1727L,
+            new Email("tester@email.com"),
+            passwordEncoder.encode("testPw1234!"),
+            "tester",
+            "tester",
+            new PhoneNumber("010-1234-5678"),
+            new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)")
+        );
+        final RefreshToken existingRefreshToken = new RefreshToken(1L, "OLD_REFRESH_TOKEN_VALUE", member.getId());
+
+        given(memberService.findMember(any()))
+            .willReturn(Optional.of(member));
+        given(refreshTokenRepository.findByMemberId(member.getId()))
+            .willReturn(Optional.of(existingRefreshToken));
+        given(refreshTokenRepository.save(any()))
+            .willAnswer(invocation -> invocation.getArgument(0));
+
+        final LoginCommand command = new LoginCommand(
+            new Email("tester@email.com"),
+            "testPw1234!"
+        );
+
+        // When
+        final LoginResult loginResult = authService.login(command);
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(loginResult.refreshToken()).isEqualTo(existingRefreshToken.getValue());
+            softly.assertThat(loginResult.refreshToken()).isNotEqualTo("OLD_REFRESH_TOKEN_VALUE");
+        });
+        Mockito.verify(refreshTokenRepository, Mockito.never()).deleteAllByMemberId(any());
+        Mockito.verify(refreshTokenRepository).save(existingRefreshToken);
+    }
+
     @DisplayName("존재하지 않는 회원의 이메일로 로그인을 시도하면 예외가 발생한다.")
     @Test
     void throwExceptionWhenLoginWithNotFoundMemberEmail() {

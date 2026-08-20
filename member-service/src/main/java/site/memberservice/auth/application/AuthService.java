@@ -37,8 +37,14 @@ public class AuthService {
         }
 
         final AuthToken accessToken = authTokenProvider.createAccessToken(member.getId());
-        final RefreshToken refreshToken = RefreshToken.create(authTokenProvider.createRefreshToken(member.getId()).getValue(), member.getId());
-        refreshTokenRepository.deleteAllByMemberId(member.getId());
+        final String refreshTokenValue = authTokenProvider.createRefreshToken(member.getId()).getValue();
+
+        final RefreshToken refreshToken = refreshTokenRepository.findByMemberId(member.getId())
+            .map(existing -> {
+                existing.updateValue(refreshTokenValue);
+                return existing;
+            })
+            .orElseGet(() -> RefreshToken.create(refreshTokenValue, member.getId()));
         refreshTokenRepository.save(refreshToken);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());
