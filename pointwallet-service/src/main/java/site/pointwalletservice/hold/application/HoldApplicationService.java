@@ -81,8 +81,8 @@ public class HoldApplicationService implements HoldService {
         }
 
         Hold newHold = holdRepository.save(Hold.place(auctionId, userId, amount));
-        pointTransactionService.record(
-                result.walletId(), PointTransactionType.HOLD, amount, result.balanceAfter(), newHold.getId()
+        pointTransactionService.recordForAuction(
+                result.walletId(), PointTransactionType.HOLD, amount, result.balanceAfter(), newHold.getId(), auctionId
         );
 
         return new HoldResult(newHold.getId(), releasedHoldId, result.balanceAfter());
@@ -102,9 +102,9 @@ public class HoldApplicationService implements HoldService {
             throw new HoldLockContentionException();
         }
 
-        pointTransactionService.record(
+        pointTransactionService.recordForAuction(
                 result.walletId(), PointTransactionType.RELEASE, previousHold.getAmount(),
-                result.balanceAfter(), previousHold.getId()
+                result.balanceAfter(), previousHold.getId(), previousHold.getAuctionId()
         );
 
         holdRepository.delete(previousHold);

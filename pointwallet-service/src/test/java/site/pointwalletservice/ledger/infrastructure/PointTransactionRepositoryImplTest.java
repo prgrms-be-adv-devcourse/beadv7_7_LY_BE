@@ -111,4 +111,18 @@ class PointTransactionRepositoryImplTest {
         assertThat(secondPage.content()).hasSize(1);
         assertThat(firstPage.totalElements()).isEqualTo(3L);
     }
+
+    @Test
+    @DisplayName("existsByRelatedIdAndType는 related_id+type 조합이 이미 있으면 true, 없으면 false를 반환한다")
+    void existsByRelatedIdAndType_존재여부() {
+        // given
+        saveTransaction(WALLET_ID, PointTransactionType.FEE_INCOME, 2_000, LocalDateTime.now(), 777L);
+
+        // when & then
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(777L, PointTransactionType.FEE_INCOME)).isTrue();
+        // 같은 relatedId라도 type이 다르면 별개 취급
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(777L, PointTransactionType.WITHDRAW)).isFalse();
+        // 존재하지 않는 relatedId
+        assertThat(pointTransactionRepository.existsByRelatedIdAndType(999_999L, PointTransactionType.FEE_INCOME)).isFalse();
+    }
 }

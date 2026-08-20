@@ -1,5 +1,4 @@
 package site.pointwalletservice.ledger.exception;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

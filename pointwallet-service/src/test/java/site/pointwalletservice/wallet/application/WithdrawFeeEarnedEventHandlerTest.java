@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import site.pointwalletservice.ledger.application.PointTransactionService;
-import site.pointwalletservice.ledger.domain.PointTransactionRepository;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.shared.PlatformAccount;
@@ -29,9 +28,6 @@ class WithdrawFeeEarnedEventHandlerTest {
     @Mock
     private PointTransactionService pointTransactionService;
 
-    @Mock
-    private PointTransactionRepository pointTransactionRepository;
-
     private WithdrawFeeEarnedEventHandler sut;
 
     private static final Long WITHDRAW_ID = 1L;
@@ -39,7 +35,7 @@ class WithdrawFeeEarnedEventHandlerTest {
 
     @BeforeEach
     void setUp() {
-        sut = new WithdrawFeeEarnedEventHandler(walletService, pointTransactionService, pointTransactionRepository);
+        sut = new WithdrawFeeEarnedEventHandler(walletService, pointTransactionService);
     }
 
     @Test
@@ -47,7 +43,7 @@ class WithdrawFeeEarnedEventHandlerTest {
     void handle_처음받는이벤트면_플랫폼계정에_적립된다() {
         // given
         WithdrawFeeEarnedEvent event = new WithdrawFeeEarnedEvent(WITHDRAW_ID, BigDecimal.valueOf(2_000));
-        when(pointTransactionRepository.existsByRelatedIdAndType(WITHDRAW_ID, PointTransactionType.FEE_INCOME))
+        when(pointTransactionService.existsForRelatedId(WITHDRAW_ID, PointTransactionType.FEE_INCOME))
                 .thenReturn(false);
         when(walletService.charge(eq(PlatformAccount.PLATFORM_USER_ID), any(Money.class)))
                 .thenReturn(new WalletBalanceResult(PLATFORM_WALLET_ID, Money.of(2_000)));
@@ -67,7 +63,7 @@ class WithdrawFeeEarnedEventHandlerTest {
     void handle_이미처리된이벤트면_건너뛴다() {
         // given
         WithdrawFeeEarnedEvent event = new WithdrawFeeEarnedEvent(WITHDRAW_ID, BigDecimal.valueOf(2_000));
-        when(pointTransactionRepository.existsByRelatedIdAndType(WITHDRAW_ID, PointTransactionType.FEE_INCOME))
+        when(pointTransactionService.existsForRelatedId(WITHDRAW_ID, PointTransactionType.FEE_INCOME))
                 .thenReturn(true);
 
         // when

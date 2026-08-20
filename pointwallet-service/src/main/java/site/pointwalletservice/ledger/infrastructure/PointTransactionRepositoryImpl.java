@@ -28,7 +28,6 @@ public class PointTransactionRepositoryImpl implements PointTransactionRepositor
         return new PointTransactionSearchPage(result.getContent(), result.getTotalElements());
     }
 
-    // infrastructure/PointTransactionRepositoryImpl.java 에 추가
     @Override
     public boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type) {
         return pointTransactionJpaRepository.existsByRelatedIdAndType(relatedId, type);
