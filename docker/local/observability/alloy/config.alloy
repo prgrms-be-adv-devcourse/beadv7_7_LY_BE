@@ -26,7 +26,21 @@ discovery.relabel "app_containers" {
 loki.source.docker "default" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.app_containers.output
+  forward_to = [loki.process.default.receiver]
+}
+
+loki.process "default" {
   forward_to = [loki.write.default.receiver]
+
+  stage.regex {
+    expression = "\\s(?P<level>TRACE|DEBUG|INFO|WARN|ERROR)\\s"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
 }
 
 loki.write "default" {
