@@ -10,6 +10,7 @@ public record ProductIndexProbeRequest(
     Long productId,
     String title,
     String artistName,
+    String coverImageUrl,
     String genre,
     String label,
     Integer releaseYear,
@@ -19,7 +20,7 @@ public record ProductIndexProbeRequest(
 ) {
 
     public ProductIndexCommand toCommand() {
-        return new ProductIndexCommand(productId, title, artistName, genre, label,
+        return new ProductIndexCommand(productId, title, artistName, coverImageUrl, genre, label,
             releaseYear, releaseCountry, pressType, active);
     }
 }

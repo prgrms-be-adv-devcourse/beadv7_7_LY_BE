@@ -160,18 +160,18 @@ class ProductIndexServiceTest {
 
     private List<ProductIndexCommand> commands() {
         return List.of(
-            new ProductIndexCommand(1L, "Kind of Blue", "Miles Davis", "Jazz", "Columbia",
+            new ProductIndexCommand(1L, "Kind of Blue", "Miles Davis", null, "Jazz", "Columbia",
                 1959, "미국", "ORIGINAL", true),
-            new ProductIndexCommand(2L, "다시 부르기 2", "김광석", "포크", "킹레코드",
+            new ProductIndexCommand(2L, "다시 부르기 2", "김광석", null, "포크", "킹레코드",
                 1995, "한국", "REISSUE", true),
-            new ProductIndexCommand(3L, "Nevermind", "Nirvana", "그런지", "DGC",
+            new ProductIndexCommand(3L, "Nevermind", "Nirvana", null, "그런지", "DGC",
                 1991, "미국", "ORIGINAL", true)
         );
     }
 
     private ProductIndexCommand command(final Long productId, final String artistName,
         final Boolean active) {
-        return new ProductIndexCommand(productId, "제목", artistName, "Jazz", "Columbia",
+        return new ProductIndexCommand(productId, "제목", artistName, null, "Jazz", "Columbia",
             1959, "미국", "ORIGINAL", active);
     }
 }

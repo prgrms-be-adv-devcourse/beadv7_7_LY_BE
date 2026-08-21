@@ -2,11 +2,14 @@ package site.explorationservice.productindex.infrastructure;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -38,10 +41,19 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     private static final int CANDIDATES_PER_RESULT = 10;
 
     /**
-     * 축마다 병합 전에 몇 배수의 히트를 가져올지. 좁으면(예: 최종 size만큼만) 재정렬 여지가 없어진다는 게 실측으로 확인됐다 — 사후 재정렬을 top-20으로만
-     * 시도했다가 효과가 제한적이었던 사례(docs/recommendation-avg-test-results.md 6차) 참고.
+     * 축마다 병합 전에 몇 배수의 히트를 가져올지.
      */
     private static final int AXIS_OVERSAMPLE = 5;
+
+    /**
+     * 같은 (genre,artist)/(decade,country)/(label,pressType) 그룹에서 후보로 몇 개까지 인정할지.
+     */
+    private static final int MAX_PER_GROUP = 3;
+
+    /**
+     * edition 축은 가중치가 이 값 미만이면 kNN 자체를 돌리지 않는다.
+     */
+    private static final double EDITION_WEIGHT_THRESHOLD = 0.15;
 
     private final ElasticsearchOperations elasticsearchOperations;
     private final ProductVectorReader productVectorReader;
@@ -62,21 +74,56 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     /**
      * 축마다 kNN을 따로 돌리고, 상품별로 세 점수를 가중합해서 다시 정렬한다. ES 쿼리 하나로 여러 dense_vector 필드를 한 번에 채점하는 기능은 안 쓴다 —
      * 가중치를 요청마다 바꿔야 하는데(LLM 산출 vs 기본값), 색인 시점에 가중치를 고정하지 않고는 ES 쿼리 자체로 이걸 표현할 방법이 마땅치 않다.
+     * <p>
+     * identity·origin은 항상 돌리고 그룹 상한을 적용한다. edition은 가중치가 {@link #EDITION_WEIGHT_THRESHOLD} 미만이면 아예
+     * 건너뛴다
+     * <p>
+     * 그룹 상한을 적용한 후보만으로 {@code size}를 못 채우면 상한에 걸려 빠졌던 후보(overflow)로 부족분을 채운다 — 평소엔 다양성을 우선하되, size를
+     * 못 채우는 것보다는 낫다.
      */
     @Override
     public List<ScoredProduct> findSimilar(final ProductVectors queryVectors,
         final AxisWeights weights, final List<Long> excludeIds, final int size) {
         final int axisHitLimit = size * AXIS_OVERSAMPLE;
 
-        final Map<Long, SearchHit<ProductDocument>> identityHits =
-            axisHits(IDENTITY_FIELD, queryVectors.identityVector(), excludeIds, axisHitLimit);
-        final Map<Long, SearchHit<ProductDocument>> originHits =
-            axisHits(ORIGIN_FIELD, queryVectors.originVector(), excludeIds, axisHitLimit);
-        final Map<Long, SearchHit<ProductDocument>> editionHits =
-            axisHits(EDITION_FIELD, queryVectors.editionVector(), excludeIds, axisHitLimit);
+        final GroupCapResult identityResult = capByGroup(
+            axisHits(IDENTITY_FIELD, queryVectors.identityVector(), excludeIds, axisHitLimit),
+            ProductDocument::getIdentityGroupKey);
+        final GroupCapResult originResult = capByGroup(
+            axisHits(ORIGIN_FIELD, queryVectors.originVector(), excludeIds, axisHitLimit),
+            ProductDocument::getOriginGroupKey);
+        final GroupCapResult editionResult = weights.edition() < EDITION_WEIGHT_THRESHOLD
+            ? GroupCapResult.EMPTY
+            : capByGroup(
+                axisHits(EDITION_FIELD, queryVectors.editionVector(), excludeIds, axisHitLimit),
+                ProductDocument::getEditionGroupKey);
 
         final double weightSum = weights.identity() + weights.origin() + weights.edition();
 
+        final List<ScoredProduct> ranked = scoreAndSort(
+            identityResult.kept(), originResult.kept(), editionResult.kept(), weights, weightSum);
+        if (ranked.size() >= size) {
+            return ranked.stream().limit(size).toList();
+        }
+
+        final Set<Long> rankedIds = new LinkedHashSet<>();
+        ranked.forEach(scored -> rankedIds.add(scored.document().getProductId()));
+
+        final List<ScoredProduct> backfill = scoreAndSort(
+            identityResult.overflow(), originResult.overflow(), editionResult.overflow(),
+            weights, weightSum)
+            .stream()
+            .filter(scored -> !rankedIds.contains(scored.document().getProductId()))
+            .toList();
+
+        return Stream.concat(ranked.stream(), backfill.stream()).limit(size).toList();
+    }
+
+    private List<ScoredProduct> scoreAndSort(
+        final Map<Long, SearchHit<ProductDocument>> identityHits,
+        final Map<Long, SearchHit<ProductDocument>> originHits,
+        final Map<Long, SearchHit<ProductDocument>> editionHits,
+        final AxisWeights weights, final double weightSum) {
         final Set<Long> candidateIds = new LinkedHashSet<>();
         candidateIds.addAll(identityHits.keySet());
         candidateIds.addAll(originHits.keySet());
@@ -85,7 +132,6 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
         return candidateIds.stream()
             .map(id -> mergedScore(id, identityHits, originHits, editionHits, weights, weightSum))
             .sorted(Comparator.comparingDouble(ScoredProduct::score).reversed())
-            .limit(size)
             .toList();
     }
 
@@ -141,6 +187,40 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
             hits.put(hit.getContent().getProductId(), hit);
         }
         return hits;
+    }
+
+    /**
+     * 그룹 상한 결과. {@code kept}는 상한 안에서 살아남은 후보(점수순 정렬에 그대로 쓴다), {@code overflow}는 상한에 걸려 빠진 후보 — 평소엔
+     * 버리지만 {@code kept}만으로 요청한 size를 못 채울 때 부족분을 메우는 데 쓴다.
+     */
+    private record GroupCapResult(
+        Map<Long, SearchHit<ProductDocument>> kept,
+        Map<Long, SearchHit<ProductDocument>> overflow) {
+
+        static final GroupCapResult EMPTY = new GroupCapResult(Map.of(), Map.of());
+    }
+
+    /**
+     * 점수 내림차순으로 훑으면서 같은 그룹에서 {@link #MAX_PER_GROUP}개를 넘는 후보는 {@code overflow}로 뺀다.
+     */
+    private GroupCapResult capByGroup(
+        final Map<Long, SearchHit<ProductDocument>> hits,
+        final Function<ProductDocument, String> groupKey) {
+        final Map<String, Integer> groupCounts = new HashMap<>();
+        final Map<Long, SearchHit<ProductDocument>> kept = new LinkedHashMap<>();
+        final Map<Long, SearchHit<ProductDocument>> overflow = new LinkedHashMap<>();
+
+        for (final Map.Entry<Long, SearchHit<ProductDocument>> entry : hits.entrySet()) {
+            final String key = groupKey.apply(entry.getValue().getContent());
+            final int count = groupCounts.getOrDefault(key, 0);
+            if (count >= MAX_PER_GROUP) {
+                overflow.put(entry.getKey(), entry.getValue());
+                continue;
+            }
+            groupCounts.put(key, count + 1);
+            kept.put(entry.getKey(), entry.getValue());
+        }
+        return new GroupCapResult(kept, overflow);
     }
 
     /**

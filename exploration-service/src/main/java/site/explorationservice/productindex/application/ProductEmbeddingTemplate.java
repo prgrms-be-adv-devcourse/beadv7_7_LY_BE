@@ -10,6 +10,9 @@ import site.explorationservice.productindex.application.dto.ProductIndexCommand;
  * <b>값은 코드가 아니라 사람이 쓰는 말로 바꿔 넣는다</b> — 임베딩 모델은 자연어로 학습돼서 연도 숫자는 신호가 약하다. 1959는 "1950년대"로
  * 바꾼다. 숫자 연도는 범위 검색용이지 의미의 재료가 아니다.
  * <p>
+ * 여기서 만든 텍스트는 임베딩 재료이면서 동시에 {@code ProductDocument}의 identity/origin/editionGroupKey로도 그대로
+ * 저장된다({@code ProductIndexService.toDocument} 참고) — 그룹
+ * 상한(`ProductDocumentRepositoryImpl.capByGroup`)은 두 문서가 "같은 그룹"인지 문자열 동등 비교로만 판정하므로 별도 포맷이 필요 없다.
  */
 public final class ProductEmbeddingTemplate {
 

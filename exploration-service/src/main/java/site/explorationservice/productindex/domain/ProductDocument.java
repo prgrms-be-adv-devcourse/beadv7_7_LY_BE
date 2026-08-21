@@ -61,11 +61,11 @@ public class ProductDocument {
     private Boolean active;
 
     /**
-     * genre·label·releaseYear·releaseCountry·pressType — 검색·필터용이 아니라 <b>추천 결과를 사람이 종합적으로(아티스트명만이
-     * 아니라) 판정하기 위한 표시용 필드</b>다. 임베딩 텍스트를 만드는 재료이기도 하지만 벡터로만 남기고 버리던 걸, identity/origin/edition 실측
-     * 라운드가 반복되며 매번 MySQL을 수동으로 조인해야 했던 문제 때문에 저장하기로 했다(docs/recommendation-3vector-plan.md 1단계 참고).
-     * 검색이 이 필드들을 실제로 쓰게 되면 그때 인덱싱 옵션(analyzer 등)을 재검토한다.
+     * 추천, 검색 api 응답에 들어가는 표시용 필드
      */
+    @Field(type = FieldType.Keyword)
+    private String coverImageUrl;
+
     @Field(type = FieldType.Keyword)
     private String genre;
 
@@ -80,6 +80,18 @@ public class ProductDocument {
 
     @Field(type = FieldType.Keyword)
     private String pressType;
+
+    /**
+     * identity/origin/edition 그룹 상한(`ProductDocumentRepositoryImpl.capByGroup`)이 쓰는 그룹 키
+     */
+    @Field(type = FieldType.Keyword)
+    private String identityGroupKey;
+
+    @Field(type = FieldType.Keyword)
+    private String originGroupKey;
+
+    @Field(type = FieldType.Keyword)
+    private String editionGroupKey;
 
     /**
      * 장르 + 아티스트("음악적 정체성").
