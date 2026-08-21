@@ -20,8 +20,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.productindex.domain.ProductDocument;
 import site.explorationservice.productindex.domain.ProductDocumentRepository;
+import site.explorationservice.productindex.domain.ProductVectors;
 import site.explorationservice.productindex.domain.ScoredProduct;
 import site.explorationservice.recommendation.application.dto.RecommendationResult;
 import site.explorationservice.recommendation.application.port.WishlistPort;
@@ -44,11 +46,17 @@ class RecommendationServiceTest {
     @Mock
     private WishlistPort wishlistPort;
 
+    @Mock
+    private InterestWeightService interestWeightService;
+
     @InjectMocks
     private RecommendationService recommendationService;
 
     @Captor
-    private ArgumentCaptor<float[]> vectorCaptor;
+    private ArgumentCaptor<ProductVectors> queryVectorsCaptor;
+
+    @Captor
+    private ArgumentCaptor<AxisWeights> weightsCaptor;
 
     @Captor
     private ArgumentCaptor<List<Long>> excludeIdsCaptor;
@@ -57,36 +65,46 @@ class RecommendationServiceTest {
     private ArgumentCaptor<Integer> sizeCaptor;
 
     @Test
-    @DisplayName("씨앗 벡터의 성분별 평균을 질의 벡터로 쓴다")
+    @DisplayName("씨앗 벡터의 축별(identity·origin·edition) 성분 평균을 질의 벡터로 쓴다 — 축끼리 안 섞인다")
     void 평균_계산() {
+        // 축마다 자릿수를 다르게 둬서(identity=1의 자리, origin=10의 자리, edition=100의 자리) 축이 섞이면
+        // 바로 드러나게 한다.
         givenVectors(Map.of(
-            1L, new float[]{1.0f, 0.0f, 0.0f},
-            2L, new float[]{0.0f, 1.0f, 0.0f},
-            3L, new float[]{0.0f, 0.0f, 1.0f}));
+            1L, vectors(new float[]{1, 0, 0}, new float[]{10, 0, 0}, new float[]{100, 0, 0}),
+            2L, vectors(new float[]{0, 1, 0}, new float[]{0, 10, 0}, new float[]{0, 100, 0}),
+            3L, vectors(new float[]{0, 0, 1}, new float[]{0, 0, 10}, new float[]{0, 0, 100})));
         givenSimilar();
 
-        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5);
+        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         then(productDocumentRepository).should()
-            .findSimilar(vectorCaptor.capture(), anyList(), anyInt());
-        // 세 축이 균등하게 섞였으므로 각 성분이 1/3이다. 한 벡터만 반영되거나 합만 내면 여기서 걸린다.
-        assertThat(vectorCaptor.getValue())
+            .findSimilar(queryVectorsCaptor.capture(), any(), anyList(), anyInt());
+        final ProductVectors merged = queryVectorsCaptor.getValue();
+        assertThat(merged.identityVector())
             .usingComparatorWithPrecision(1e-6f)
             .containsExactly(1f / 3, 1f / 3, 1f / 3);
+        assertThat(merged.originVector())
+            .usingComparatorWithPrecision(1e-6f)
+            .containsExactly(10f / 3, 10f / 3, 10f / 3);
+        assertThat(merged.editionVector())
+            .usingComparatorWithPrecision(1e-6f)
+            .containsExactly(100f / 3, 100f / 3, 100f / 3);
     }
 
     @Test
     @DisplayName("정규화하지 않는다 — 길이가 순위에 영향을 주지 않는 코사인 유사도를 쓴다")
     void 정규화_안함() {
-        givenVectors(Map.of(1L, new float[]{3.0f, 4.0f}));
+        givenVectors(Map.of(1L, vectors(new float[]{3, 4}, new float[]{3, 4}, new float[]{3, 4})));
         givenSimilar();
 
-        recommendationService.recommendFrom(List.of(1L), 5);
+        recommendationService.recommendFrom(List.of(1L), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         then(productDocumentRepository).should()
-            .findSimilar(vectorCaptor.capture(), anyList(), anyInt());
+            .findSimilar(queryVectorsCaptor.capture(), any(), anyList(), anyInt());
         // 단위 길이로 맞췄다면 (0.6, 0.8)이 됐을 값이다.
-        assertThat(vectorCaptor.getValue()).containsExactly(3.0f, 4.0f);
+        assertThat(queryVectorsCaptor.getValue().identityVector()).containsExactly(3.0f, 4.0f);
     }
 
     @Test
@@ -94,28 +112,44 @@ class RecommendationServiceTest {
     void 일부만_색인됨() {
         // 상품 변경 리스너가 붙기 전까지는 이게 정상 상태다 — 담은 상품 전부가 색인돼 있으리라 가정할 수 없다.
         givenVectors(Map.of(
-            1L, new float[]{2.0f, 0.0f},
-            3L, new float[]{4.0f, 0.0f}));
+            1L, vectors(new float[]{2, 0}, new float[]{2, 0}, new float[]{2, 0}),
+            3L, vectors(new float[]{4, 0}, new float[]{4, 0}, new float[]{4, 0})));
         givenSimilar();
 
-        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5);
+        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         then(productDocumentRepository).should()
-            .findSimilar(vectorCaptor.capture(), anyList(), anyInt());
+            .findSimilar(queryVectorsCaptor.capture(), any(), anyList(), anyInt());
         // 3으로 나누면 2.0이 된다 — 없는 씨앗까지 분모에 넣으면 안 된다.
-        assertThat(vectorCaptor.getValue()).containsExactly(3.0f, 0.0f);
+        assertThat(queryVectorsCaptor.getValue().identityVector()).containsExactly(3.0f, 0.0f);
+    }
+
+    @Test
+    @DisplayName("가중치를 지정하면 그대로 전달한다")
+    void 가중치_전달() {
+        givenVectors(Map.of(1L, vectors(new float[]{1}, new float[]{1}, new float[]{1})));
+        givenSimilar();
+        final AxisWeights custom = new AxisWeights(0.6, 0.3, 0.1);
+
+        recommendationService.recommendFrom(List.of(1L), 5, custom);
+
+        then(productDocumentRepository).should()
+            .findSimilar(any(), weightsCaptor.capture(), anyList(), anyInt());
+        assertThat(weightsCaptor.getValue()).isEqualTo(custom);
     }
 
     @Test
     @DisplayName("색인 여부와 무관하게 씨앗 전체를 결과에서 제외한다")
     void 제외_목록() {
-        givenVectors(Map.of(1L, new float[]{1.0f, 0.0f}));
+        givenVectors(Map.of(1L, vectors(new float[]{1, 0}, new float[]{1, 0}, new float[]{1, 0})));
         givenSimilar();
 
-        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5);
+        recommendationService.recommendFrom(List.of(1L, 2L, 3L), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         then(productDocumentRepository).should()
-            .findSimilar(any(), excludeIdsCaptor.capture(), anyInt());
+            .findSimilar(any(), any(), excludeIdsCaptor.capture(), anyInt());
         // 2·3은 아직 색인 전이지만 이미 담은 상품이다. 나중에 색인되고 나서 추천에 튀어나오면 안 된다.
         assertThat(excludeIdsCaptor.getValue()).containsExactly(1L, 2L, 3L);
     }
@@ -123,10 +157,12 @@ class RecommendationServiceTest {
     @Test
     @DisplayName("씨앗이 없으면 ES를 아예 부르지 않는다")
     void 빈_씨앗() {
-        assertThat(recommendationService.recommendFrom(List.of(), 5)).isEmpty();
+        assertThat(recommendationService.recommendFrom(List.of(), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS)).isEmpty();
 
         then(productDocumentRepository).should(never()).findVectors(anyList());
-        then(productDocumentRepository).should(never()).findSimilar(any(), anyList(), anyInt());
+        then(productDocumentRepository).should(never())
+            .findSimilar(any(), any(), anyList(), anyInt());
     }
 
     @Test
@@ -134,23 +170,27 @@ class RecommendationServiceTest {
     void 색인된_씨앗_없음() {
         givenVectors(Map.of());
 
-        assertThat(recommendationService.recommendFrom(List.of(1L, 2L), 5)).isEmpty();
+        assertThat(recommendationService.recommendFrom(List.of(1L, 2L), 5,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS)).isEmpty();
 
         // 평균 낼 대상이 없다. 빈 벡터로 검색하면 의미 없는 결과가 나온다.
-        then(productDocumentRepository).should(never()).findSimilar(any(), anyList(), anyInt());
+        then(productDocumentRepository).should(never())
+            .findSimilar(any(), any(), anyList(), anyInt());
     }
 
     @Test
     @DisplayName("size가 상한을 넘으면 상한으로, 0 이하면 기본값으로 조정한다")
     void size_보정() {
-        givenVectors(Map.of(1L, new float[]{1.0f}));
+        givenVectors(Map.of(1L, vectors(new float[]{1}, new float[]{1}, new float[]{1})));
         givenSimilar();
 
-        recommendationService.recommendFrom(List.of(1L), RecommendationPolicy.MAX_SIZE + 1);
-        recommendationService.recommendFrom(List.of(1L), 0);
+        recommendationService.recommendFrom(List.of(1L), RecommendationPolicy.MAX_SIZE + 1,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
+        recommendationService.recommendFrom(List.of(1L), 0,
+            RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         then(productDocumentRepository).should(times(2))
-            .findSimilar(any(), anyList(), sizeCaptor.capture());
+            .findSimilar(any(), any(), anyList(), sizeCaptor.capture());
         assertThat(sizeCaptor.getAllValues())
             .containsExactly(RecommendationPolicy.MAX_SIZE, RecommendationPolicy.DEFAULT_SIZE);
     }
@@ -158,12 +198,13 @@ class RecommendationServiceTest {
     @Test
     @DisplayName("검색 결과를 점수와 함께 그대로 전달한다")
     void 결과_변환() {
-        givenVectors(Map.of(1L, new float[]{1.0f}));
-        given(productDocumentRepository.findSimilar(any(), anyList(), anyInt()))
+        givenVectors(Map.of(1L, vectors(new float[]{1}, new float[]{1}, new float[]{1})));
+        given(productDocumentRepository.findSimilar(any(), any(), anyList(), anyInt()))
             .willReturn(List.of(scored(100L, "Kind of Blue", "Miles Davis", 0.93f)));
 
         final List<RecommendationResult> results =
-            recommendationService.recommendFrom(List.of(1L), 5);
+            recommendationService.recommendFrom(List.of(1L), 5,
+                RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().productId()).isEqualTo(100L);
@@ -178,7 +219,11 @@ class RecommendationServiceTest {
         given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
             .willReturn(List.of(
                 wishlistProduct(10L), wishlistProduct(20L)));
-        givenVectors(Map.of(10L, new float[]{1.0f, 0.0f}, 20L, new float[]{0.0f, 1.0f}));
+        given(interestWeightService.analyzeWeightsOrDefault(anyList()))
+            .willReturn(RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
+        givenVectors(Map.of(
+            10L, vectors(new float[]{1, 0}, new float[]{1, 0}, new float[]{1, 0}),
+            20L, vectors(new float[]{0, 1}, new float[]{0, 1}, new float[]{0, 1})));
         givenSimilar();
 
         recommendationService.recommendForMember(1L, 5);
@@ -186,18 +231,40 @@ class RecommendationServiceTest {
         // 위시리스트가 돌려준 상품 id 그대로가 findVectors·findSimilar 양쪽에 씨앗으로 들어가야 한다.
         then(productDocumentRepository).should().findVectors(List.of(10L, 20L));
         then(productDocumentRepository).should()
-            .findSimilar(any(), excludeIdsCaptor.capture(), anyInt());
+            .findSimilar(any(), any(), excludeIdsCaptor.capture(), anyInt());
         assertThat(excludeIdsCaptor.getValue()).containsExactly(10L, 20L);
     }
 
     @Test
-    @DisplayName("위시리스트가 비어 있으면 ES를 아예 부르지 않는다")
+    @DisplayName("위시리스트 전체를 LLM에 넘겨 가중치를 구하고, 그 결과를 그대로 병합에 쓴다")
+    void 회원_추천_LLM_가중치_사용() {
+        final List<WishlistProduct> wishlist = List.of(wishlistProduct(10L), wishlistProduct(20L));
+        given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
+            .willReturn(wishlist);
+        final AxisWeights llmWeights = new AxisWeights(0.6, 0.3, 0.1);
+        given(interestWeightService.analyzeWeightsOrDefault(wishlist)).willReturn(llmWeights);
+        givenVectors(Map.of(
+            10L, vectors(new float[]{1, 0}, new float[]{1, 0}, new float[]{1, 0}),
+            20L, vectors(new float[]{0, 1}, new float[]{0, 1}, new float[]{0, 1})));
+        givenSimilar();
+
+        recommendationService.recommendForMember(1L, 5);
+
+        then(productDocumentRepository).should()
+            .findSimilar(any(), weightsCaptor.capture(), anyList(), anyInt());
+        assertThat(weightsCaptor.getValue()).isEqualTo(llmWeights);
+    }
+
+    @Test
+    @DisplayName("위시리스트가 비어 있으면 LLM도, ES도 아예 부르지 않는다")
     void 회원_추천_빈_위시리스트() {
         given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
             .willReturn(List.of());
 
         assertThat(recommendationService.recommendForMember(1L, 5)).isEmpty();
 
+        // 분석할 재료가 없는데 LLM부터 부르면 비용만 나간다.
+        then(interestWeightService).should(never()).analyzeWeightsOrDefault(anyList());
         then(productDocumentRepository).should(never()).findVectors(anyList());
     }
 
@@ -206,14 +273,19 @@ class RecommendationServiceTest {
             "ORIGINAL");
     }
 
-    private void givenVectors(final Map<Long, float[]> vectors) {
+    private ProductVectors vectors(final float[] identity, final float[] origin,
+        final float[] edition) {
+        return new ProductVectors(identity, origin, edition);
+    }
+
+    private void givenVectors(final Map<Long, ProductVectors> vectors) {
         // 평균은 순서와 무관해야 하지만, 실패했을 때 재현되도록 순서를 고정해 둔다.
         given(productDocumentRepository.findVectors(anyList()))
             .willReturn(new LinkedHashMap<>(vectors));
     }
 
     private void givenSimilar() {
-        given(productDocumentRepository.findSimilar(any(), anyList(), anyInt()))
+        given(productDocumentRepository.findSimilar(any(), any(), anyList(), anyInt()))
             .willReturn(List.of());
     }
 
