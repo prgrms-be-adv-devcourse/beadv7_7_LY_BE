@@ -36,6 +36,7 @@ spring:
         spring.json.trusted.packages: site.common.event.contract
     listener:
       ack-mode: batch
+      observation-enabled: true
 
 management:
   endpoints:
