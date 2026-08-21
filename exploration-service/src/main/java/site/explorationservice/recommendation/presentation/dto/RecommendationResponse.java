@@ -6,6 +6,11 @@ public record RecommendationResponse(
     Long productId,
     String title,
     String artistName,
+    String genre,
+    String label,
+    Integer releaseYear,
+    String releaseCountry,
+    String pressType,
     float score
 ) {
 
@@ -14,6 +19,11 @@ public record RecommendationResponse(
             result.productId(),
             result.title(),
             result.artistName(),
+            result.genre(),
+            result.label(),
+            result.releaseYear(),
+            result.releaseCountry(),
+            result.pressType(),
             result.score()
         );
     }

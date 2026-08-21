@@ -85,6 +85,11 @@ public class ProductIndexService {
             // 값이 없으면 살아 있는 것으로 본다 — 색인 대상으로 들어온 상품이 기본적으로 노출 가능한 상태라고
             // 보는 게 맞고, null이면 active 필터에 걸려 추천에서 통째로 빠지기 때문이다.
             .active(command.active() == null || command.active())
+            .genre(command.genre())
+            .label(command.label())
+            .releaseYear(command.releaseYear())
+            .releaseCountry(command.releaseCountry())
+            .pressType(command.pressType())
             .identityVector(identityVector)
             .originVector(originVector)
             .editionVector(editionVector)
