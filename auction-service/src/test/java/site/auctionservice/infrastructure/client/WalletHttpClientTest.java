@@ -100,4 +100,36 @@ class WalletHttpClientTest {
                 .isEqualTo(AuctionErrorCode.INSUFFICIENT_BALANCE);
         server.verify();
     }
+
+    @Test
+    @DisplayName("보상(rollback) 호출이 성공하면 예외 없이 끝난다")
+    void testRollback_success_completesWithoutException() {
+        server.expect(requestTo("http://localhost:8080/internal/v1/wallet/hold/1/rollback"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {
+                          "success": true,
+                          "data": null,
+                          "error": {"code": null, "message": null}
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        walletHttpClient.rollback(1L, 1L, 2L, Money.of(13_000L));
+
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("보상(rollback) 호출이 실패(409)하면 WALLET_ROLLBACK_FAILED 예외를 던진다")
+    void testRollback_conflict_throwsWalletRollbackFailed() {
+        server.expect(requestTo("http://localhost:8080/internal/v1/wallet/hold/1/rollback"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.CONFLICT));
+
+        assertThatThrownBy(() -> walletHttpClient.rollback(1L, 1L, 2L, Money.of(13_000L)))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.WALLET_ROLLBACK_FAILED);
+        server.verify();
+    }
 }

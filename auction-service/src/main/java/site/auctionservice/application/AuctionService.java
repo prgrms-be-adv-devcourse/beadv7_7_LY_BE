@@ -16,6 +16,7 @@ import site.auctionservice.application.port.dto.AuctionListSummary;
 import site.auctionservice.application.port.dto.AuctionProductSummary;
 import site.auctionservice.application.port.dto.ProductDetail;
 import site.auctionservice.application.port.dto.ProductSnapshot;
+import site.auctionservice.application.port.dto.WalletHoldInfo;
 import site.auctionservice.exception.AuctionErrorCode;
 import site.auctionservice.exception.AuctionException;
 
@@ -237,11 +238,10 @@ public class AuctionService {
         // 예치금 호출 전 사전 검증
         auction.validateBiddable(command.bidderId(), amount, now);
 
-        // 예치금 홀드 (동기, 트랜잭션 안)
-        walletPort.hold(command.auctionId(), command.bidderId(), amount);
+        // 예치금 홀드 (동기, 트랜잭션 안) - holdId는 실패 시 보상(rollback) 호출에 필요해서 캡처해둔다.
+        WalletHoldInfo holdInfo = walletPort.hold(command.auctionId(), command.bidderId(), amount);
 
-        // TODO : #75 입찰 실패 시 예치금 홀드 해제(보상 트랜잭션) 구현 필요
-        // 아래 구간에서 예외가 나면 홀드는 이미 잡힌 채로 남는다 — 지금은 로그로만 흔적을 남긴다.
+        // hold() 이후 이 구간에서 예외가 나면 예치금 홀드를 보상(rollback) 호출로 되돌린다.
         try {
             // 새 Bid 저장 (ACTIVE)
             Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
@@ -261,8 +261,15 @@ public class AuctionService {
 
             return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
         } catch (RuntimeException e) {
-            log.error("입찰 처리 실패 - 예치금 홀드가 해제되지 않은 채 남아있을 수 있음: auctionId={}, bidderId={}, amount={}",
-                    command.auctionId(), command.bidderId(), amount.getValue(), e);
+            log.error("입찰 처리 실패 - 예치금 홀드 보상(rollback) 시도: holdId={}, auctionId={}, bidderId={}, amount={}",
+                    holdInfo.holdId(), command.auctionId(), command.bidderId(), amount.getValue(), e);
+            // 보상 호출 자체가 실패해도 원래 입찰 실패 사유를 덮어쓰면 안 되므로 별도로 잡아서 로그만 남긴다 -
+            try {
+                walletPort.rollback(holdInfo.holdId(), command.auctionId(), command.bidderId(), amount);
+            } catch (RuntimeException rollbackFailure) {
+                log.error("예치금 홀드 보상(rollback) 실패 - 홀드가 해제되지 않은 채 남아있을 수 있음: holdId={}, auctionId={}, bidderId={}",
+                        holdInfo.holdId(), command.auctionId(), command.bidderId(), rollbackFailure);
+            }
             throw e;
         }
     }
