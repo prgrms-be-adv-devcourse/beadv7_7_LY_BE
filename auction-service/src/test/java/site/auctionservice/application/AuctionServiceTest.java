@@ -1,5 +1,6 @@
 package site.auctionservice.application;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
 import site.auctionservice.application.port.MemberPort;
@@ -63,8 +67,21 @@ class AuctionServiceTest {
     @Mock
     private ImageUrlValidator imageUrlValidator;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     @InjectMocks
     private AuctionService auctionService;
+
+    @BeforeEach
+    void setUp() {
+        // TransactionTemplate.execute()가 실제 트랜잭션 없이 콜백을 즉시 실행하도록 스텁 —
+        // pointwallet-service의 WithdrawApplicationServiceTest 등과 동일한 패턴.
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction((TransactionStatus) null);
+        }).when(transactionTemplate).execute(any());
+    }
 
     private static final String DESCRIPTION = "충분히 긴 상품 설명입니다.";
     private static final LocalDateTime PAST_START = LocalDateTime.of(2000, 1, 1, 0, 0);

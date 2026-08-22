@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.domain.*;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
@@ -23,6 +24,7 @@ import site.auctionservice.exception.AuctionException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,6 +43,7 @@ public class AuctionService {
     private final AuctionSearchViewRepository searchViewRepository;
     private final AuctionEventPublisher auctionEventPublisher;
     private final ImageUrlValidator imageUrlValidator;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
@@ -228,8 +231,35 @@ public class AuctionService {
         return PageResult.of(result, items);
     }
 
-    @Transactional
+    /**
+     * @Transactional 대신 TransactionTemplate으로 executeBid()만 좁게 감싼다 — 보상 호출(rollback)이
+     * 경매 행 락이 풀린 뒤에 실행되게 하기 위해서다(pointwallet rollback()은 holdId 기준 멱등이라 안전).
+     * holdInfoRef는 executeBid() 실패 시에도 hold() 결과(holdId)를 catch 블록에서 쓰기 위한 다리다.
+     */
     public PlaceBidResult placeBid(PlaceBidCommand command) {
+        AtomicReference<WalletHoldInfo> holdInfoRef = new AtomicReference<>();
+        try {
+            return transactionTemplate.execute(status -> executeBid(command, holdInfoRef));
+        } catch (RuntimeException e) {
+            WalletHoldInfo holdInfo = holdInfoRef.get();
+            if (holdInfo == null) {
+                // hold() 자체가 실패해서 holdId가 없는 경우 - 보상할 대상이 없으므로 그대로 전파
+                throw e;
+            }
+            log.error("입찰 처리 실패 - 예치금 홀드 보상(rollback) 시도: holdId={}, auctionId={}, bidderId={}, amount={}",
+                    holdInfo.holdId(), command.auctionId(), command.bidderId(), command.amount(), e);
+            // 보상 호출 자체가 실패해도 원래 입찰 실패 사유를 덮어쓰면 안 되므로 별도로 잡아서 로그만 남긴다
+            try {
+                walletPort.rollback(holdInfo.holdId(), command.auctionId(), command.bidderId(), Money.from(command.amount()));
+            } catch (RuntimeException rollbackFailure) {
+                log.error("예치금 홀드 보상(rollback) 실패 - 홀드가 해제되지 않은 채 남아있을 수 있음: holdId={}, auctionId={}, bidderId={}",
+                        holdInfo.holdId(), command.auctionId(), command.bidderId(), rollbackFailure);
+            }
+            throw e;
+        }
+    }
+
+    private PlaceBidResult executeBid(PlaceBidCommand command, AtomicReference<WalletHoldInfo> holdInfoRef) {
         LocalDateTime now = LocalDateTime.now();
 
         Auction auction = auctionRepository.findByIdForUpdate(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
@@ -238,40 +268,27 @@ public class AuctionService {
         // 예치금 호출 전 사전 검증
         auction.validateBiddable(command.bidderId(), amount, now);
 
-        // 예치금 홀드 (동기, 트랜잭션 안) - holdId는 실패 시 보상(rollback) 호출에 필요해서 캡처해둔다.
+        // holdId는 실패 시 보상(rollback)에 필요해서 캡처해둔다
         WalletHoldInfo holdInfo = walletPort.hold(command.auctionId(), command.bidderId(), amount);
+        holdInfoRef.set(holdInfo);
 
-        // hold() 이후 이 구간에서 예외가 나면 예치금 홀드를 보상(rollback) 호출로 되돌린다.
-        try {
-            // 새 Bid 저장 (ACTIVE)
-            Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
-            // ACTIVE Bid → OUTBID
-            bidRepository.findActiveBid(command.auctionId())
-                    .filter(prev -> !prev.getId().equals(newBid.getId()))
-                    .ifPresent(Bid::markOutbid);
-            // 최고입찰 갱신 + 마감 연장
-            LocalDateTime endAtBefore = auction.getSchedule().getPeriod().getEndAt();
-            auction.applyBid(command.bidderId(), amount, newBid.getId(), now);
-            LocalDateTime endAtAfter = auction.getSchedule().getPeriod().getEndAt();
-            boolean extended = !endAtBefore.equals(endAtAfter);
+        // 새 Bid 저장 (ACTIVE)
+        Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
+        // ACTIVE Bid → OUTBID
+        bidRepository.findActiveBid(command.auctionId())
+                .filter(prev -> !prev.getId().equals(newBid.getId()))
+                .ifPresent(Bid::markOutbid);
+        // 최고입찰 갱신 + 마감 연장
+        LocalDateTime endAtBefore = auction.getSchedule().getPeriod().getEndAt();
+        auction.applyBid(command.bidderId(), amount, newBid.getId(), now);
+        LocalDateTime endAtAfter = auction.getSchedule().getPeriod().getEndAt();
+        boolean extended = !endAtBefore.equals(endAtAfter);
 
-            // SearchView 갱신
-            int bidCount = (int) bidRepository.countByAuctionId(command.auctionId());
-            searchViewRepository.updateOnBid(command.auctionId(), amount.getValue(), bidCount, endAtAfter);
+        // SearchView 갱신
+        int bidCount = (int) bidRepository.countByAuctionId(command.auctionId());
+        searchViewRepository.updateOnBid(command.auctionId(), amount.getValue(), bidCount, endAtAfter);
 
-            return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
-        } catch (RuntimeException e) {
-            log.error("입찰 처리 실패 - 예치금 홀드 보상(rollback) 시도: holdId={}, auctionId={}, bidderId={}, amount={}",
-                    holdInfo.holdId(), command.auctionId(), command.bidderId(), amount.getValue(), e);
-            // 보상 호출 자체가 실패해도 원래 입찰 실패 사유를 덮어쓰면 안 되므로 별도로 잡아서 로그만 남긴다 -
-            try {
-                walletPort.rollback(holdInfo.holdId(), command.auctionId(), command.bidderId(), amount);
-            } catch (RuntimeException rollbackFailure) {
-                log.error("예치금 홀드 보상(rollback) 실패 - 홀드가 해제되지 않은 채 남아있을 수 있음: holdId={}, auctionId={}, bidderId={}",
-                        holdInfo.holdId(), command.auctionId(), command.bidderId(), rollbackFailure);
-            }
-            throw e;
-        }
+        return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
     }
 
     // TODO : #238 시작 스케줄러와 좁은 타이밍에 겹치면 강제취소가 RUNNING으로 덮어써질 수 있으므로 분산락 도입 시 시작 스케줄러도 같은 auctionId 락 스코프에 포함시켜 해결 예정.
