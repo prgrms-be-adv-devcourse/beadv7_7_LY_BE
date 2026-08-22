@@ -27,9 +27,7 @@ datasources:
     url: http://loki:3100
     jsonData:
       derivedFields:
-        # docker/prod와 동일 — Spring Boot 기본 콘솔 로그 상관관계 패턴
-        # "[traceId,spanId]"에 맞춘 정규식(형식은 빈 필드 폭으로 역산 확인, 실제 trace 값으로
-        # 직접 본 건 아님 — 배포 후 재확인 권장).
+        # docker/prod와 동일 — Spring Boot 기본 콘솔 로그 상관관계 패턴 "[traceId,spanId]"에 맞춘 정규식
         - datasourceUid: tempo
           matcherRegex: '\[([0-9a-f]{32}),[0-9a-f]{16}\]'
           name: TraceID

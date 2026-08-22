@@ -1,13 +1,7 @@
-// docker/prod/alloy/config.alloy와 동일 로직. 로컬은 같은 compose 네트워크 안이라 IP 대신
-// 서비스 이름(loki)으로 바로 접근한다 — 플레이스홀더 치환이 필요 없다.
+//  로컬은 같은 compose 네트워크 안이라 IP 대신 서비스 이름(loki)으로 바로 접근한다 — 플레이스홀더 치환이 필요 없다.
 //
 // 로컬 7개 서비스는 평소엔 gradlew bootRun(호스트 프로세스)이라 여기 안 잡힌다.
-// 이 Alloy가 실제로 로그를 수집하려면 대상 서비스를 컨테이너로 띄워야 한다 — 예:
-//   cd gateway-service && ./gradlew bootJar
-//   docker build -f docker/Dockerfile --build-arg SPRINGBOOT_APP_PROFILE=local -t lp-auction-gateway-local-test .
-//   docker run -d --network lp-auction-local_default --name gateway-service-test \
-//     -p 8080:8080 -e TEMPO_OTLP_ENDPOINT=http://tempo:4318/v1/traces lp-auction-gateway-local-test
-// (TEMPO_OTLP_ENDPOINT이지 OTEL_EXPORTER_OTLP_ENDPOINT가 아니다 — 이유는 tempo.yaml 상단 주석 참고)
+// 이 Alloy가 실제로 로그를 수집하려면 대상 서비스를 컨테이너로 띄워야 한다
 
 discovery.docker "app_containers" {
   host = "unix:///var/run/docker.sock"
