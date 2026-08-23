@@ -139,3 +139,91 @@ class RetryingHoldServiceRetryPolicyTest {
         verify(holdApplicationService, times(1)).hold(AUCTION_ID, BIDDER_ID, AMOUNT);
     }
 }
+
+/**
+ * RetryingHoldService.rollback()의 재시도 정책 — hold()와 같은 파라미터(maxRetries=5, delay=50,
+ * jitter=25, multiplier=2, maxDelay=800)지만 includes 대상이 다르다: HoldRowLockContentionException도
+ * 포함한다(hold()는 뺐음 - RetryingHoldService 클래스 주석 및 rollback() 메서드 주석 참고).
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("RetryingHoldService의 재시도 정책 (rollback() - hold()와 달리 HoldRowLockContentionException도 재시도)")
+class RetryingHoldServiceRollbackRetryPolicyTest {
+
+    @Mock
+    private HoldApplicationService holdApplicationService;
+
+    private RetryTemplate retryTemplate;
+
+    private static final Long HOLD_ID = 1L;
+    private static final Long AUCTION_ID = 5001L;
+    private static final Long BIDDER_ID = 456L;
+    private static final Money AMOUNT = Money.of(15_000);
+
+    @BeforeEach
+    void setUp() {
+        RetryPolicy retryPolicy = RetryPolicy.builder()
+                .includes(HoldLockContentionException.class, HoldRowLockContentionException.class)
+                .maxRetries(5)
+                .delay(Duration.ZERO)
+                .build();
+        retryTemplate = new RetryTemplate(retryPolicy);
+    }
+
+    @Test
+    @DisplayName("지갑 락 경합(HoldLockContentionException)도 재시도 대상이다")
+    void 지갑락_경합도_재시도한다() throws RetryException {
+        // given
+        org.mockito.Mockito.doThrow(new HoldLockContentionException())
+                .doThrow(new HoldLockContentionException())
+                .doNothing()
+                .when(holdApplicationService).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // when
+        retryTemplate.execute(() -> {
+            holdApplicationService.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+            return null;
+        });
+
+        // then
+        verify(holdApplicationService, times(3)).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+    }
+
+    @Test
+    @DisplayName("Hold 행 락 경합(HoldRowLockContentionException)도 hold()와 달리 재시도 대상이다")
+    void Hold행_락_경합도_재시도한다() throws RetryException {
+        // given
+        org.mockito.Mockito.doThrow(new HoldRowLockContentionException())
+                .doThrow(new HoldRowLockContentionException())
+                .doNothing()
+                .when(holdApplicationService).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // when
+        retryTemplate.execute(() -> {
+            holdApplicationService.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+            return null;
+        });
+
+        // then
+        verify(holdApplicationService, times(3)).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+    }
+
+    @Test
+    @DisplayName("원장 불일치(HOLD_ALREADY_FINALIZED/HOLD_MISMATCH)는 재시도해도 결과가 안 바뀌므로 대상에서 제외되어 첫 시도에서 끝난다")
+    void 원장불일치는_재시도하지_않는다() {
+        // given
+        HoldException notRetryable = new HoldException(HoldErrorCode.HOLD_ALREADY_FINALIZED);
+        org.mockito.Mockito.doThrow(notRetryable)
+                .when(holdApplicationService).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+
+        // when & then
+        assertThatThrownBy(() -> retryTemplate.execute(() -> {
+            holdApplicationService.rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+            return null;
+        })).satisfiesAnyOf(
+                ex -> assertThat(ex).isSameAs(notRetryable),
+                ex -> assertThat(ex).isInstanceOf(RetryException.class).cause().isSameAs(notRetryable)
+        );
+
+        verify(holdApplicationService, times(1)).rollback(HOLD_ID, AUCTION_ID, BIDDER_ID, AMOUNT);
+    }
+}

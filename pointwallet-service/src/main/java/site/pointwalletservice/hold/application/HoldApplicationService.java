@@ -130,4 +130,60 @@ public class HoldApplicationService implements HoldService {
                 () -> log.warn("소멸시킬 홀드 없음, 스킵: auctionId={}", auctionId)
         );
     }
+
+    @Override
+    @Transactional
+    public void rollback(Long holdId, Long auctionId, Long userId, Money amount) {
+        // 1) 멱등성 체크 — 이 holdId가 이미 되돌려졌으면(자연 교체로 releasePreviousHold가 이미 RELEASE를
+        // 남겼거나, auction-service의 재시도로 이 API가 이미 한 번 성공했으면) 조용히 스킵한다.
+        // 자금은 이미 안전한 상태라 여기서 요청값(auctionId/userId/amount)을 검증할 필요는 없지만,
+        // 그렇다고 검증을 아예 건너뛰면 "이 holdId, 사실 저 auctionId 거 아닌데?" 같은 호출자 쪽
+        // 버그가 조용히 묻힌다 — 차단하지 않되(자금엔 영향 없으니) 불일치가 보이면 로그는 남긴다.
+        if (pointTransactionService.existsForRelatedId(holdId, PointTransactionType.RELEASE)) {
+            pointTransactionService.findAuctionIdByHoldId(holdId)
+                    .filter(ledgerAuctionId -> !ledgerAuctionId.equals(auctionId))
+                    .ifPresent(ledgerAuctionId -> log.warn(
+                            "이미 롤백된 홀드지만 요청의 auctionId가 원장과 불일치 - 호출자 쪽 확인 필요: holdId={}, 요청auctionId={}, 원장auctionId={}",
+                            holdId, auctionId, ledgerAuctionId));
+            log.info("이미 롤백된 홀드, 스킵: holdId={}", holdId);
+            return;
+        }
+
+        // 2) 원장에서 이 holdId가 걸렸던 auctionId를 되짚는다. Hold 행이 이미 삭제됐어도(교체/소멸)
+        // 원장(HOLD 타입, related_id=holdId)만으로 재구성 가능 — auction_id 컬럼을 이 목적으로 추가해뒀다.
+        Long ledgerAuctionId = pointTransactionService.findAuctionIdByHoldId(holdId)
+                .orElseThrow(() -> new HoldException(HoldErrorCode.HOLD_NOT_FOUND));
+
+        // 3) 최소 검증 — 요청의 auctionId가 원장 기록과 다르면, 더 뒤져서 맞춰보지 않고 그 자리에서 거부한다.
+        // 원장은 append-only라 (auctionId, userId, amount)만으로 "지금 유효한 그 홀드"를 유일하게
+        // 특정할 방법이 없다 - 추측 매칭은 잘못된 대상을 건드릴 위험만 키운다.
+        if (!ledgerAuctionId.equals(auctionId)) {
+            log.error("롤백 요청의 auctionId가 원장과 불일치: holdId={}, 요청={}, 원장={}", holdId, auctionId, ledgerAuctionId);
+            throw new HoldException(HoldErrorCode.HOLD_MISMATCH);
+        }
+
+        // 4) auctionId 기준으로 잠그고, 지금 걸려있는 홀드가 정확히 이 holdId인지 확인한다.
+        // release(auctionId)와 다른 지점이 바로 이거다 — "지금 걸려있는 걸 무조건" 푸는 게 아니라
+        // "내가 되돌리려는 그 holdId가 맞는지" 확인 후에만 푼다. 1번에서 RELEASE가 없었는데도
+        // 여기서 비어있거나 다른 holdId면, 정상 흐름(교체 시 항상 RELEASE를 먼저 남김)과 어긋나는
+        // 상태라 원장-Hold 간 불일치로 보고 즉시 실패시킨다 — 조용히 아무 hold나 건드리면 안 된다.
+        Hold currentHold = findByAuctionIdForUpdate(ledgerAuctionId)
+                .filter(hold -> hold.getId().equals(holdId))
+                .orElseThrow(() -> {
+                    log.error("롤백 대상 홀드가 원장과 불일치 — 이미 교체/소멸된 것으로 추정: holdId={}, auctionId={}", holdId, ledgerAuctionId);
+                    return new HoldException(HoldErrorCode.HOLD_ALREADY_FINALIZED);
+                });
+
+        // 5) 남은 최소 검증 — userId/amount도 요청값과 실제 Hold가 일치하는지 확인한다.
+        // 여기서부터는 이미 락을 잡고 조회해둔 currentHold로 비교하므로 원장을 추가로 읽을 필요가 없다.
+        if (!currentHold.getUserId().equals(userId) || !currentHold.getAmount().equals(amount)) {
+            log.error("롤백 요청의 userId/amount가 실제 홀드와 불일치: holdId={}, 요청=(userId={}, amount={}), 실제=(userId={}, amount={})",
+                    holdId, userId, amount, currentHold.getUserId(), currentHold.getAmount());
+            throw new HoldException(HoldErrorCode.HOLD_MISMATCH);
+        }
+
+        // 6) 실제 되돌리기 — hold() 안에서 이전 홀드를 해제할 때 쓰는 것과 동일한 로직 재사용
+        // (지갑 환급 + RELEASE 원장 기록 + Hold 행 삭제).
+        releasePreviousHold(currentHold);
+    }
 }

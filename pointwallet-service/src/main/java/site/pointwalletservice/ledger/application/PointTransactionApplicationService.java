@@ -47,6 +47,12 @@ public class PointTransactionApplicationService implements PointTransactionServi
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Optional<Long> findAuctionIdByHoldId(Long holdId) {
+        return pointTransactionRepository.findAuctionIdByHoldId(holdId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PointTransactionSearchResult findTransactions(Long userId, String rawType,
                                                          LocalDateTime from, LocalDateTime to, int page, int size) {
         int safePage = Math.max(page, 0);

@@ -2,6 +2,8 @@ package site.pointwalletservice.hold.presentation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +14,7 @@ import site.pointwalletservice.hold.application.HoldService;
 import site.pointwalletservice.hold.exception.HoldErrorCode;
 import site.pointwalletservice.hold.presentation.dto.HoldRequest;
 import site.pointwalletservice.hold.presentation.dto.HoldResponse;
+import site.pointwalletservice.hold.presentation.dto.HoldRollbackRequest;
 import site.pointwalletservice.shared.Money;
 
 /**
@@ -32,6 +35,20 @@ public class HoldController {
         return ResponseEntity.ok(ApiResponse.success(
                 new HoldResponse(result.holdId(), result.releasedHoldId(), result.balanceAfter().getValue())
         ));
+    }
+
+    /**
+     * hold() 성공 이후 호출자(auction-service)의 자기 트랜잭션이 실패했을 때 부르는 보상 API.
+     * hold() 때 보냈던 요청을 그대로 다시 실어 보내면 된다({auctionId, memberId, amount}) — holdId는
+     * PathVariable로 받되, 요청 바디 값이 서버가 원장·Hold로 재구성한 실제 값과 하나라도 다르면
+     * HOLD_MISMATCH로 거부한다(추측으로 다른 홀드를 맞춰서 처리하지 않음). 이미 교체/소멸돼서
+     * 되돌릴 게 없으면 조용히 성공 처리(멱등)한다.
+     */
+    @PostMapping("/hold/{holdId}/rollback")
+    public ResponseEntity<ApiResponse<Void>> rollback(@PathVariable Long holdId,
+                                                      @RequestBody HoldRollbackRequest request) {
+        holdService.rollback(holdId, request.auctionId(), request.memberId(), Money.of(request.amount()));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     // record 컴팩트 생성자의 입력값 검증 실패(IllegalArgumentException)만 여기서 자체 처리

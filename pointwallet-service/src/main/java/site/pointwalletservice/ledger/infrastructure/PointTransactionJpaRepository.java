@@ -30,4 +30,15 @@ public interface PointTransactionJpaRepository extends JpaRepository<PointTransa
 
     java.util.Optional<PointTransaction> findFirstByAuctionIdAndTypeOrderByOccurredAtDesc(
             Long auctionId, PointTransactionType type);
+
+    /**
+     * (relatedId, type) 조합으로 원장에 남은 auctionId를 되짚는다. Hold 롤백(보상 트랜잭션)이
+     * auctionId 없이 holdId만 받았을 때, Hold 행이 이미 삭제됐어도(교체/소멸) 원장만으로
+     * 어느 경매의 홀드였는지 재구성하기 위한 용도 — uk_point_transaction_related_id_type
+     * 제약 덕에 (relatedId, type) 조합은 최대 1건이라 findFirst 없이 findBy로 충분하다.
+     * existsByRelatedIdAndType과 파라미터를 맞춰서, 호출부에서 PointTransactionType.HOLD를 넘긴다.
+     */
+    @Query("select t.auctionId from PointTransaction t where t.relatedId = :relatedId and t.type = :type")
+    java.util.Optional<Long> findAuctionIdByRelatedIdAndType(@Param("relatedId") Long relatedId,
+                                                             @Param("type") PointTransactionType type);
 }

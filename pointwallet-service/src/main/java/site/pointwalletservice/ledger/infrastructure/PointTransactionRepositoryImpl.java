@@ -32,4 +32,9 @@ public class PointTransactionRepositoryImpl implements PointTransactionRepositor
     public boolean existsByRelatedIdAndType(Long relatedId, PointTransactionType type) {
         return pointTransactionJpaRepository.existsByRelatedIdAndType(relatedId, type);
     }
+
+    @Override
+    public java.util.Optional<Long> findAuctionIdByHoldId(Long holdId) {
+        return pointTransactionJpaRepository.findAuctionIdByRelatedIdAndType(holdId, PointTransactionType.HOLD);
+    }
 }

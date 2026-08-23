@@ -54,6 +54,15 @@ public class HoldServiceFacade implements HoldService {
         retryingHoldService.consume(auctionId);
     }
 
+    @Override
+    public void rollback(Long holdId, Long auctionId, Long userId, Money amount) {
+        try {
+            retryingHoldService.rollback(holdId, auctionId, userId, amount);
+        } catch (UndeclaredThrowableException e) {
+            throw unwrap(e);
+        }
+    }
+
     private RuntimeException unwrap(UndeclaredThrowableException e) {
         Throwable undeclared = e.getUndeclaredThrowable();
         if (undeclared instanceof RetryException retryException
