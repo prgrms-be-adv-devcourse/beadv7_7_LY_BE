@@ -11,6 +11,16 @@ spring:
   elasticsearch:
     uris: http://localhost:9200
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: site.common.event.contract
+
   ai:
     openai:
       # 로컬에서는 키가 없어도 앱이 뜨게 한다 — OpenAI SDK가 기동 시점에 키를 요구하기 때문에
