@@ -17,11 +17,17 @@ import site.explorationservice.productindex.domain.ProductDocument;
  * 자동 생성하는데, 그러면 contentVector가 dense_vector가 아니라 단순 float 배열로 잡힌다. 색인은 성공하지만 kNN 검색이 안 되고, 알아채는
  * 시점에는 이미 재색인 말고는 고칠 방법이 없다.
  * <p>
- * <b>이미 있으면 put-mapping으로 병합한다(교체가 아니다).</b> ES의 put-mapping API는 새 필드만 추가하고, 기존 필드의
- * analyzer·dims·similarity를 바꾸려는 시도는 ES가 타입 충돌로 거부한다 — 그래서 JPA의 {@code ddl-auto: update}처럼 "필드 추가는
- * 자동, 기존 필드 변경은 불가"인 동작이 안전하게 성립한다. MySQL에 {@code ddl-auto: none}을 쓰는 이유(같은 스키마를 core-service·
- * member-service 두 앱이 공유해서 생기는 교차 서비스 사고)는 이 인덱스엔 해당하지 않는다 — 검색·추천이 한 모듈로 합쳐지면서 이 인덱스를 쓰는 앱은
- * exploration-service 하나뿐이다.
+ * <b>이미 있으면 put-mapping으로 병합을 시도한다(교체가 아니다).</b> ES의 put-mapping API는 새 필드만 추가할 수 있고, 기존 필드의
+ * analyzer·dims·similarity를 바꾸려 하면 <b>요청 자체가 실패한다.</b> 여기서 주의할 게 있다 — 거부가 곧 "무시하고 넘어감"이 아니다.
+ * 실패는 예외로 올라오고, 이 클래스는 {@link ApplicationRunner}라 그 예외가 그대로 애플리케이션 기동을 중단시킨다. 그래서 아래에서 실패를
+ * 잡아 경고만 남기고 기동은 계속하게 두었다. 인덱스를 지우거나 다시 만드는 건 사람이 판단할 일이라 여기서 하지 않는다.
+ * <p>
+ * 실패하는 경우는 크게 둘이다. (1) 기존 필드의 분석기를 바꾼 경우, (2) 새 필드가 기존 인덱스의 settings에 없는 분석기를 요구하는 경우 —
+ * settings의 analysis 블록은 열린 인덱스에서 갱신할 수 없고 {@code @Setting} 파일은 인덱스를 만들 때만 적용되기 때문이다. 둘 다
+ * 인덱스를 지우고 다시 만든 뒤 재색인해야 해결된다.
+ * <p>
+ * MySQL에 {@code ddl-auto: none}을 쓰는 이유(같은 스키마를 core-service·member-service 두 앱이 공유해서 생기는 교차 서비스 사고)는
+ * 이 인덱스엔 해당하지 않는다 — 검색·추천이 한 모듈로 합쳐지면서 이 인덱스를 쓰는 앱은 exploration-service 하나뿐이다.
  * <p>
  * 로컬 프로파일에만 두는 건 다른 이유다. <b>운영에서 인덱스를 누가 만들고 매핑을 누가 갱신할지는 아직 정하지 않았다</b> — 배포 절차의 일부로 할지, 별도 마이그레이션
  * 도구를 둘지는 결정이 필요하다. 그때까지 운영 환경은 인덱스가 미리 준비돼 있어야 한다.
@@ -41,12 +47,26 @@ public class ProductIndexInitializer implements ApplicationRunner {
         final String indexName = indexOperations.getIndexCoordinates().getIndexName();
 
         if (indexOperations.exists()) {
-            indexOperations.putMapping();
-            log.info("상품 인덱스가 이미 있어 매핑에 새 필드만 반영했습니다 — {}", indexName);
+            updateMapping(indexOperations, indexName);
             return;
         }
 
         indexOperations.createWithMapping();
         log.info("상품 인덱스를 생성했습니다 — {}", indexName);
+    }
+
+    /**
+     * 매핑 갱신 실패로 애플리케이션이 못 뜨는 일이 없게 예외를 여기서 막는다. 기동을 막아도 사람이 할 일은 똑같은데
+     * (인덱스를 지우고 다시 만들기) 서비스 전체가 죽는 대가만 더 든다.
+     */
+    private void updateMapping(final IndexOperations indexOperations, final String indexName) {
+        try {
+            indexOperations.putMapping();
+            log.info("상품 인덱스가 이미 있어 매핑에 새 필드만 반영했습니다 — {}", indexName);
+        } catch (final Exception e) {
+            log.warn("상품 인덱스 매핑 갱신에 실패했습니다 — {}. 이번 변경은 기존 필드의 분석기를 바꾸고 기존 인덱스에 없는 분석기를 요구하므로,"
+                + " 열려 있는 인덱스에는 반영할 수 없습니다. 인덱스를 지우고 다시 만든 뒤 재색인해야 검색이 정상 동작합니다."
+                + " 기동은 계속하지만 이 인덱스의 검색 결과는 옛 매핑 기준입니다", indexName, e);
+        }
     }
 }
