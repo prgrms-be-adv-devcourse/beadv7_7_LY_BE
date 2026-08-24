@@ -1,6 +1,7 @@
 package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import site.common.entity.BaseEntity;
+import site.memberservice.global.crypto.EncryptedStringConverter;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.regex.Pattern;
@@ -56,7 +58,8 @@ public class Member extends BaseEntity {
     @Column(name = "nickname", length = 20, nullable = false)
     private String nickname;
 
-    @Column(name = "name", length = 20, nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "name", length = 500, nullable = false)
     private String name;
 
     @Embedded
