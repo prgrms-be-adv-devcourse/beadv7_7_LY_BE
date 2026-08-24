@@ -2,7 +2,6 @@ package site.memberservice.member.domain.repository;
 
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
-import site.memberservice.member.domain.PhoneNumber;
 
 import java.util.Optional;
 
@@ -16,5 +15,5 @@ public interface MemberRepository {
 
     boolean existsByNickname(String nickName);
 
-    boolean existsByPhoneNumber(PhoneNumber phoneNumber);
+    boolean existsByPhoneNumberHash(String phoneNumberHash);
 }

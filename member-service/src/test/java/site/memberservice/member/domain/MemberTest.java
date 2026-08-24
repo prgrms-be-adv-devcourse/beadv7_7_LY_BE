@@ -30,7 +30,7 @@ class MemberTest {
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When
@@ -55,7 +55,7 @@ class MemberTest {
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When & Then
@@ -79,7 +79,7 @@ class MemberTest {
         final Email email = new Email("test@email.com");
         final String nickname = "tester";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When & Then
@@ -103,7 +103,7 @@ class MemberTest {
         final Email email = new Email("test@email.com");
         final String password = "testPw1234!";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When & Then
@@ -127,7 +127,7 @@ class MemberTest {
         final Email email = new Email("test@email.com");
         final String password = "testPw1234!";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When & Then
@@ -151,7 +151,7 @@ class MemberTest {
         final Email email = new Email("test@email.com");
         final String nickname = "tester";
         final String password = "testPw1234!";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)");
 
         // When & Then
@@ -199,7 +199,7 @@ class MemberTest {
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
-        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678");
+        final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
         final Address address = null;
 
         // When & Then

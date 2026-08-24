@@ -26,7 +26,7 @@ class AwsKmsEncryptorTest {
     @Mock
     private KmsClient kmsClient;
 
-    private final KmsProperties properties = new KmsProperties("ap-northeast-2", "test-key-id");
+    private final KmsProperties properties = new KmsProperties("ap-northeast-2", "test-key-id", "test-hmac-key-id");
 
     @Test
     @DisplayName("암호화하면 설정된 키로 요청하고 결과를 Base64로 인코딩해서 돌려준다")

@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
-import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.repository.MemberRepository;
 
 import java.util.Optional;
@@ -36,7 +35,7 @@ public class MemberRepositoryImpl implements MemberRepository {
     }
 
     @Override
-    public boolean existsByPhoneNumber(final PhoneNumber phoneNumber) {
-        return memberJpaRepository.existsByPhoneNumber(phoneNumber);
+    public boolean existsByPhoneNumberHash(final String phoneNumberHash) {
+        return memberJpaRepository.existsByPhoneNumberHash(phoneNumberHash);
     }
 }

@@ -54,3 +54,4 @@ app:
     kms:
       region: ${AWS_KMS_REGION:}
       key-id: ${AWS_KMS_KEY_ID:}
+      hmac-key-id: ${AWS_KMS_HMAC_KEY_ID:}

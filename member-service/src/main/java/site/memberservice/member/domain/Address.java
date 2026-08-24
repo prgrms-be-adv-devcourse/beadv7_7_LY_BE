@@ -1,11 +1,13 @@
 package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import site.memberservice.global.crypto.EncryptedStringConverter;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.Objects;
@@ -25,7 +27,8 @@ public class Address {
     @Column(name = "base_address", length = 255, nullable = false)
     private String baseAddress;
 
-    @Column(name = "detail_address", length = 255, nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "detail_address", length = 1024, nullable = false)
     private String detailAddress;
 
     public Address(

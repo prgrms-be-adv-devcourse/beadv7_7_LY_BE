@@ -1,10 +1,12 @@
 package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import site.memberservice.global.crypto.EncryptedStringConverter;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.Objects;
@@ -20,15 +22,21 @@ public class PhoneNumber {
 
     private static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile("^01[016789]-\\d{3,4}-\\d{4}$");
 
-    @Column(name = "phone_number", length = 20, nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "phone_number", length = 500, nullable = false)
     private String value;
 
-    public PhoneNumber(final String value) {
+    @Column(name = "phone_number_hash", length = 64, nullable = false)
+    private String hash;
+
+    public PhoneNumber(final String value, final String hash) {
         validateValue(value);
+        validateHash(hash);
         this.value = value;
+        this.hash = hash;
     }
 
-    private void validateValue(final String value) {
+    public static void validateFormat(final String value) {
         if (value == null || value.isBlank()) {
             throw new MemberException(INVALID_MEMBER_INFO, format("회원 전화번호는 null 혹은 공백일 수 없습니다. input : %s", value));
         }
@@ -38,8 +46,15 @@ public class PhoneNumber {
         }
     }
 
-    // TODO : #60 전화번호 값 조회 케이스가 여러가지 이므로 필요할 때 추가함
-    // ex) 구분자 제외한 번호 조회, 뒷자리만 조회, etc...
+    private void validateValue(final String value) {
+        validateFormat(value);
+    }
+
+    private void validateHash(final String hash) {
+        if (hash == null || hash.isBlank()) {
+            throw new MemberException(INVALID_MEMBER_INFO, "회원 전화번호 해시는 null 혹은 공백일 수 없습니다.");
+        }
+    }
 
     @Override
     public boolean equals(final Object o) {

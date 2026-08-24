@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.common.crypto.KmsMacHasher;
 import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
@@ -51,21 +52,23 @@ public class MemberService {
     private static final String AUCTION_BIDDING_RESTRICTION_REASON = "최근 30일간 낙찰 상품 주문 취소 3회 이상 누적";
 
     private final PasswordEncoder passwordEncoder;
+    private final KmsMacHasher kmsMacHasher;
     private final MemberRepository memberRepository;
     private final BankAccountRepository bankAccountRepository;
     private final MemberRestrictionRepository memberRestrictionRepository;
     private final MemberViolationHistoryRepository memberViolationHistoryRepository;
 
-    // TODO : #60 회원 개인 정보 암호화 및 관리 정책을 반드시 고민해서 적용하기
     @Transactional
     public void register(final MemberRegisterCommand command) {
         final Email email = new Email(command.email());
-        final PhoneNumber phoneNumber = new PhoneNumber(command.phoneNumber());
+        PhoneNumber.validateFormat(command.phoneNumber());
+        final String phoneNumberHash = kmsMacHasher.hash(command.phoneNumber());
+        final PhoneNumber phoneNumber = new PhoneNumber(command.phoneNumber(), phoneNumberHash);
         final Address address = new Address(command.zipcode(), command.baseAddress(), command.detailAddress());
 
         validatePassword(command.password());
         validateDuplicateNickName(command.nickName());
-        validateDuplicatePhoneNumber(phoneNumber);
+        validateDuplicatePhoneNumber(phoneNumberHash);
 
         final String hashedPassword = passwordEncoder.encode(command.password());
         final Member createdMember = Member.create(
@@ -92,9 +95,9 @@ public class MemberService {
         }
     }
 
-    private void validateDuplicatePhoneNumber(final PhoneNumber phoneNumber) {
-        if (memberRepository.existsByPhoneNumber(phoneNumber)) {
-            throw new MemberException(INVALID_MEMBER_INFO, format("이미 존재하는 회원 전화번호입니다. input: %s", phoneNumber));
+    private void validateDuplicatePhoneNumber(final String phoneNumberHash) {
+        if (memberRepository.existsByPhoneNumberHash(phoneNumberHash)) {
+            throw new MemberException(INVALID_MEMBER_INFO, "이미 존재하는 회원 전화번호입니다.");
         }
     }
 

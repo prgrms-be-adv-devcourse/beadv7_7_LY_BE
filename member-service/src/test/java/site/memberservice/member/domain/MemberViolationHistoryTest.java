@@ -144,7 +144,7 @@ class MemberViolationHistoryTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
