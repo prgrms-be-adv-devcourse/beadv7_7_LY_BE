@@ -6,15 +6,26 @@
         "decompound_mode": "mixed"
       }
     },
+    "filter": {
+      "korean_pos": {
+        "type": "nori_part_of_speech",
+        "stoptags": [
+          "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX", "JC",
+          "EP", "EF", "EC", "ETN", "ETM",
+          "SP", "SSC", "SSO", "SC", "SE"
+        ]
+      }
+    },
     "analyzer": {
       "korean": {
         "type": "custom",
         "tokenizer": "korean_tokenizer",
-        "filter": [
-          "nori_part_of_speech",
-          "nori_readingform",
-          "lowercase"
-        ]
+        "filter": ["korean_pos", "cjk_width", "lowercase", "asciifolding"]
+      },
+      "latin": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": ["cjk_width", "lowercase", "asciifolding"]
       }
     }
   }
