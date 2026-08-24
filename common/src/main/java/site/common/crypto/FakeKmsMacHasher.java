@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import site.common.exception.BusinessException;
+import site.common.exception.GlobalErrorCode;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -22,6 +24,10 @@ public class FakeKmsMacHasher implements KmsMacHasher {
 
     @Override
     public String hash(final String plaintext) {
+        if (plaintext == null || plaintext.isBlank()) {
+            throw new BusinessException(GlobalErrorCode.INVALID_ARGUMENT, "plaintext는 null 혹은 공백일 수 없습니다.");
+        }
+
         try {
             final MessageDigest digest = MessageDigest.getInstance("SHA-256");
             final byte[] hashed = digest.digest(plaintext.getBytes(StandardCharsets.UTF_8));

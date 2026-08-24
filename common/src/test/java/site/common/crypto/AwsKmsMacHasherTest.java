@@ -1,9 +1,11 @@
 package site.common.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.Base64;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import site.common.exception.BusinessException;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.GenerateMacRequest;
@@ -44,5 +47,25 @@ class AwsKmsMacHasherTest {
         assertThat(captor.getValue().keyId()).isEqualTo("test-hmac-key-id");
         assertThat(captor.getValue().macAlgorithm()).isEqualTo(MacAlgorithmSpec.HMAC_SHA_256);
         assertThat(captor.getValue().message().asUtf8String()).isEqualTo("010-1234-5678");
+    }
+
+    @Test
+    @DisplayName("plaintext가 null이면 KMS를 호출하지 않고 BusinessException을 던진다")
+    void plaintext가_null이면_예외를_던진다() {
+        final AwsKmsMacHasher hasher = new AwsKmsMacHasher(kmsClient, properties);
+
+        assertThatThrownBy(() -> hasher.hash(null))
+            .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(kmsClient);
+    }
+
+    @Test
+    @DisplayName("plaintext가 공백이면 KMS를 호출하지 않고 BusinessException을 던진다")
+    void plaintext가_공백이면_예외를_던진다() {
+        final AwsKmsMacHasher hasher = new AwsKmsMacHasher(kmsClient, properties);
+
+        assertThatThrownBy(() -> hasher.hash("   "))
+            .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(kmsClient);
     }
 }

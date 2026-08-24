@@ -1,6 +1,8 @@
 package site.common.crypto;
 
 import lombok.extern.slf4j.Slf4j;
+import site.common.exception.BusinessException;
+import site.common.exception.GlobalErrorCode;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.GenerateMacRequest;
@@ -23,6 +25,10 @@ public class AwsKmsMacHasher implements KmsMacHasher {
 
     @Override
     public String hash(final String plaintext) {
+        if (plaintext == null || plaintext.isBlank()) {
+            throw new BusinessException(GlobalErrorCode.INVALID_ARGUMENT, "plaintext는 null 혹은 공백일 수 없습니다.");
+        }
+
         final GenerateMacResponse response = kmsClient.generateMac(GenerateMacRequest.builder()
             .keyId(properties.hmacKeyId())
             .message(SdkBytes.fromUtf8String(plaintext))
