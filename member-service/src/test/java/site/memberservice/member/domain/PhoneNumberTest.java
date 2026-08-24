@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import site.memberservice.member.exception.MemberException;
-import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.util.NullAndBlankSource;
 
 import static java.lang.String.format;
@@ -44,5 +43,15 @@ class PhoneNumberTest {
         assertThatThrownBy(() -> new PhoneNumber(input, "test-hash"))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("유효하지 않은 형식의 전화번호입니다. input : %s", input));
+    }
+
+    @DisplayName("hash가 null 혹은 공백이면 예외가 발생한다.")
+    @NullAndBlankSource
+    @ParameterizedTest
+    void throwExceptionWhenHashNullOrEmpty(final String hash) {
+        // When & Then
+        assertThatThrownBy(() -> new PhoneNumber("010-1234-5678", hash))
+            .isInstanceOf(MemberException.class)
+            .hasMessage("회원 전화번호 해시는 null 혹은 공백일 수 없습니다.");
     }
 }

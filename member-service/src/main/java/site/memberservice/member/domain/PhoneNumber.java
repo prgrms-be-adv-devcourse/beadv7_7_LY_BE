@@ -31,6 +31,7 @@ public class PhoneNumber {
 
     public PhoneNumber(final String value, final String hash) {
         validateValue(value);
+        validateHash(hash);
         this.value = value;
         this.hash = hash;
     }
@@ -45,8 +46,11 @@ public class PhoneNumber {
         }
     }
 
-    // TODO : #60 전화번호 값 조회 케이스가 여러가지 이므로 필요할 때 추가함
-    // ex) 구분자 제외한 번호 조회, 뒷자리만 조회, etc...
+    private void validateHash(final String hash) {
+        if (hash == null || hash.isBlank()) {
+            throw new MemberException(INVALID_MEMBER_INFO, "회원 전화번호 해시는 null 혹은 공백일 수 없습니다.");
+        }
+    }
 
     @Override
     public boolean equals(final Object o) {
