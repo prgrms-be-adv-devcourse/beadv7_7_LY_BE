@@ -36,7 +36,7 @@ public class PhoneNumber {
         this.hash = hash;
     }
 
-    private void validateValue(final String value) {
+    public static void validateFormat(final String value) {
         if (value == null || value.isBlank()) {
             throw new MemberException(INVALID_MEMBER_INFO, format("회원 전화번호는 null 혹은 공백일 수 없습니다. input : %s", value));
         }
@@ -44,6 +44,10 @@ public class PhoneNumber {
         if (!PHONE_NUMBER_PATTERN.matcher(value).matches()) {
             throw new MemberException(INVALID_MEMBER_INFO, format("유효하지 않은 형식의 전화번호입니다. input : %s", value));
         }
+    }
+
+    private void validateValue(final String value) {
+        validateFormat(value);
     }
 
     private void validateHash(final String hash) {

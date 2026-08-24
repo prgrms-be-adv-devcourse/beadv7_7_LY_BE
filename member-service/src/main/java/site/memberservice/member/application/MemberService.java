@@ -61,6 +61,7 @@ public class MemberService {
     @Transactional
     public void register(final MemberRegisterCommand command) {
         final Email email = new Email(command.email());
+        PhoneNumber.validateFormat(command.phoneNumber());
         final String phoneNumberHash = kmsMacHasher.hash(command.phoneNumber());
         final PhoneNumber phoneNumber = new PhoneNumber(command.phoneNumber(), phoneNumberHash);
         final Address address = new Address(command.zipcode(), command.baseAddress(), command.detailAddress());

@@ -104,6 +104,28 @@ class MemberServiceTest {
         assertThat(memberRepository.existsByPhoneNumberHash(kmsMacHasher.hash(request.phoneNumber()))).isTrue();
     }
 
+    @DisplayName("회원 가입 요청의 전화번호가 null이면 kmsMacHasher를 호출하지 않고 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenRegisterInputNullPhoneNumber() {
+        // Given
+        final MemberRegisterCommand request = new MemberRegisterCommand(
+            "test@email.com",
+            "testPw1234!",
+            "tester",
+            "tester",
+            null,
+            "06671",
+            "서울특별시 서초구 반포대로 45",
+            "4층(서초동, 명정빌딩)"
+        );
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.register(request))
+            .isInstanceOf(MemberException.class)
+            .hasMessage("회원 전화번호는 null 혹은 공백일 수 없습니다. input : null");
+        Mockito.verifyNoInteractions(kmsMacHasher);
+    }
+
     @Disabled("Mock 기반 테스트로 전환 예정 - #229")
     @DisplayName("회원 가입 요청에 유효하지 않은 비밀번호를 입력하면 예외가 발생한다.")
     @ValueSource(strings = {
