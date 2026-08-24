@@ -43,6 +43,8 @@ public enum AuctionErrorCode implements ErrorCode {
     IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5023", "이미지는 최대 5장까지 업로드할 수 있습니다."),
     IMAGE_URL_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "AERR-5024", "허용되지 않은 이미지 주소입니다."),
 
+    CONCURRENT_LOCK(HttpStatus.CONFLICT, "AERR-5027", "요청이 많아 처리가 지연되고 있습니다. 잠시 후 다시 시도해주세요."),
+
     ;
 
     private final HttpStatus status;
