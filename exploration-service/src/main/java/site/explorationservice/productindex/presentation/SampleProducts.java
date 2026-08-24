@@ -12,7 +12,8 @@ import site.explorationservice.productindex.application.dto.ProductIndexCommand;
  * <p>
  * id를 9001부터 쓰는 건 실제 상품 id와 겹치지 않게 하려는 것이다 — 같은 인덱스를 쓰므로 나중에 이 범위만 지우면 정리된다.
  * <p>
- * 한국어를 자바 소스에 두는 이유는 <b>curl로 한글 본문을 보내면 Git Bash에서 CP949로 깨지기 때문</b>이다. 소스에 두면 인코딩 문제 없이 그대로 색인된다.
+ * 한국어를 자바 소스에 두는 이유는 <b>curl로 한글 본문을 보내면 Git Bash에서 CP949로 깨지기 때문</b>이다. 소스에 두면 인코딩 문제 없이 그대로
+ * 색인된다.
  */
 final class SampleProducts {
 
@@ -57,7 +58,7 @@ final class SampleProducts {
     private static ProductIndexCommand product(final Long productId, final String title,
         final String artistName, final String genre, final String label, final Integer releaseYear,
         final String releaseCountry, final String pressType) {
-        return new ProductIndexCommand(productId, title, artistName, genre, label,
+        return new ProductIndexCommand(productId, title, artistName, null, genre, label,
             releaseYear, releaseCountry, pressType, true);
     }
 }

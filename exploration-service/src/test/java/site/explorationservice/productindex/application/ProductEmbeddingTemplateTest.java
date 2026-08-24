@@ -12,7 +12,7 @@ class ProductEmbeddingTemplateTest {
     private ProductIndexCommand command(final String genre, final String label,
         final Integer releaseYear, final String releaseCountry, final String pressType) {
         return new ProductIndexCommand(
-            1L, "Kind of Blue", "Miles Davis", genre, label,
+            1L, "Kind of Blue", "Miles Davis", null, genre, label,
             releaseYear, releaseCountry, pressType, true);
     }
 

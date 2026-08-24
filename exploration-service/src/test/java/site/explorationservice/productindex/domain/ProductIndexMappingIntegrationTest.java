@@ -83,21 +83,6 @@ class ProductIndexMappingIntegrationTest {
     }
 
     /**
-     * 지금 필터로 쓰는 건 active 하나뿐이다. 검색용 필드는 검색을 붙일 때 추가한다 — 필드 추가는 매핑 업데이트만으로 되고 벡터를 다시 만들 필요가 없어서 미리
-     * 넣을 이유가 없다.
-     */
-    @Test
-    @DisplayName("추천에 필요한 최소 필드만 만들어진다")
-    void 최소_필드_매핑() {
-        assertThat(fieldMapping("active").get("type")).isEqualTo("boolean");
-        // _class는 Spring Data ES가 자동으로 넣는 타입 힌트다. 우리가 선언한 필드가 아니라서 여기 함께 적어둔다
-        // — 검색 담당자가 이 인덱스를 볼 때 "이건 뭐지" 할 수 있는 자바 구현 세부사항이기도 하다.
-        assertThat(properties())
-            .containsOnlyKeys("title", "artistName", "active",
-                "identityVector", "originVector", "editionVector", "_class");
-    }
-
-    /**
      * Nori는 도커 이미지에 번들되어 있지 않아 커스텀 이미지로 설치했다. 플러그인이 빠진 이미지로 돌리면 인덱스 생성 자체가 실패하므로, 여기까지 왔다는 건 설정 파일이
      * 실제로 먹었다는 뜻이다.
      */

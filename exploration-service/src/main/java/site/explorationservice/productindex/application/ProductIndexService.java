@@ -57,6 +57,7 @@ public class ProductIndexService {
 
         final List<ProductDocument> documents = IntStream.range(0, n)
             .mapToObj(i -> toDocument(commands.get(i),
+                identityTexts.get(i), originTexts.get(i), editionTexts.get(i),
                 identityVectors.get(i), originVectors.get(i), editionVectors.get(i)))
             .toList();
         productDocumentRepository.saveAll(documents);
@@ -77,6 +78,7 @@ public class ProductIndexService {
     }
 
     private ProductDocument toDocument(final ProductIndexCommand command,
+        final String identityText, final String originText, final String editionText,
         final float[] identityVector, final float[] originVector, final float[] editionVector) {
         return ProductDocument.builder()
             .productId(command.productId())
@@ -85,6 +87,16 @@ public class ProductIndexService {
             // 값이 없으면 살아 있는 것으로 본다 — 색인 대상으로 들어온 상품이 기본적으로 노출 가능한 상태라고
             // 보는 게 맞고, null이면 active 필터에 걸려 추천에서 통째로 빠지기 때문이다.
             .active(command.active() == null || command.active())
+            .coverImageUrl(command.coverImageUrl())
+            .genre(command.genre())
+            .label(command.label())
+            .releaseYear(command.releaseYear())
+            .releaseCountry(command.releaseCountry())
+            .pressType(command.pressType())
+            // 그룹 키 = 임베딩 텍스트 그대로. 별도 포맷이 필요 없는 이유는 ProductDocument의 그룹 키 필드 주석 참고.
+            .identityGroupKey(identityText)
+            .originGroupKey(originText)
+            .editionGroupKey(editionText)
             .identityVector(identityVector)
             .originVector(originVector)
             .editionVector(editionVector)

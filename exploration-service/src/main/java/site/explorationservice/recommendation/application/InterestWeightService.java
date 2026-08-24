@@ -35,9 +35,10 @@ public class InterestWeightService {
         
         - identity(음악적 정체성): 장르·아티스트가 일관되면 이 축이 중요합니다.
         - origin(시공간적 배경): 발매 연대·국가가 일관되면 이 축이 중요합니다.
-        - edition(에디션·수집 가치): 특정 레이블·프레스타입(특히 초판/희귀반)을 일관되게 모으고 있다면 이 축이 중요합니다.
-          단순히 레이블이 다양하다고 이 축이 중요한 게 아닙니다 — 메이저 레이블의 흔한 재발매반 위주라면 이 축은 낮게, 희귀
-          인디 레이블·초판 위주라면 높게 판단하세요.
+        - edition(에디션·수집 가치): 프레스타입(ORIGINAL/REISSUE)이 한쪽으로 뚜렷하게 쏠려 있는지, 레이블이 메이저인지 희귀·인디인지를
+          함께 보고 판단하세요. 단순히 레이블이 동일하거나 다양하다는 것 자체는 기준이 아닙니다.
+          - 레이블이 소수 메이저 위주이거나 REISSUE 비중이 있다면 낮게(예: 0.05~0.1) 판단하세요.
+          - 레이블이 다양하더라도 희귀·인디 레이블 위주이고 ORIGINAL로 뚜렷하게 일관되면 높게(예: 0.4~0.5) 판단하세요.
         
         세 값의 합이 1이 되도록 비율로 답하고, 왜 그렇게 판단했는지 한 줄 근거를 남기세요.
         
@@ -60,7 +61,11 @@ public class InterestWeightService {
                 "관심사 가중치 추론에 실패했습니다 — 상품 " + products.size() + "건", e);
         }
 
-        return normalize(result);
+        final InterestWeightResult normalized = normalize(result);
+        log.info("관심사 가중치 추론 성공 — identity={}, origin={}, edition={}, rationale={}",
+            normalized.identityWeight(), normalized.originWeight(), normalized.editionWeight(),
+            normalized.rationale());
+        return normalized;
     }
 
     /**

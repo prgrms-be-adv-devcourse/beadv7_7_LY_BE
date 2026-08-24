@@ -6,6 +6,8 @@ public record RecommendationResponse(
     Long productId,
     String title,
     String artistName,
+    String coverImageUrl,
+    Integer releaseYear,
     float score
 ) {
 
@@ -14,6 +16,8 @@ public record RecommendationResponse(
             result.productId(),
             result.title(),
             result.artistName(),
+            result.coverImageUrl(),
+            result.releaseYear(),
             result.score()
         );
     }

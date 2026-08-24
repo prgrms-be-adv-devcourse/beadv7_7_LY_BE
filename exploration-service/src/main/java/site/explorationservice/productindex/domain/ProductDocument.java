@@ -61,6 +61,39 @@ public class ProductDocument {
     private Boolean active;
 
     /**
+     * 추천, 검색 api 응답에 들어가는 표시용 필드
+     */
+    @Field(type = FieldType.Keyword)
+    private String coverImageUrl;
+
+    @Field(type = FieldType.Keyword)
+    private String genre;
+
+    @Field(type = FieldType.Keyword)
+    private String label;
+
+    @Field(type = FieldType.Integer)
+    private Integer releaseYear;
+
+    @Field(type = FieldType.Keyword)
+    private String releaseCountry;
+
+    @Field(type = FieldType.Keyword)
+    private String pressType;
+
+    /**
+     * identity/origin/edition 그룹 상한(`ProductDocumentRepositoryImpl.capByGroup`)이 쓰는 그룹 키
+     */
+    @Field(type = FieldType.Keyword)
+    private String identityGroupKey;
+
+    @Field(type = FieldType.Keyword)
+    private String originGroupKey;
+
+    @Field(type = FieldType.Keyword)
+    private String editionGroupKey;
+
+    /**
      * 장르 + 아티스트("음악적 정체성").
      */
     @Field(
