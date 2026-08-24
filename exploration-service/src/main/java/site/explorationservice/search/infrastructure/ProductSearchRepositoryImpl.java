@@ -70,7 +70,7 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
      * 색인 문서를 아는 곳은 이 클래스 하나다. 위 계층은 검색 결과 레코드만 본다 — 그래야 상품 색인 쪽이 문서에
      * 필드를 더하거나 빼도 검색의 응용·표현 계층이 따라 흔들리지 않는다.
      */
-    private ProductSearchHit toSearchHit(final ProductDocument document) {
+    static ProductSearchHit toSearchHit(final ProductDocument document) {
         return new ProductSearchHit(
             document.getProductId(),
             document.getTitle(),

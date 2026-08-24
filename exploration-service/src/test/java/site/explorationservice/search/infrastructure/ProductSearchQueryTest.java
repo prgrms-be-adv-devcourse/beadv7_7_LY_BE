@@ -14,6 +14,7 @@ import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.InnerField;
 import org.springframework.data.elasticsearch.annotations.MultiField;
 import site.explorationservice.productindex.domain.ProductDocument;
+import site.explorationservice.search.domain.ProductSearchHit;
 
 /**
  * {@link ProductSearchRepositoryImpl#buildQuery(String)}가 조립한 질의의 구조를 검증한다.
@@ -130,6 +131,58 @@ class ProductSearchQueryTest {
             .allSatisfy(field -> assertThat(existsInDocument(stripBoost(field)))
                 .as("필드 '%s'가 ProductDocument에 존재해야 한다", field)
                 .isTrue());
+    }
+
+    /**
+     * 색인 문서에서 검색 결과 레코드로 옮기는 자리는 필드가 전부 문자열이라, 순서를 바꿔 넣어도 컴파일이 통과한다.
+     * 아티스트명 자리에 표지 이미지 주소가 들어가는 식의 사고가 화면에 뜨기 전까지 드러나지 않으므로 값으로 고정한다.
+     */
+    @Test
+    @DisplayName("색인 문서의 값을 검색 결과 레코드로 자리 바꿈 없이 옮긴다")
+    void 문서를_검색결과로_변환() {
+        // given
+        final ProductDocument document = ProductDocument.builder()
+            .productId(42L)
+            .title("별일 없이 산다")
+            .artistName("장기하와 얼굴들")
+            .coverImageUrl("https://img.example.com/42.jpg")
+            .releaseYear(2009)
+            .pressType("ORIGINAL")
+            .build();
+
+        // when
+        final ProductSearchHit hit = ProductSearchRepositoryImpl.toSearchHit(document);
+
+        // then
+        assertThat(hit.productId()).isEqualTo(42L);
+        assertThat(hit.title()).isEqualTo("별일 없이 산다");
+        assertThat(hit.artistName()).isEqualTo("장기하와 얼굴들");
+        assertThat(hit.coverImageUrl()).isEqualTo("https://img.example.com/42.jpg");
+        assertThat(hit.releaseYear()).isEqualTo(2009);
+        assertThat(hit.pressType()).isEqualTo("ORIGINAL");
+    }
+
+    /**
+     * 표시 필드는 상품 서비스 내부 API 확장과 재색인이 끝나야 채워진다. 그전까지 비어서 들어오는데,
+     * 그때 0이나 빈 문자열을 지어내면 화면에 0년으로 표시된다.
+     */
+    @Test
+    @DisplayName("비어 있는 표시 필드를 지어내지 않고 그대로 옮긴다")
+    void 빈_표시필드_변환() {
+        // given
+        final ProductDocument document = ProductDocument.builder()
+            .productId(7L)
+            .title("Tutu")
+            .artistName("Miles Davis")
+            .build();
+
+        // when
+        final ProductSearchHit hit = ProductSearchRepositoryImpl.toSearchHit(document);
+
+        // then
+        assertThat(hit.coverImageUrl()).isNull();
+        assertThat(hit.releaseYear()).isNull();
+        assertThat(hit.pressType()).isNull();
     }
 
     /**
