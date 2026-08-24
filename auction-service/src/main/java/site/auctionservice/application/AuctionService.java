@@ -272,12 +272,11 @@ public class AuctionService {
         WalletHoldInfo holdInfo = walletPort.hold(command.auctionId(), command.bidderId(), amount);
         holdInfoRef.set(holdInfo);
 
+        // 기존 ACTIVE Bid → OUTBID (Bid는 IDENTITY 채번이라 save() 시 즉시 flush되므로,
+        // 새 Bid 저장 전에 처리해야 findActiveBid가 항상 최대 1건만 조회함)
+        bidRepository.findActiveBid(command.auctionId()).ifPresent(Bid::markOutbid);
         // 새 Bid 저장 (ACTIVE)
         Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
-        // ACTIVE Bid → OUTBID
-        bidRepository.findActiveBid(command.auctionId())
-                .filter(prev -> !prev.getId().equals(newBid.getId()))
-                .ifPresent(Bid::markOutbid);
         // 최고입찰 갱신 + 마감 연장
         LocalDateTime endAtBefore = auction.getSchedule().getPeriod().getEndAt();
         auction.applyBid(command.bidderId(), amount, newBid.getId(), now);
