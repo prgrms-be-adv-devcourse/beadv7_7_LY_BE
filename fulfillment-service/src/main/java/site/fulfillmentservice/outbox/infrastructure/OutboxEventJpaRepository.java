@@ -21,7 +21,7 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEvent, Lon
      * 안의 이후 조회가 이미 지워진 행을 1차 캐시에서 그대로 돌려준다.
      */
     @Modifying(clearAutomatically = true)
-    @Query(value = "DELETE FROM outbox_event WHERE status = 'PUBLISHED' AND published_at < :cutoff LIMIT :limit",
+    @Query(value = "DELETE FROM fulfillment_outbox_event WHERE status = 'PUBLISHED' AND published_at < :cutoff LIMIT :limit",
             nativeQuery = true)
     int deletePublishedBefore(@Param("cutoff") LocalDateTime cutoff, @Param("limit") int limit);
 }

@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-        name = "outbox_event",
-        indexes = @Index(name = "idx_outbox_event_status_created_at", columnList = "status, created_at")
+        name = "fulfillment_outbox_event",
+        indexes = @Index(name = "idx_fulfillment_outbox_event_status_created_at", columnList = "status, created_at")
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
