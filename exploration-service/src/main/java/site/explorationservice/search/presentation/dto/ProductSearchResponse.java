@@ -11,20 +11,10 @@ public record ProductSearchResponse(List<Card> content, int page, int size, long
 
     public static ProductSearchResponse from(final ProductSearchResult result) {
         final List<Card> cards = result.content().stream()
-                .map(ProductSearchResponse::toCard)
+                .map(Card::from)
                 .toList();
         return new ProductSearchResponse(cards, result.page(), result.size(), result.totalElements(),
                 result.hasNext());
-    }
-
-    private static Card toCard(final ProductSearchHit hit) {
-        return new Card(
-                hit.productId(),
-                hit.title(),
-                hit.artistName(),
-                hit.coverImageUrl(),
-                hit.releaseYear(),
-                hit.pressType());
     }
 
     /**
@@ -33,5 +23,15 @@ public record ProductSearchResponse(List<Card> content, int page, int size, long
      */
     public record Card(Long productId, String title, String artistName, String coverImageUrl, Integer releaseYear,
                        String pressType) {
+
+        public static Card from(final ProductSearchHit hit) {
+            return new Card(
+                    hit.productId(),
+                    hit.title(),
+                    hit.artistName(),
+                    hit.coverImageUrl(),
+                    hit.releaseYear(),
+                    hit.pressType());
+        }
     }
 }
