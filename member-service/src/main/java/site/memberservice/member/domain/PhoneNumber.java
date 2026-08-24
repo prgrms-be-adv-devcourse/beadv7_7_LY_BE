@@ -1,10 +1,12 @@
 package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import site.memberservice.global.crypto.EncryptedStringConverter;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.Objects;
@@ -20,12 +22,17 @@ public class PhoneNumber {
 
     private static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile("^01[016789]-\\d{3,4}-\\d{4}$");
 
-    @Column(name = "phone_number", length = 20, nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "phone_number", length = 500, nullable = false)
     private String value;
 
-    public PhoneNumber(final String value) {
+    @Column(name = "phone_number_hash", length = 64, nullable = false)
+    private String hash;
+
+    public PhoneNumber(final String value, final String hash) {
         validateValue(value);
         this.value = value;
+        this.hash = hash;
     }
 
     private void validateValue(final String value) {

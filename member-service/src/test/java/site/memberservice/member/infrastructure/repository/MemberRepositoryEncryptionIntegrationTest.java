@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import site.common.crypto.KmsMacHasher;
 import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
@@ -33,6 +34,9 @@ class MemberRepositoryEncryptionIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private KmsMacHasher kmsMacHasher;
+
     private Long savedMemberId;
 
     @AfterEach
@@ -54,7 +58,7 @@ class MemberRepositoryEncryptionIntegrationTest {
             "hashed-password-value",
             "k" + unique,
             plainName,
-            new PhoneNumber("010-" + (1000 + unique) + "-5678"),
+            new PhoneNumber("010-" + (1000 + unique) + "-5678", "test-phone-hash-" + unique),
             new Address("06671", "서울특별시 서초구 반포대로 45", plainDetailAddress)
         );
 
@@ -72,5 +76,31 @@ class MemberRepositoryEncryptionIntegrationTest {
         final Member found = memberRepository.findById(savedMemberId).orElseThrow();
         assertThat(found.getName()).isEqualTo(plainName);
         assertThat(found.getAddress().getDetailAddress()).isEqualTo(plainDetailAddress);
+    }
+
+    @Test
+    @DisplayName("같은 전화번호로 저장한 뒤 같은 값을 해시하면 existsByPhoneNumberHash가 true를 반환한다")
+    void 같은_전화번호는_해시로_중복_탐지된다() {
+        // given
+        final int unique = (int) (System.nanoTime() % 9000);
+        final String rawPhoneNumber = "010-" + (1000 + unique) + "-5678";
+        final String phoneNumberHash = kmsMacHasher.hash(rawPhoneNumber);
+        final Member member = Member.create(
+            new Email("kms-test-" + System.nanoTime() + "@email.com"),
+            "hashed-password-value",
+            "k" + unique,
+            "홍길동",
+            new PhoneNumber(rawPhoneNumber, phoneNumberHash),
+            new Address("06671", "서울특별시 서초구 반포대로 45", "4층")
+        );
+
+        // when
+        final Member saved = memberRepository.save(member);
+        savedMemberId = saved.getId();
+
+        // then — 같은 전화번호를 다시 해시하면(재가입 시도와 동일한 상황) 결정적으로 같은 값이 나와 중복이 잡힌다
+        final String rehashed = kmsMacHasher.hash(rawPhoneNumber);
+        assertThat(memberRepository.existsByPhoneNumberHash(rehashed)).isTrue();
+        assertThat(memberRepository.existsByPhoneNumberHash("no-such-hash")).isFalse();
     }
 }

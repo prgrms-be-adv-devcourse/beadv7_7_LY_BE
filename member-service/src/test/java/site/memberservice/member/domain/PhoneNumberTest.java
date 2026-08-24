@@ -22,7 +22,7 @@ class PhoneNumberTest {
         final String input = "010-1234-5678";
 
         // When & Then
-        assertThatCode(() -> new PhoneNumber(input))
+        assertThatCode(() -> new PhoneNumber(input, "test-hash"))
             .doesNotThrowAnyException();
     }
 
@@ -31,7 +31,7 @@ class PhoneNumberTest {
     @ParameterizedTest
     void throwExceptionWhenInputNullOrEmpty(final String input) {
         // When & Then
-        assertThatThrownBy(() -> new PhoneNumber(input))
+        assertThatThrownBy(() -> new PhoneNumber(input, "test-hash"))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("회원 전화번호는 null 혹은 공백일 수 없습니다. input : %s", input));
     }
@@ -41,7 +41,7 @@ class PhoneNumberTest {
     @ParameterizedTest
     void throwExceptionWhenInputInvalidValue(final String input) {
         // When & Then
-        assertThatThrownBy(() -> new PhoneNumber(input))
+        assertThatThrownBy(() -> new PhoneNumber(input, "test-hash"))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("유효하지 않은 형식의 전화번호입니다. input : %s", input));
     }

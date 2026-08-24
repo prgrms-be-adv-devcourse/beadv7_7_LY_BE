@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import site.common.crypto.KmsMacHasher;
 import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import org.mockito.ArgumentCaptor;
@@ -54,6 +55,7 @@ class MemberServiceTest {
     // TODO : #229 @Disabled 처리된 기존 테스트들을 Mock 기반으로 하나씩 재작성
 
     private PasswordEncoder passwordEncoder;
+    private KmsMacHasher kmsMacHasher;
     private MemberRepository memberRepository;
     private BankAccountRepository bankAccountRepository;
     private MemberRestrictionRepository memberRestrictionRepository;
@@ -63,6 +65,7 @@ class MemberServiceTest {
     @BeforeEach
     void setUp() {
         this.passwordEncoder = Mockito.mock(PasswordEncoder.class);
+        this.kmsMacHasher = Mockito.mock(KmsMacHasher.class);
         this.memberRepository = Mockito.mock(MemberRepository.class);
         this.bankAccountRepository = Mockito.mock(BankAccountRepository.class);
         this.memberRestrictionRepository = Mockito.mock(MemberRestrictionRepository.class);
@@ -70,6 +73,7 @@ class MemberServiceTest {
 
         memberService = new MemberService(
             passwordEncoder,
+            kmsMacHasher,
             memberRepository,
             bankAccountRepository,
             memberRestrictionRepository,
@@ -97,8 +101,7 @@ class MemberServiceTest {
         memberService.register(request);
 
         // Then
-        final PhoneNumber phoneNumber = new PhoneNumber(request.phoneNumber());
-        assertThat(memberRepository.existsByPhoneNumber(phoneNumber)).isTrue();
+        assertThat(memberRepository.existsByPhoneNumberHash(kmsMacHasher.hash(request.phoneNumber()))).isTrue();
     }
 
     @Disabled("Mock 기반 테스트로 전환 예정 - #229")
@@ -142,7 +145,7 @@ class MemberServiceTest {
             "testerPw1234!",
             duplicateNickname,
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -180,7 +183,7 @@ class MemberServiceTest {
             "testerPw1234!",
             "test01",
             "tester",
-            new PhoneNumber(duplicatePhoneNumber),
+            new PhoneNumber(duplicatePhoneNumber, "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -203,7 +206,7 @@ class MemberServiceTest {
         // When & Then
         assertThatThrownBy(() -> memberService.register(request))
             .isInstanceOf(MemberException.class)
-            .hasMessage(format("이미 존재하는 회원 전화번호입니다. input: %s", new PhoneNumber(duplicatePhoneNumber)));
+            .hasMessage("이미 존재하는 회원 전화번호입니다.");
     }
 
     @Disabled("Mock 기반 테스트로 전환 예정 - #229")
@@ -217,7 +220,7 @@ class MemberServiceTest {
                 "testerPw1234!",
                 "tester",
                 "tester",
-                new PhoneNumber("010-1234-5678"),
+                new PhoneNumber("010-1234-5678", "test-phone-hash"),
                 new Address(
                     "06671",
                     "서울특별시 서초구 반포대로 45",
@@ -263,7 +266,7 @@ class MemberServiceTest {
                 "testerPw1234!",
                 "tester",
                 "tester",
-                new PhoneNumber("010-1234-5678"),
+                new PhoneNumber("010-1234-5678", "test-phone-hash"),
                 new Address(
                     "06671",
                     "서울특별시 서초구 반포대로 45",
@@ -306,7 +309,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -336,7 +339,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -362,7 +365,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -419,7 +422,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -483,7 +486,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -533,7 +536,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",
@@ -584,7 +587,7 @@ class MemberServiceTest {
             "testPw1234!",
             "tester",
             "tester",
-            new PhoneNumber("010-1234-5678"),
+            new PhoneNumber("010-1234-5678", "test-phone-hash"),
             new Address(
                 "06671",
                 "서울특별시 서초구 반포대로 45",

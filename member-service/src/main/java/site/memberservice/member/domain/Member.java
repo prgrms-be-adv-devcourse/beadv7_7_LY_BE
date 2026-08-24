@@ -33,8 +33,8 @@ import static site.memberservice.member.exception.MemberErrorCode.INVALID_MEMBER
             columnNames = "nickname"
         ),
         @UniqueConstraint(
-            name = "uk_member_phone_number",
-            columnNames = "phone_number"
+            name = "uk_member_phone_number_hash",
+            columnNames = "phone_number_hash"
         )
     }
 )
