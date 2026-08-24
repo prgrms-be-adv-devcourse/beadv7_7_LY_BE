@@ -199,7 +199,7 @@ class AuctionServiceTest {
     void testModifyAuction_scheduledStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -214,7 +214,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_beforeStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         AuctionResult result = auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L);
@@ -228,7 +228,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -242,7 +242,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 수정하려 하면 예외를 던진다")
     void testModifyAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
@@ -252,26 +252,11 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
-    void testModifyAuction_lockContention_throws() {
-        // given: 락 대기시간 제어와 예외 번역은 AuctionRepositoryImpl의 책임이라 여기서는 그 결과로 온 예외를 AuctionService가 삼키지 않는지만 검증한다.
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(searchViewRepository, never()).updateFromAuction(any(), any());
-    }
-
-    @Test
     @DisplayName("판매자 본인이 아니면 경매를 수정할 수 없다")
     void testModifyAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 2L))
@@ -286,7 +271,7 @@ class AuctionServiceTest {
     void testModifyAuction_productIdChanged_refetchesProductAndUpdatesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(productPort.getProduct(200L)).willReturn(productSnapshot);
 
         // when
@@ -304,7 +289,7 @@ class AuctionServiceTest {
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
         ProductSnapshot inactiveProduct =
                 new ProductSnapshot(200L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", false);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(productPort.getProduct(200L)).willReturn(inactiveProduct);
 
         // when & then
@@ -320,7 +305,7 @@ class AuctionServiceTest {
     void testDeleteAuction_cancelsAuctionAndDeletesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.deleteAuction(1L, 1L);
@@ -334,7 +319,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 취소하려 하면 예외를 던진다")
     void testDeleteAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -345,26 +330,11 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
-    void testDeleteAuction_lockContention_throws() {
-        // given
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(searchViewRepository, never()).deleteById(any());
-    }
-
-    @Test
     @DisplayName("판매자 본인이 아니면 경매를 취소할 수 없다")
     void testDeleteAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 2L))
@@ -379,7 +349,7 @@ class AuctionServiceTest {
     void testDeleteAuction_notEditable_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -394,7 +364,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_scheduledStatus_forceCancelsAndDeletesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.forceCancelAuction(1L);
@@ -410,7 +380,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_runningStatus_afterStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.forceCancelAuction(1L);
@@ -428,7 +398,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
 
         // when
@@ -446,7 +416,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
         willThrow(new RuntimeException("kafka down"))
                 .given(auctionEventPublisher).publishForceCanceled(1L, 5L);
@@ -463,7 +433,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_withoutActiveBid_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         auctionService.forceCancelAuction(1L);
@@ -476,7 +446,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 강제 취소하려 하면 예외를 던진다")
     void testForceCancelAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))
@@ -491,7 +461,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_alreadyEnded_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.auctionservice.aop.DistributedLock;
 import site.auctionservice.domain.Auction;
 import site.auctionservice.domain.AuctionRepository;
 import site.auctionservice.domain.AuctionStatus;
@@ -19,6 +20,7 @@ public class AuctionScheduleService {
 
     private final AuctionRepository auctionRepository;
 
+    @DistributedLock(prefix = "auction", key = "#auctionId")
     @Transactional
     protected Auction startAuction(final Long auctionId) {
         final Auction auction = auctionRepository.findById(auctionId)

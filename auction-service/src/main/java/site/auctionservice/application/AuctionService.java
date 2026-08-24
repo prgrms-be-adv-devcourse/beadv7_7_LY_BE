@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import site.auctionservice.aop.DistributedLock;
 import site.auctionservice.domain.*;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
@@ -69,9 +70,10 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
+    @DistributedLock(prefix = "auction", key = "#command.auctionId()")
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
-        Auction auction = auctionRepository.findByIdForUpdate(command.auctionId())
+        Auction auction = auctionRepository.findById(command.auctionId())
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
@@ -97,9 +99,10 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
+    @DistributedLock(prefix = "auction", key = "#auctionId")
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
-        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+        Auction auction = auctionRepository.findById(auctionId)
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
@@ -293,13 +296,12 @@ public class AuctionService {
         return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
     }
 
-    // TODO : #238 시작 스케줄러와 좁은 타이밍에 겹치면 강제취소가 RUNNING으로 덮어써질 수 있으므로 분산락 도입 시 시작 스케줄러도 같은 auctionId 락 스코프에 포함시켜 해결 예정.
-    // 현재는 AuctionScheduleService에서 비관적 락으로 조회하고 있어 동시성 문제가 발생하는 상황이지만 분산락 도입을 앞두고 있어서 임시 허용한 상태.
+    @DistributedLock(prefix = "auction", key = "#auctionId")
     @Transactional
     public void forceCancelAuction(Long auctionId) {
         LocalDateTime now = LocalDateTime.now();
 
-        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+        Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
 
         boolean hasBid = auction.hasBid();
