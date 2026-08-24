@@ -14,7 +14,7 @@ import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-import site.auctionservice.infrastructure.lock.DistributedLockManager;
+import site.auctionservice.application.port.LockPort;
 
 // @Transactional 어드바이스보다 바깥쪽에서 실행되도록 순위를 강제한다.
 // 순서가 뒤바뀌면 트랜잭션 커밋 전에 락이 풀려서 다른 스레드가 변경 이전 데이터를 읽을 수 있다.
@@ -27,7 +27,7 @@ import site.auctionservice.infrastructure.lock.DistributedLockManager;
 @Slf4j
 public class DistributedLockAspect {
 
-    private final DistributedLockManager lockManager;
+    private final LockPort lockManager;
 
     private static final ExpressionParser parser = new SpelExpressionParser();
     private static final ParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();

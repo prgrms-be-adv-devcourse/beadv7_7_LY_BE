@@ -21,7 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class DistributedLockManagerTest {
+class RedissonLockManagerTest {
 
     @Mock
     private RedissonClient redissonClient;
@@ -30,7 +30,7 @@ class DistributedLockManagerTest {
     private RLock rLock;
 
     @InjectMocks
-    private DistributedLockManager lockManager;
+    private RedissonLockManager lockManager;
 
     @Test
     @DisplayName("락 획득에 성공하면 액션을 실행하고 finally에서 unlock한다")

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.auctionservice.infrastructure.lock.DistributedLockManager;
+import site.auctionservice.application.port.LockPort;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.mock;
 class DistributedLockAspectTest {
 
     @Mock
-    private DistributedLockManager lockManager;
+    private LockPort lockManager;
 
     @InjectMocks
     private DistributedLockAspect aspect;

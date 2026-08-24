@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
+import site.auctionservice.application.port.LockPort;
 import site.auctionservice.application.port.MemberPort;
 import site.auctionservice.application.port.ProductPort;
 import site.auctionservice.application.port.WalletPort;
@@ -70,6 +71,9 @@ class AuctionServiceTest {
     @Mock
     private TransactionTemplate transactionTemplate;
 
+    @Mock
+    private LockPort lockPort;
+
     @InjectMocks
     private AuctionService auctionService;
 
@@ -81,6 +85,13 @@ class AuctionServiceTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction((TransactionStatus) null);
         }).when(transactionTemplate).execute(any());
+
+        // LockPort.executeWithLock()도 실제 락 없이 액션을 바로 실행하도록 스텁
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            java.util.function.Supplier<?> action = invocation.getArgument(4);
+            return action.get();
+        }).when(lockPort).executeWithLock(any(), org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyLong(), any(), any());
     }
 
     private static final String DESCRIPTION = "충분히 긴 상품 설명입니다.";
@@ -899,7 +910,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(1L, 2L, Money.of(13_000L)))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
@@ -928,30 +939,13 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 행 락 획득에 실패하면(입찰 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED가 그대로 전파되고 예치금 홀드를 호출하지 않는다")
-    void testPlaceBid_lockContention_throws() {
-        // given: 락 대기시간 제어 + 예외 번역은 AuctionRepositoryImpl 책임
-        // 여기서는 AuctionService가 그 결과를 삼키지 않고 예치금 홀드 전에 그대로 전파하는지만 본다.
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.placeBid(command))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(walletPort, never()).hold(any(), any(), any());
-    }
-
-    @Test
     @DisplayName("기존 활성 입찰이 있으면 새 입찰 저장 후 기존 입찰을 OUTBID로 전환한다")
     void testPlaceBid_existingActiveBid_marksPreviousBidOutbid() {
         // given
         HighestBid highestBid = HighestBid.of(Money.of(13_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, 10L, BigDecimal.valueOf(87_000)));
 
@@ -978,7 +972,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매에 입찰하면 예외를 던지고 예치금 홀드를 호출하지 않는다")
     void testPlaceBid_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
 
         // when & then
@@ -995,7 +989,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(1_000));
 
@@ -1014,7 +1008,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willThrow(new AuctionException(AuctionErrorCode.WALLET_HOLD_FAILED));
 
@@ -1036,7 +1030,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
@@ -1065,7 +1059,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
