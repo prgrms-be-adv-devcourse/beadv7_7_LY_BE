@@ -93,6 +93,9 @@ public class ProductIndexService {
             .releaseYear(command.releaseYear())
             .releaseCountry(command.releaseCountry())
             .pressType(command.pressType())
+            // 검색이 다른 표기로 찾을 때 쓴다. 임베딩 텍스트에는 들어가지 않으므로 벡터에 영향이 없다
+            .titleAliases(command.titleAliases())
+            .artistAliases(command.artistAliases())
             // 그룹 키 = 임베딩 텍스트 그대로. 별도 포맷이 필요 없는 이유는 ProductDocument의 그룹 키 필드 주석 참고.
             .identityGroupKey(identityText)
             .originGroupKey(originText)

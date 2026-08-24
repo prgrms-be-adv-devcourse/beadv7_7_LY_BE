@@ -1,5 +1,6 @@
 package site.explorationservice.productindex.application;
 
+import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,7 @@ class ProductEmbeddingTemplateTest {
         final Integer releaseYear, final String releaseCountry, final String pressType) {
         return new ProductIndexCommand(
             1L, "Kind of Blue", "Miles Davis", null, genre, label,
-            releaseYear, releaseCountry, pressType, true);
+            releaseYear, releaseCountry, pressType, true, List.of(), List.of());
     }
 
     private ProductIndexCommand fullCommand() {
