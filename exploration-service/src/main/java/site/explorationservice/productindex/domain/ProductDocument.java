@@ -184,4 +184,12 @@ public class ProductDocument {
         knnSimilarity = KnnSimilarity.COSINE
     )
     private float[] editionVector;
+
+    /**
+     * 마스터 번호가 없는 상품은 자기 자신이 하나의 그룹이 된다. 그때 상품 번호를 그대로 쓰면 같은 숫자의
+     * 마스터 번호와 값이 겹치므로 접두어로 체계를 나눈다.
+     */
+    public static String groupKeyOf(final Long discogsMasterId, final Long productId) {
+        return discogsMasterId == null ? "p" + productId : String.valueOf(discogsMasterId);
+    }
 }

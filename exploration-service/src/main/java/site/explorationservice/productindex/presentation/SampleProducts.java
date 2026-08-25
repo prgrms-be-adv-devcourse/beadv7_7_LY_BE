@@ -59,6 +59,6 @@ final class SampleProducts {
         final String artistName, final String genre, final String label, final Integer releaseYear,
         final String releaseCountry, final String pressType) {
         return new ProductIndexCommand(productId, title, artistName, null, genre, label,
-            releaseYear, releaseCountry, pressType, true, List.of(), List.of());
+            releaseYear, releaseCountry, pressType, true, null, null, List.of(), List.of());
     }
 }

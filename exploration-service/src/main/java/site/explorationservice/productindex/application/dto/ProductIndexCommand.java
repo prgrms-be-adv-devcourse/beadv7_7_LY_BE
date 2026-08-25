@@ -14,6 +14,10 @@ import java.util.List;
  * titleAliases·artistAliases는 <b>검색 전용</b>이다 — 「비틀즈」로 The Beatles를 찾는 다른 표기를 이어준다.
  * <b>임베딩 텍스트에는 넣지 않는다.</b> 넣으면 벡터 셋을 전부 다시 만들어야 하고, 추천이 쓰는 신호도 아니다.
  * 상품 서비스 내부 API가 아직 내려주지 않아 당분간 빈 목록으로 들어온다.
+ * <p>
+ * catalogNumber·discogsMasterId도 <b>임베딩 텍스트에 넣지 않는다.</b> 번호는 음악을 설명하지 않아서 벡터에 섞이면
+ * 신호를 흐린다. 번호는 번호 검색이, discogsMasterId는 판본 묶기가 쓴다. 번호를 대조용으로 다듬는 일은
+ * {@code ProductIndexService}가 색인할 때 한다 — 검색어를 다듬는 것과 같은 함수를 써야 하기 때문이다.
  */
 public record ProductIndexCommand(
     Long productId,
@@ -26,6 +30,8 @@ public record ProductIndexCommand(
     String releaseCountry,
     String pressType,
     Boolean active,
+    String catalogNumber,
+    Long discogsMasterId,
     List<String> titleAliases,
     List<String> artistAliases
 ) {

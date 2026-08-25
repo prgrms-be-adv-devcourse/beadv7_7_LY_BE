@@ -6,6 +6,7 @@ import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import site.common.text.TextNormalizer;
 import site.explorationservice.ai.embedding.application.EmbeddingService;
 import site.explorationservice.ai.embedding.application.dto.EmbeddingResult;
 import site.explorationservice.productindex.application.dto.ProductIndexCommand;
@@ -93,6 +94,11 @@ public class ProductIndexService {
             .releaseYear(command.releaseYear())
             .releaseCountry(command.releaseCountry())
             .pressType(command.pressType())
+            // 원본은 화면에 보여주기 위한 것이고, 대조는 표기를 다듬은 값으로 한다.
+            // 검색어를 다듬을 때와 같은 함수를 써야 색인된 값과 검색 키가 맞는다.
+            .catalogNumber(command.catalogNumber())
+            .normalizedCatalogNumber(TextNormalizer.normalize(command.catalogNumber()))
+            .groupKey(ProductDocument.groupKeyOf(command.discogsMasterId(), command.productId()))
             // 검색이 다른 표기로 찾을 때 쓴다. 임베딩 텍스트에는 들어가지 않으므로 벡터에 영향이 없다
             .titleAliases(command.titleAliases())
             .artistAliases(command.artistAliases())

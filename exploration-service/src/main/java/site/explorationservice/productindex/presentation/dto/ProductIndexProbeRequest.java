@@ -17,11 +17,14 @@ public record ProductIndexProbeRequest(
     Integer releaseYear,
     String releaseCountry,
     String pressType,
-    Boolean active
+    Boolean active,
+    String catalogNumber,
+    Long discogsMasterId
 ) {
 
     public ProductIndexCommand toCommand() {
         return new ProductIndexCommand(productId, title, artistName, coverImageUrl, genre, label,
-            releaseYear, releaseCountry, pressType, active, List.of(), List.of());
+            releaseYear, releaseCountry, pressType, active, catalogNumber, discogsMasterId,
+            List.of(), List.of());
     }
 }

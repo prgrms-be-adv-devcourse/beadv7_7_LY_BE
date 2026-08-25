@@ -149,6 +149,47 @@ class ProductIndexServiceTest {
         assertThat(result.embeddingModel()).isEqualTo(MODEL);
     }
 
+    @Test
+    @DisplayName("카탈로그 번호는 원본과 다듬은 표기를 함께 담는다")
+    void 번호_두_자리() {
+        // given
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, "BLP-1567", 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        // 실데이터에서 같은 번호가 여러 표기로 존재한다. 원본만 색인하면 사용자가 표기를
+        // 정확히 알아야만 찾을 수 있다.
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isEqualTo("BLP-1567");
+        assertThat(document.getNormalizedCatalogNumber()).isEqualTo("blp1567");
+    }
+
+    @Test
+    @DisplayName("카탈로그 번호가 없으면 두 자리 모두 비운다")
+    void 번호_없음() {
+        // given
+        // 실데이터의 5.4%가 카탈로그 번호를 갖고 있지 않다
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, null, 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isNull();
+        assertThat(document.getNormalizedCatalogNumber()).isNull();
+    }
+
     private void givenEmbedding(final float[]... vectors) {
         given(embeddingService.embed(anyList(), any(), any()))
             .willReturn(new EmbeddingResult(List.of(vectors), MODEL, 30, 30));
@@ -161,17 +202,17 @@ class ProductIndexServiceTest {
     private List<ProductIndexCommand> commands() {
         return List.of(
             new ProductIndexCommand(1L, "Kind of Blue", "Miles Davis", null, "Jazz", "Columbia",
-                1959, "미국", "ORIGINAL", true, List.of(), List.of()),
+                1959, "미국", "ORIGINAL", true, null, null, List.of(), List.of()),
             new ProductIndexCommand(2L, "다시 부르기 2", "김광석", null, "포크", "킹레코드",
-                1995, "한국", "REISSUE", true, List.of(), List.of()),
+                1995, "한국", "REISSUE", true, null, null, List.of(), List.of()),
             new ProductIndexCommand(3L, "Nevermind", "Nirvana", null, "그런지", "DGC",
-                1991, "미국", "ORIGINAL", true, List.of(), List.of())
+                1991, "미국", "ORIGINAL", true, null, null, List.of(), List.of())
         );
     }
 
     private ProductIndexCommand command(final Long productId, final String artistName,
         final Boolean active) {
         return new ProductIndexCommand(productId, "제목", artistName, null, "Jazz", "Columbia",
-            1959, "미국", "ORIGINAL", active, List.of(), List.of());
+            1959, "미국", "ORIGINAL", active, null, null, List.of(), List.of());
     }
 }
