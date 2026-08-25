@@ -83,6 +83,39 @@ class ProductIndexMappingIntegrationTest {
     }
 
     /**
+     * 검색 질의는 필드를 분석기별로 묶어 처리한다. 검색 대상 필드가 서로 다른 분석기를 쓰면 「비틀즈 abbey road」처럼
+     * 검색어가 여러 필드에 걸쳐 있는 경우 어느 묶음도 만족하지 못해 결과가 0건이 된다. 그래서 별칭까지 같은 분석기로
+     * 맞춰 두었는지 확인한다.
+     */
+    @Test
+    @DisplayName("검색 대상 필드가 전부 같은 분석기를 쓴다")
+    void 검색_대상_필드_분석기_통일() {
+        // given & when & then
+        for (final String field : new String[]{"title", "artistName", "titleAliases", "artistAliases"}) {
+            assertThat(fieldMapping(field).get("analyzer")).as("%s.analyzer", field).isEqualTo("korean");
+        }
+    }
+
+    /**
+     * 아티스트 가산점은 표기가 통째로 남아 있는 하위 필드에서만 판정한다. 주 필드로 판정하면 「들국화」가 「국화」로도
+     * 쪼개져 있어, 국화를 검색한 사람에게 들국화의 전 앨범이 최상위로 쏟아진다.
+     */
+    @Test
+    @DisplayName("가산점 판정용 하위 필드는 형태소 분해를 하지 않는다")
+    void 가산점_판정_하위필드() {
+        // given & when & then
+        for (final String field : new String[]{"artistName", "artistAliases"}) {
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> subFields = (Map<String, Object>) fieldMapping(field).get("fields");
+            assertThat(subFields).as("%s.fields", field).containsKey("surface");
+
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> surface = (Map<String, Object>) subFields.get("surface");
+            assertThat(surface.get("analyzer")).as("%s.surface.analyzer", field).isEqualTo("latin");
+        }
+    }
+
+    /**
      * Nori는 도커 이미지에 번들되어 있지 않아 커스텀 이미지로 설치했다. 플러그인이 빠진 이미지로 돌리면 인덱스 생성 자체가 실패하므로, 여기까지 왔다는 건 설정 파일이
      * 실제로 먹었다는 뜻이다.
      */
@@ -95,6 +128,9 @@ class ProductIndexMappingIntegrationTest {
             .isEqualTo("korean_tokenizer");
         assertThat(settings.get("index.analysis.tokenizer.korean_tokenizer.type"))
             .isEqualTo("nori_tokenizer");
+        // 가산점 판정용 하위 필드가 이 분석기를 쓴다. 없으면 인덱스 생성 자체가 실패한다
+        assertThat(settings.get("index.analysis.analyzer.latin.tokenizer"))
+            .isEqualTo("standard");
     }
 
     @SuppressWarnings("unchecked")

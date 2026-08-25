@@ -1,5 +1,6 @@
 package site.explorationservice.productindex.presentation.dto;
 
+import java.util.List;
 import site.explorationservice.productindex.application.dto.ProductIndexCommand;
 
 /**
@@ -21,6 +22,6 @@ public record ProductIndexProbeRequest(
 
     public ProductIndexCommand toCommand() {
         return new ProductIndexCommand(productId, title, artistName, coverImageUrl, genre, label,
-            releaseYear, releaseCountry, pressType, active);
+            releaseYear, releaseCountry, pressType, active, List.of(), List.of());
     }
 }

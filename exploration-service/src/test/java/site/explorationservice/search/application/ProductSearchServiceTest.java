@@ -1,0 +1,204 @@
+package site.explorationservice.search.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import site.explorationservice.search.application.dto.ProductSearchResult;
+import site.explorationservice.search.domain.ProductSearchHit;
+import site.explorationservice.search.domain.ProductSearchPage;
+import site.explorationservice.search.domain.ProductSearchRepository;
+import site.explorationservice.search.domain.SearchKeyword;
+import site.explorationservice.search.exception.SearchKeywordRequiredException;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("상품 검색")
+class ProductSearchServiceTest {
+
+    @Mock
+    private ProductSearchRepository productSearchRepository;
+
+    @InjectMocks
+    private ProductSearchService productSearchService;
+
+    @Test
+    @DisplayName("검색어가 없으면 예외를 던진다")
+    void 검색어_없으면_예외() {
+        // given
+        final String keyword = null;
+
+        // when & then
+        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, 0, 20))
+            .isInstanceOf(SearchKeywordRequiredException.class);
+        verify(productSearchRepository, never()).search(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("검색어가 공백뿐이면 예외를 던진다")
+    void 공백_검색어면_예외() {
+        // given
+        final String keyword = "   ";
+
+        // when & then
+        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, 0, 20))
+            .isInstanceOf(SearchKeywordRequiredException.class);
+    }
+
+    @Test
+    @DisplayName("한 글자 검색어는 조회하지 않고 빈 결과를 돌려준다")
+    void 짧은_검색어는_빈_결과() {
+        // given
+        final String keyword = "a";
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts(keyword, 0, 20);
+
+        // then
+        // 400으로 던지면 프론트가 응답 형식을 두 갈래로 다뤄야 한다. 형식을 유지한 채 결과만 비운다.
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.hasNext()).isFalse();
+        verify(productSearchRepository, never()).search(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("음수 페이지는 0으로 보정한다")
+    void 음수_페이지_보정() {
+        // given
+        given(productSearchRepository.search(any(), eq(0), anyInt()))
+            .willReturn(ProductSearchPage.empty());
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", -5, 20);
+
+        // then
+        assertThat(result.page()).isZero();
+        verify(productSearchRepository).search(any(), eq(0), eq(20));
+    }
+
+    @Test
+    @DisplayName("size가 0 이하이면 기본값 20으로 되돌린다")
+    void size_기본값() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), eq(20)))
+            .willReturn(ProductSearchPage.empty());
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 0);
+
+        // then
+        assertThat(result.size()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("size가 상한을 넘으면 100으로 깎는다")
+    void size_상한() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), eq(100)))
+            .willReturn(ProductSearchPage.empty());
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 5000);
+
+        // then
+        // 상한이 없으면 한 번의 요청으로 인덱스 전체를 긁어갈 수 있다
+        assertThat(result.size()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("다음 페이지가 남아 있으면 hasNext가 참이다")
+    void 다음_페이지_있음() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 20);
+
+        // then
+        assertThat(result.hasNext()).isTrue();
+    }
+
+    @Test
+    @DisplayName("마지막 페이지에서는 hasNext가 거짓이다")
+    void 마지막_페이지() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", 2, 20);
+
+        // then
+        // 45건을 20개씩 나누면 2페이지(0,1,2)가 마지막이다
+        assertThat(result.hasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("조회 가능한 범위를 넘어선 페이지는 조회하지 않고 빈 결과를 돌려준다")
+    void 범위_밖_페이지는_빈_결과() {
+        // given
+        // 검색엔진이 한 질의로 훑을 수 있는 건수는 기본 10,000건이다. 500페이지 * 20건 = 10,020건이라
+        // 그대로 조회하면 요청이 거절돼 500으로 나간다
+        final int page = 500;
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", page, 20);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.page()).isEqualTo(page);
+        assertThat(result.size()).isEqualTo(20);
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.hasNext()).isFalse();
+        verify(productSearchRepository, never()).search(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("범위 경계 바로 안쪽 페이지는 그대로 조회한다")
+    void 경계_안쪽_페이지는_조회() {
+        // given
+        // 499페이지 * 20건 = 정확히 10,000건으로 아직 조회할 수 있다. 여기까지 막으면 볼 수 있는 결과를 잃는다
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(ProductSearchPage.empty());
+
+        // when
+        productSearchService.searchProducts("장기하", 499, 20);
+
+        // then
+        verify(productSearchRepository).search(any(), eq(499), eq(20));
+    }
+
+    private ProductSearchHit hit(final Long productId) {
+        return new ProductSearchHit(productId, "별일 없이 산다", "장기하와 얼굴들", null, null, null);
+    }
+
+    @Test
+    @DisplayName("검색어의 연속 공백을 정리해 리포지토리에 넘긴다")
+    void 검색어_정리_후_전달() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(ProductSearchPage.empty());
+        final ArgumentCaptor<SearchKeyword> captor = ArgumentCaptor.forClass(SearchKeyword.class);
+
+        // when
+        productSearchService.searchProducts("  장기하와   얼굴들 ", 0, 20);
+
+        // then
+        verify(productSearchRepository).search(captor.capture(), anyInt(), anyInt());
+        assertThat(captor.getValue().getValue()).isEqualTo("장기하와 얼굴들");
+    }
+}
