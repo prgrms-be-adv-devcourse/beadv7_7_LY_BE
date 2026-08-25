@@ -20,7 +20,9 @@ public record ProductSnapshotResult(
         int releaseYear,
         String releaseCountry,
         boolean active,
-        Long mergedIntoId
+        Long mergedIntoId,
+        String catalogNumber,
+        Long masterId
 ) {
     public static ProductSnapshotResult of(Product product, Artist artist) {
         return new ProductSnapshotResult(
@@ -34,7 +36,9 @@ public record ProductSnapshotResult(
                 product.getReleaseYear(),
                 product.getReleaseCountry(),
                 product.isActive(),
-                null
+                null,
+                product.getCatalogNumber(),
+                product.getDiscogsMasterId()
         );
     }
 }
