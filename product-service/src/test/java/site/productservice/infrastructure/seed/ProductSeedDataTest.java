@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import site.productservice.domain.TextNormalizer;
+import site.common.text.TextNormalizer;
 
 /**
  * 시드 원장 자체의 정합성 검사. 원장은 손으로 관리하는 데이터라 오타 하나로

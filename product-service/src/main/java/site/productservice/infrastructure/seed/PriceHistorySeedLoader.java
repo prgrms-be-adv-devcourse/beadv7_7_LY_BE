@@ -17,7 +17,7 @@ import site.productservice.domain.price.PriceHistory;
 import site.productservice.domain.price.PriceHistoryRepository;
 import site.productservice.domain.Product;
 import site.productservice.domain.ProductRepository;
-import site.productservice.domain.TextNormalizer;
+import site.common.text.TextNormalizer;
 
 /**
  * 시세 화면 데모용 거래 기록 시드 로더. local 프로파일 + {@code product.price-seed.enabled=true}일 때만

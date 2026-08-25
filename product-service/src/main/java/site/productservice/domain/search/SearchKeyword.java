@@ -3,7 +3,7 @@ package site.productservice.domain.search;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import site.productservice.domain.TextNormalizer;
+import site.common.text.TextNormalizer;
 
 /**
  * 검색어를 저장값과 같은 규칙으로 손질해 두 가지 형태로 제공한다.

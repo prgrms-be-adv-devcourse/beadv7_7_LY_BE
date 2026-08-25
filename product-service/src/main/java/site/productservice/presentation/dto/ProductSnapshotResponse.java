@@ -17,7 +17,9 @@ public record ProductSnapshotResponse(
         int releaseYear,
         String releaseCountry,
         boolean active,
-        Long mergedIntoId
+        Long mergedIntoId,
+        String catalogNumber,
+        Long discogsMasterId
 ) {
     public static ProductSnapshotResponse from(ProductSnapshotResult result) {
         return new ProductSnapshotResponse(
@@ -31,7 +33,9 @@ public record ProductSnapshotResponse(
                 result.releaseYear(),
                 result.releaseCountry(),
                 result.active(),
-                result.mergedIntoId()
+                result.mergedIntoId(),
+                result.catalogNumber(),
+                result.discogsMasterId()
         );
     }
 }
