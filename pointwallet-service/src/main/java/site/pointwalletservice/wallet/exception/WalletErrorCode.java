@@ -1,5 +1,4 @@
 package site.pointwalletservice.wallet.exception;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +12,7 @@ public enum WalletErrorCode implements ErrorCode {
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "WERR-3001", "잔액이 부족합니다."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "WERR-3002", "지갑을 찾을 수 없습니다."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "WERR-3003", "지갑 접근이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요."),
+    WITHDRAW_FEE_DEAD_LETTER_NOT_FOUND(HttpStatus.NOT_FOUND, "WERR-3004", "인출 수수료 DLT 기록을 찾을 수 없습니다."),
     ;
 
     private final HttpStatus status;
