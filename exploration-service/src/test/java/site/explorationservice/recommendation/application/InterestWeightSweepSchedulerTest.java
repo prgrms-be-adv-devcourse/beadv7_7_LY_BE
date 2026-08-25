@@ -4,17 +4,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import site.explorationservice.ai.chat.domain.ChatCallGate;
 import site.explorationservice.recommendation.domain.DirtyMemberTracker;
 import site.explorationservice.recommendation.domain.DueMember;
 import site.explorationservice.recommendation.domain.RecommendationPolicy;
@@ -32,8 +36,16 @@ class InterestWeightSweepSchedulerTest {
     @Mock
     private Executor interestWeightRecomputeExecutor;
 
+    @Mock
+    private ChatCallGate chatCallGate;
+
     @InjectMocks
     private InterestWeightSweepScheduler sut;
+
+    @BeforeEach
+    void 기본_열림_상태() {
+        given(chatCallGate.isOpen()).willReturn(true);
+    }
 
     @Test
     @DisplayName("클레임된 멤버 각각을 executor에 제출한다")
@@ -45,8 +57,7 @@ class InterestWeightSweepSchedulerTest {
 
         sut.sweep();
 
-        then(interestWeightRecomputeExecutor).should(org.mockito.Mockito.times(2))
-            .execute(any());
+        then(interestWeightRecomputeExecutor).should(times(2)).execute(any());
     }
 
     @Test
@@ -71,6 +82,17 @@ class InterestWeightSweepSchedulerTest {
 
         sut.sweep();
 
-        then(interestWeightRecomputeExecutor).should(org.mockito.Mockito.never()).execute(any());
+        then(interestWeightRecomputeExecutor).should(never()).execute(any());
+    }
+
+    @Test
+    @DisplayName("ChatCallGate가 닫혀 있으면 claimDue조차 부르지 않는다 — dirty 멤버를 계속 두들기지 않기 위함")
+    void 게이트_닫힘_상태에서_스윕_생략() {
+        given(chatCallGate.isOpen()).willReturn(false);
+
+        sut.sweep();
+
+        then(dirtyMemberTracker).should(never()).claimDue(any());
+        then(interestWeightRecomputeExecutor).should(never()).execute(any());
     }
 }
