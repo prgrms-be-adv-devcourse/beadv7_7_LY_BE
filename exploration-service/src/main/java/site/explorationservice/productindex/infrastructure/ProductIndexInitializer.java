@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.elasticsearch.ResourceNotFoundException;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.document.Document;
@@ -54,7 +55,14 @@ public class ProductIndexInitializer implements ApplicationRunner {
         final IndexOperations entityOperations =
             elasticsearchOperations.indexOps(ProductDocument.class);
 
-        if (!entityOperations.getAliases(ALIAS).isEmpty()) {
+        if (hasAlias(entityOperations)) {
+            updateMapping(entityOperations, ALIAS);
+            return;
+        }
+
+        if (elasticsearchOperations.indexOps(IndexCoordinates.of(ALIAS)).exists()) {
+            log.warn("{} 라는 이름을 실제 인덱스가 쓰고 있어 별칭을 붙이지 못했습니다. 별칭과 인덱스는 이름을 공유할 수 없으므로,"
+                + " 그 인덱스를 지우고 앱을 다시 띄워야 버전을 나눈 구조가 만들어집니다. 지금은 옛 인덱스 그대로 동작합니다", ALIAS);
             updateMapping(entityOperations, ALIAS);
             return;
         }
@@ -65,18 +73,40 @@ public class ProductIndexInitializer implements ApplicationRunner {
     /**
      * 인덱스가 아니라 <b>별칭</b>이 있는지로 판정한다. 인덱스 존재로 판정하면 다음 버전으로 넘어간 뒤에 앱을 띄웠을 때 아무도 쓰지 않는 첫 버전 인덱스가 다시
      * 만들어진다.
+     * <p>
+     * 별칭 조회는 "있는지 묻는" 창구가 아니라서, 없으면 빈 값이 아니라 예외가 온다. 그대로 두면 이 클래스가
+     * {@link ApplicationRunner}라 앱이 아예 뜨지 않는다.
+     */
+    private boolean hasAlias(final IndexOperations entityOperations) {
+        try {
+            return !entityOperations.getAliases(ALIAS).isEmpty();
+        } catch (final ResourceNotFoundException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 인덱스 생성과 별칭 부착은 각각 별개의 요청이라, 앞은 되고 뒤가 실패하면 이름만 있고 아무도 가리키지 않는 인덱스가 남는다. 그 상태로 다시 띄우면 같은 이름을
+     * 또 만들려다 실패하므로, 이미 있으면 만들지 않고 별칭만 붙인다.
      */
     private void createFirstIndex(final IndexOperations entityOperations) {
-        final Settings settings = entityOperations.createSettings(ProductDocument.class);
-        final Document mapping = entityOperations.createMapping(ProductDocument.class);
-
         final IndexOperations firstIndex =
             elasticsearchOperations.indexOps(IndexCoordinates.of(FIRST_INDEX));
-        firstIndex.create(settings, mapping);
-        firstIndex.alias(new AliasActions().add(new AliasAction.Add(
-            AliasActionParameters.builder().withIndices(FIRST_INDEX).withAliases(ALIAS).build())));
 
-        log.info("상품 인덱스를 생성하고 별칭을 붙였습니다 — {} -> {}", ALIAS, FIRST_INDEX);
+        try {
+            if (!firstIndex.exists()) {
+                final Settings settings = entityOperations.createSettings(ProductDocument.class);
+                final Document mapping = entityOperations.createMapping(ProductDocument.class);
+                firstIndex.create(settings, mapping);
+            }
+            firstIndex.alias(new AliasActions().add(new AliasAction.Add(
+                AliasActionParameters.builder().withIndices(FIRST_INDEX).withAliases(ALIAS).build())));
+
+            log.info("상품 인덱스를 생성하고 별칭을 붙였습니다 — {} -> {}", ALIAS, FIRST_INDEX);
+        } catch (final Exception e) {
+            log.warn("상품 인덱스를 만들지 못했습니다 — {} -> {}. 색인과 검색이 동작하지 않으므로 원인을 확인해야 합니다",
+                ALIAS, FIRST_INDEX, e);
+        }
     }
 
     /**
