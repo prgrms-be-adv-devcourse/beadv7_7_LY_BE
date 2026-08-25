@@ -22,6 +22,17 @@ spring:
   elasticsearch:
     uris: ${ELASTICSEARCH_URIS}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: site.common.event.contract
+    listener:
+      ack-mode: batch
+
   ai:
     # OpenAI 스타터는 챗·임베딩뿐 아니라 이미지·오디오·모더레이션 모델까지 전부 자동설정한다.
     # 쓰지도 않는 빈이 뜨는 것도 문제지만, 이 빈들이 기동 시점에 API 키를 요구해서

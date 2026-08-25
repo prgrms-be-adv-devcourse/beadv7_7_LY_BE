@@ -8,6 +8,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
+import site.explorationservice.ai.chat.domain.ChatCallGate;
 
 /**
  * 구조화 출력으로 챗 모델을 호출하는 유일한 창구.
@@ -24,14 +25,21 @@ import org.springframework.stereotype.Service;
  * 도메인 예외로도 감싸지 않는다 — {@code EmbeddingService}도 그렇듯, 실패(호출 실패든 파싱 실패든)를 어떤 예외로 바꿀지는 호출자가 결정한다.
  * Spring AI/파싱 예외를 그대로 전파한다.
  * <p>
+ * {@link ChatCallGate}가 닫혀 있으면 호출 자체를 시도하지 않는다 — 장애 대응용 수동 스위치를 여기(모든 챗 호출의 공통 경계)에 둬서, 이 클래스를 부르는
+ * 어떤 호출부든 자동으로 보호받게 한다.
  */
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 
     private final ChatModel chatModel;
+    private final ChatCallGate chatCallGate;
 
     public <T> T call(final String prompt, final Class<T> responseType) {
+        if (!chatCallGate.isOpen()) {
+            throw new IllegalStateException("챗 모델 호출이 일시 중지된 상태입니다");
+        }
+
         final BeanOutputConverter<T> converter = new BeanOutputConverter<>(responseType);
         final ChatOptions options =
             OpenAiChatOptions.builder().outputSchema(converter.getJsonSchema()).build();
