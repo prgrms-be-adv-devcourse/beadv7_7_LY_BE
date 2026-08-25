@@ -22,7 +22,7 @@ import site.pointwalletservice.deposit.reconciliation.presentation.dto.ResolveRe
  * 전제. 관리자 인증 체계를 여기서 새로 만드는 건 지금 스코프를 벗어난다고 판단했다.
  */
 @RestController
-@RequestMapping("/internal/v1/admin/deposit-reconciliation-logs")
+@RequestMapping("/internal/admin/v1/deposit-reconciliation-logs")
 @RequiredArgsConstructor
 public class DepositReconciliationAdminController {
 
