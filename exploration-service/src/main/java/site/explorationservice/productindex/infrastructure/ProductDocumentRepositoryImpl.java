@@ -8,10 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.stereotype.Repository;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.productindex.domain.ProductDocument;
@@ -24,7 +25,6 @@ import site.explorationservice.productindex.domain.ScoredProduct;
  * kNN 질의는 어차피 그쪽으로만 조립할 수 있다.
  */
 @Repository
-@RequiredArgsConstructor
 public class ProductDocumentRepositoryImpl implements ProductDocumentRepository {
 
     private static final String IDENTITY_FIELD = "identityVector";
@@ -57,11 +57,25 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     private final ProductVectorReader productVectorReader;
 
     /**
+     * 평소에는 별칭에 쓴다. 재색인할 때만 아직 별칭이 가리키지 않는 새 인덱스를 지정해, 검색이 옛 인덱스로 서비스되는 동안 새 인덱스를 채운다.
+     */
+    private final String writeTarget;
+
+    public ProductDocumentRepositoryImpl(
+        final ElasticsearchOperations elasticsearchOperations,
+        final ProductVectorReader productVectorReader,
+        @Value("${exploration.product-index.write-target:lp_products}") final String writeTarget) {
+        this.elasticsearchOperations = elasticsearchOperations;
+        this.productVectorReader = productVectorReader;
+        this.writeTarget = writeTarget;
+    }
+
+    /**
      * 문서 id가 productId라 같은 상품을 다시 저장하면 덮어쓰기가 된다 — 재색인이 자연히 멱등하다.
      */
     @Override
     public void saveAll(final List<ProductDocument> documents) {
-        elasticsearchOperations.save(documents);
+        elasticsearchOperations.save(documents, IndexCoordinates.of(writeTarget));
     }
 
     @Override
