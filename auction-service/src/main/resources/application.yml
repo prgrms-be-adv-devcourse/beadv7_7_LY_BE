@@ -56,7 +56,6 @@ spring:
       password: ${REDIS_PASSWORD}
 
 
-# TODO(#214) 부하테스트 및 분산락 적용 후 설정값 수정 필요
 resilience4j:
   retry:
     instances:
@@ -67,12 +66,11 @@ resilience4j:
         exponentialBackoffMultiplier: 2.0
         enableRandomizedWait: true
         randomizedWaitFactor: 0.5
-        # Spring RestClient는 연결/읽기 타임아웃을 구분 없이 전부 ResourceAccessException으로 던지므로,
-        # 둘 다 재시도 대상인 지금은 그 타입 하나만 매칭하면 된다(cause 조사 불필요).
         retryExceptions:
           - org.springframework.web.client.ResourceAccessException
         ignoreExceptions:
           - site.auctionservice.exception.WalletBusinessException
+          - site.auctionservice.exception.WalletHoldOutcomeUnknownException
           - io.github.resilience4j.circuitbreaker.CallNotPermittedException
           - io.github.resilience4j.bulkhead.BulkheadFullException
   circuitbreaker:
@@ -93,6 +91,7 @@ resilience4j:
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
           - site.auctionservice.exception.AuctionException   # hold() 응답이 200이지만 body가 비정상(null/실패/data 없음)인 경우도 실패로 집계. WalletBusinessException(잔액부족/지갑없음)은 하위 ignoreExceptions가 우선 적용돼 그대로 제외됨
+          - site.auctionservice.exception.WalletHoldOutcomeUnknownException   # 응답 유실형 실패(재시도는 안 하지만) 도 CB 실패율 집계에는 포함시켜야 함
         ignoreExceptions:
           - site.auctionservice.exception.WalletBusinessException
   bulkhead:
