@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
  * 정규화가 필요한 모든 곳은 이 클래스만 사용한다.
  * <p>
  * 상품을 저장하는 서비스와 검색어를 다듬는 서비스가 갈라져 있어 공통 모듈에 둔다.
+ * <p>
+ * 결과가 컬럼에 저장돼 있으므로, 규칙을 바꾸면 저장된 값도 함께 다시 계산해야 한다.
  */
 public final class TextNormalizer {
 
