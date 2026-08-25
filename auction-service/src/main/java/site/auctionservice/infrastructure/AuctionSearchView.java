@@ -108,8 +108,8 @@ public class AuctionSearchView {
                 sellerNickname,
                 currentPrice.getValue(),
                 0,
-                auction.getSchedule().getPeriod().getStartAt(),
-                auction.getSchedule().getPeriod().getEndAt()
+                auction.getStartAt(),
+                auction.getEndAt()
         );
     }
 
@@ -118,8 +118,8 @@ public class AuctionSearchView {
         this.itemCondition = auction.getItemInfo().getCondition();
         Money currentPrice = auction.getPricing().getStartPrice().plus(auction.getPricing().getShippingFee());
         this.highestBidAmount = currentPrice.getValue();
-        this.startAt = auction.getSchedule().getPeriod().getStartAt();
-        this.endAt = auction.getSchedule().getPeriod().getEndAt();
+        this.startAt = auction.getStartAt();
+        this.endAt = auction.getEndAt();
 
         // product가 있을 때(=productId가 실제로 바뀐 경우)만 상품 표시정보 갱신
         if (product != null) {

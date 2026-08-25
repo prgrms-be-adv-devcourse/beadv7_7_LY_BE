@@ -954,7 +954,7 @@ class AuctionServiceTest {
         assertThat(auction.getHighestBid().isBidder(2L)).isTrue();
 
         verify(walletPort).hold(1L, 2L, Money.of(13_000L));
-        verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getSchedule().getPeriod().getEndAt());
+        verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getEndAt());
     }
 
     @Test

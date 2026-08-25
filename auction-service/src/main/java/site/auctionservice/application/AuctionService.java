@@ -278,9 +278,9 @@ public class AuctionService {
         // 새 Bid 저장 (ACTIVE)
         Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
         // 최고입찰 갱신 + 마감 연장
-        LocalDateTime endAtBefore = auction.getSchedule().getPeriod().getEndAt();
+        LocalDateTime endAtBefore = auction.getEndAt();
         auction.applyBid(command.bidderId(), amount, newBid.getId(), now);
-        LocalDateTime endAtAfter = auction.getSchedule().getPeriod().getEndAt();
+        LocalDateTime endAtAfter = auction.getEndAt();
         boolean extended = !endAtBefore.equals(endAtAfter);
 
         // SearchView 갱신

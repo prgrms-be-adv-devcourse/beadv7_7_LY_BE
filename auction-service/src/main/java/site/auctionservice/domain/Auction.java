@@ -224,4 +224,12 @@ public class Auction extends BaseEntity {
         }
         changeStatus(AuctionStatus.FORCE_CANCELED);
     }
+
+    public LocalDateTime getStartAt() {
+        return schedule.getPeriod().getStartAt();
+    }
+
+    public LocalDateTime getEndAt() {
+        return schedule.getPeriod().getEndAt();
+    }
 }

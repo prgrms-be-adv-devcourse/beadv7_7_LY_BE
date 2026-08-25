@@ -20,8 +20,8 @@ public record InternalAuctionSnapshotResult(
             auction.getId(),
             auction.getEffectiveStatusAt(LocalDateTime.now()),
             auction.getPricing().nextMinBidAmount(auction.getHighestBid()).getValue(),
-            auction.getSchedule().getPeriod().getStartAt(),
-            auction.getSchedule().getPeriod().getEndAt()
+            auction.getStartAt(),
+            auction.getEndAt()
         );
     }
 }
