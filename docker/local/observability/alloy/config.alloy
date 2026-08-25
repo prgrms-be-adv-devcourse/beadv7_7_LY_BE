@@ -1,0 +1,44 @@
+//  로컬은 같은 compose 네트워크 안이라 IP 대신 서비스 이름(loki)으로 바로 접근한다 — 플레이스홀더 치환이 필요 없다.
+//
+// 로컬 7개 서비스는 평소엔 gradlew bootRun(호스트 프로세스)이라 여기 안 잡힌다.
+// 이 Alloy가 실제로 로그를 수집하려면 대상 서비스를 컨테이너로 띄워야 한다
+
+discovery.docker "app_containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "app_containers" {
+  targets = discovery.docker.app_containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.app_containers.output
+  forward_to = [loki.process.default.receiver]
+}
+
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.regex {
+    expression = "\\s(?P<level>TRACE|DEBUG|INFO|WARN|ERROR)\\s"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

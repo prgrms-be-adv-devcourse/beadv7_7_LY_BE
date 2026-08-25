@@ -1,0 +1,93 @@
+{
+  "title": "lp-auction Logs Overview",
+  "uid": "lp-auction-logs-overview",
+  "schemaVersion": 39,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(container)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "level",
+        "type": "custom",
+        "query": "TRACE,DEBUG,INFO,WARN,ERROR",
+        "current": { "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Log Volume by Level",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum by (level) (count_over_time({container=~\"$container\", level=~\"$level\"}[$__interval]))",
+          "legendFormat": "{{level}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Log Volume by Service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum by (container) (count_over_time({container=~\"$container\", level=~\"$level\"}[$__interval]))",
+          "legendFormat": "{{container}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "ERROR Count by Service (선택된 시간 범위)",
+      "type": "bargauge",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [
+        { "color": "green", "value": null },
+        { "color": "red", "value": 1 }
+      ] } }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container) (count_over_time({container=~\"$container\", level=\"ERROR\"}[$__range]))",
+          "legendFormat": "{{container}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Logs",
+      "type": "logs",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{container=~\"$container\", level=~\"$level\"}"
+        }
+      ]
+    }
+  ]
+}

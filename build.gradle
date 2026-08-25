@@ -50,6 +50,14 @@ subprojects {
         // Prometheus
         implementation 'io.micrometer:micrometer-registry-prometheus'
 
+        // Tracing — OTLP로 Tempo에 직접 export (collector 없이)
+        // micrometer-registry-otlp는 제외한다 — 이 스타터가 딸려오는 OTLP push 방식 메트릭
+        // 레지스트리를 자동으로 활성화시키는데 우리는 Prometheus pull 방식만 쓰기로 했다
+        implementation('org.springframework.boot:spring-boot-starter-opentelemetry') {
+            exclude group: 'io.micrometer', module: 'micrometer-registry-otlp'
+        }
+        implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+
         // Kafka
         implementation 'org.springframework.boot:spring-boot-starter-kafka'
         testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'

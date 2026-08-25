@@ -36,6 +36,7 @@ spring:
         spring.json.trusted.packages: site.common.event.contract
     listener:
       ack-mode: batch
+      observation-enabled: true
 
 management:
   endpoints:
@@ -43,6 +44,18 @@ management:
       exposure:
         include: prometheus, health
       base-path: /member-service/actuator
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.15}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${TEMPO_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 app:
   jwt:

@@ -9,6 +9,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 
+    // 관측이 붙은 RestClient.Builder 오토컨피규레이션 (ProductAuctionClientConfig 트레이스 전파에 필요)
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
+
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 

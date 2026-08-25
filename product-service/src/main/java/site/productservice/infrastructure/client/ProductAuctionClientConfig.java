@@ -21,8 +21,12 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration
 public class ProductAuctionClientConfig {
 
+    // builder를 주입받지 않고 RestClient.builder()를 직접 호출하면 Boot가 관측/트레이싱을 붙여둔
+    // 오토컨피규어드 RestClient.Builder를 우회하게 되어 W3C traceparent 헤더가 하위 서비스 호출에
+    // 전파되지 않는다. configure()는 테스트가 자체 builder(목 서버용)를 넣을 수 있도록 그대로 둔다.
     @Bean
     RestClient auctionApiRestClient(
+            RestClient.Builder builder,
             @Value("${product.auction-api.base-url:http://localhost:8080}") String baseUrl,
             @Value("${product.auction-api.connect-timeout-ms:2000}") long connectTimeoutMs,
             @Value("${product.auction-api.read-timeout-ms:3000}") long readTimeoutMs,
@@ -31,7 +35,7 @@ public class ProductAuctionClientConfig {
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
-        return configure(RestClient.builder(), baseUrl, jsonMapper)
+        return configure(builder, baseUrl, jsonMapper)
                 .requestFactory(requestFactory)
                 .build();
     }

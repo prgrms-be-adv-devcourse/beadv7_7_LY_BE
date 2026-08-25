@@ -1,0 +1,46 @@
+# docker/prod/prometheus/rules/services-alerts.yml과 동일 — 운영에 반영하기 전에 로컬에서
+# firing이 실제로 되는지 확인하는 용도.
+
+groups:
+  - name: services-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} 스크레이프 실패(다운 의심)"
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (service) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+          /
+          sum by (service) (rate(http_server_requests_seconds_count[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} 5xx 에러율 5% 초과"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, sum by (service, le) (rate(http_server_requests_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} P95 응답시간 1s 초과"
+
+      - alert: HighJvmHeapUsage
+        expr: |
+          sum by (service) (jvm_memory_used_bytes{area="heap"})
+          /
+          sum by (service) (jvm_memory_max_bytes{area="heap"})
+          > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} JVM 힙 사용률 90% 초과"

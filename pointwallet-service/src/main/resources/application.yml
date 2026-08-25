@@ -42,6 +42,9 @@ spring:
         spring.json.trusted.packages: site.common.event.contract,site.pointwalletservice.withdraw.domain.event
     listener:
       ack-mode: batch
+      observation-enabled: true
+    template:
+      observation-enabled: true
 
 management:
   endpoints:
@@ -49,6 +52,18 @@ management:
       exposure:
         include: prometheus, health
       base-path: /pointwallet-service/actuator
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.15}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${TEMPO_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 toss:
   payments:

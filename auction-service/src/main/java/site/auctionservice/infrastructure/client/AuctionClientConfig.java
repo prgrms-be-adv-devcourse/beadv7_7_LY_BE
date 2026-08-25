@@ -19,29 +19,34 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class AuctionClientConfig {
 
+    // RestClient.builder()로 직접 생성하면 Boot가 관측/트레이싱을 붙여둔 오토컨피규어드 RestClient.Builder를
+    // 우회하게 되어 W3C traceparent 헤더가 하위 서비스 호출에 전파되지 않는다.
     @Bean
     RestClient auctionProductRestClient(
+            RestClient.Builder builder,
             @Value("${product.service.base-url}") String baseUrl,
             @Value("${product.service.connect-timeout-ms:500}") long connectTimeoutMs,
             @Value("${product.service.read-timeout-ms:1000}") long readTimeoutMs) {
-        return RestClient.builder()
-                .baseUrl(baseUrl)
+        return builder.baseUrl(baseUrl)
                 .requestFactory(timeoutRequestFactory(connectTimeoutMs, readTimeoutMs))
                 .build();
     }
 
     @Bean
-    RestClient auctionWalletRestClient(@Value("${wallet.service.base-url}") String baseUrl, ClientHttpRequestFactory walletRequestFactory) {
-        return RestClient.builder().baseUrl(baseUrl).requestFactory(walletRequestFactory).build();
+    RestClient auctionWalletRestClient(
+            RestClient.Builder builder,
+            @Value("${wallet.service.base-url}") String baseUrl,
+            ClientHttpRequestFactory walletRequestFactory) {
+        return builder.baseUrl(baseUrl).requestFactory(walletRequestFactory).build();
     }
 
     @Bean
     RestClient auctionMemberRestClient(
+            RestClient.Builder builder,
             @Value("${member.service.base-url}") String baseUrl,
             @Value("${member.service.connect-timeout-ms:300}") long connectTimeoutMs,
             @Value("${member.service.read-timeout-ms:500}") long readTimeoutMs) {
-        return RestClient.builder()
-                .baseUrl(baseUrl)
+        return builder.baseUrl(baseUrl)
                 .requestFactory(timeoutRequestFactory(connectTimeoutMs, readTimeoutMs))
                 .build();
     }
