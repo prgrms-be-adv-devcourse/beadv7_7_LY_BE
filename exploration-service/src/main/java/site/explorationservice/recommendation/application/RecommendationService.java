@@ -13,6 +13,7 @@ import site.explorationservice.productindex.domain.ProductVectors;
 import site.explorationservice.recommendation.application.dto.RecommendationResult;
 import site.explorationservice.recommendation.application.port.WishlistPort;
 import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
+import site.explorationservice.recommendation.domain.InterestWeightCacheRepository;
 import site.explorationservice.recommendation.domain.RecommendationPolicy;
 
 @Slf4j
@@ -22,14 +23,13 @@ public class RecommendationService {
 
     private final ProductDocumentRepository productDocumentRepository;
     private final WishlistPort wishlistPort;
-    private final InterestWeightService interestWeightService;
+    private final InterestWeightCacheRepository interestWeightCacheRepository;
 
     /**
-     * 운영 추천 경로. 위시리스트를 보고 LLM으로 축 가중치를 산출하되 느리거나 실패하면 자동으로 기본값 폴백.
+     * 운영 추천 경로. 가중치는 위시리스트 변경 시점에 비동기로 미리 계산해둔 캐시만 쓴다 — 요청 경로에서는 LLM을 아예 부르지 않는다
      * <p>
-     * 지금은 요청마다 동기로 계산한다. 위시리스트 변경 시점에 미리 계산해 캐시해두는 구조는 나중 단계
-     * <p>
-     * 위시리스트가 비면 LLM도 호출하지 않는다
+     * 캐시가 비어 있으면(아직 비동기 파이프라인이 못 따라잡았거나, 이 기능이 생기기 전부터 위시리스트를 안 바꾼 멤버) LLM을 동기로 호출하는 대신 기본값으로 폴백.
+     * 실제 가중치는 이미 있는 dirty 추적 파이프라인이 다음 위시리스트 변경 때 채워준다.
      */
     public List<RecommendationResult> recommendForMember(final Long memberId, final int size) {
         final List<WishlistProduct> wishlistProducts =
@@ -40,7 +40,11 @@ public class RecommendationService {
 
         final List<Long> productIds =
             wishlistProducts.stream().map(WishlistProduct::productId).toList();
-        final AxisWeights weights = interestWeightService.analyzeWeightsOrDefault(wishlistProducts);
+        final AxisWeights weights = interestWeightCacheRepository.find(memberId)
+            .orElseGet(() -> {
+                log.info("가중치 캐시 미스, 기본값으로 폴백 — memberId={}", memberId);
+                return RecommendationPolicy.DEFAULT_AXIS_WEIGHTS;
+            });
 
         return recommendFrom(productIds, size, weights);
     }

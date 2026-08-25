@@ -12,6 +12,7 @@ import static org.mockito.Mockito.times;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ import site.explorationservice.productindex.domain.ScoredProduct;
 import site.explorationservice.recommendation.application.dto.RecommendationResult;
 import site.explorationservice.recommendation.application.port.WishlistPort;
 import site.explorationservice.recommendation.application.port.dto.WishlistProduct;
+import site.explorationservice.recommendation.domain.InterestWeightCacheRepository;
 import site.explorationservice.recommendation.domain.RecommendationPolicy;
 
 /**
@@ -47,7 +49,7 @@ class RecommendationServiceTest {
     private WishlistPort wishlistPort;
 
     @Mock
-    private InterestWeightService interestWeightService;
+    private InterestWeightCacheRepository interestWeightCacheRepository;
 
     @InjectMocks
     private RecommendationService recommendationService;
@@ -219,8 +221,8 @@ class RecommendationServiceTest {
         given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
             .willReturn(List.of(
                 wishlistProduct(10L), wishlistProduct(20L)));
-        given(interestWeightService.analyzeWeightsOrDefault(anyList()))
-            .willReturn(RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
+        given(interestWeightCacheRepository.find(1L))
+            .willReturn(Optional.of(RecommendationPolicy.DEFAULT_AXIS_WEIGHTS));
         givenVectors(Map.of(
             10L, vectors(new float[]{1, 0}, new float[]{1, 0}, new float[]{1, 0}),
             20L, vectors(new float[]{0, 1}, new float[]{0, 1}, new float[]{0, 1})));
@@ -236,35 +238,48 @@ class RecommendationServiceTest {
     }
 
     @Test
-    @DisplayName("위시리스트 전체를 LLM에 넘겨 가중치를 구하고, 그 결과를 그대로 병합에 쓴다")
-    void 회원_추천_LLM_가중치_사용() {
-        final List<WishlistProduct> wishlist = List.of(wishlistProduct(10L), wishlistProduct(20L));
+    @DisplayName("가중치 캐시가 있으면 그대로 쓴다")
+    void 회원_추천_캐시_히트() {
         given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
-            .willReturn(wishlist);
-        final AxisWeights llmWeights = new AxisWeights(0.6, 0.3, 0.1);
-        given(interestWeightService.analyzeWeightsOrDefault(wishlist)).willReturn(llmWeights);
-        givenVectors(Map.of(
-            10L, vectors(new float[]{1, 0}, new float[]{1, 0}, new float[]{1, 0}),
-            20L, vectors(new float[]{0, 1}, new float[]{0, 1}, new float[]{0, 1})));
+            .willReturn(List.of(wishlistProduct(10L)));
+        final AxisWeights cached = new AxisWeights(0.5, 0.3, 0.2);
+        given(interestWeightCacheRepository.find(1L)).willReturn(Optional.of(cached));
+        givenVectors(Map.of(10L, vectors(new float[]{1}, new float[]{1}, new float[]{1})));
         givenSimilar();
 
         recommendationService.recommendForMember(1L, 5);
 
         then(productDocumentRepository).should()
             .findSimilar(any(), weightsCaptor.capture(), anyList(), anyInt());
-        assertThat(weightsCaptor.getValue()).isEqualTo(llmWeights);
+        assertThat(weightsCaptor.getValue()).isEqualTo(cached);
     }
 
     @Test
-    @DisplayName("위시리스트가 비어 있으면 LLM도, ES도 아예 부르지 않는다")
+    @DisplayName("캐시 미스면 LLM을 부르지 않고 바로 기본값으로 폴백한다")
+    void 회원_추천_캐시_미스_기본값_폴백() {
+        given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
+            .willReturn(List.of(wishlistProduct(10L)));
+        given(interestWeightCacheRepository.find(1L)).willReturn(Optional.empty());
+        givenVectors(Map.of(10L, vectors(new float[]{1}, new float[]{1}, new float[]{1})));
+        givenSimilar();
+
+        recommendationService.recommendForMember(1L, 5);
+
+        then(productDocumentRepository).should()
+            .findSimilar(any(), weightsCaptor.capture(), anyList(), anyInt());
+        assertThat(weightsCaptor.getValue()).isEqualTo(RecommendationPolicy.DEFAULT_AXIS_WEIGHTS);
+    }
+
+    @Test
+    @DisplayName("위시리스트가 비어 있으면 캐시도, ES도 아예 부르지 않는다")
     void 회원_추천_빈_위시리스트() {
         given(wishlistPort.findRecentProducts(1L, RecommendationPolicy.WISHLIST_LOOKUP_LIMIT))
             .willReturn(List.of());
 
         assertThat(recommendationService.recommendForMember(1L, 5)).isEmpty();
 
-        // 분석할 재료가 없는데 LLM부터 부르면 비용만 나간다.
-        then(interestWeightService).should(never()).analyzeWeightsOrDefault(anyList());
+        // 분석할 재료가 없는데 캐시부터 조회하면 헛수고다.
+        then(interestWeightCacheRepository).should(never()).find(any());
         then(productDocumentRepository).should(never()).findVectors(anyList());
     }
 
