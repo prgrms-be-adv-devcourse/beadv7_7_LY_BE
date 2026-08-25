@@ -21,7 +21,7 @@ import site.productservice.domain.Product;
 import site.productservice.domain.ProductAlias;
 import site.productservice.domain.ProductAliasRepository;
 import site.productservice.domain.ProductRepository;
-import site.productservice.domain.TextNormalizer;
+import site.common.text.TextNormalizer;
 
 /**
  * LP 릴리스 시드 로더. local 프로파일 + {@code product.seed.enabled=true}일 때만 동작한다(기본 OFF).

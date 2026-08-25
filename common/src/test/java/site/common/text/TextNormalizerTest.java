@@ -1,4 +1,4 @@
-package site.productservice.domain;
+package site.common.text;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -59,5 +59,17 @@ class TextNormalizerTest {
         } finally {
             Locale.setDefault(original);
         }
+    }
+
+    @Test
+    @DisplayName("구분자가 달라도 같은 값으로 통일한다")
+    void normalize_구분자_통일() {
+        // given & when & then — 실데이터에서 같은 카탈로그 번호가 네 가지 표기로 존재한다
+        // (DR LP 001 / DR-LP-001 / DRLP-001 / DRLP001). 셋이 갈리면 사용자가 표기를 정확히
+        // 알아야만 찾을 수 있다.
+        assertThat(TextNormalizer.normalize("BLP-1567")).isEqualTo("blp1567");
+        assertThat(TextNormalizer.normalize("BLP 1567")).isEqualTo("blp1567");
+        assertThat(TextNormalizer.normalize("blp1567")).isEqualTo("blp1567");
+        assertThat(TextNormalizer.normalize("SP/1")).isEqualTo("sp1");
     }
 }

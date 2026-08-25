@@ -1,4 +1,4 @@
-package site.productservice.domain;
+package site.common.text;
 
 import java.text.Normalizer;
 import java.util.Locale;
@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
  * 검색·중복 확인에 쓰는 표기 통일(정규화) 규칙의 단일 구현.
  * 저장할 때와 검색할 때 반드시 같은 규칙을 써야 "저장된 키와 검색 키가 어긋나는" 사고가 없으므로,
  * 정규화가 필요한 모든 곳은 이 클래스만 사용한다.
+ * <p>
+ * 상품을 저장하는 서비스와 검색어를 다듬는 서비스가 갈라져 있어 공통 모듈에 둔다.
  */
 public final class TextNormalizer {
 

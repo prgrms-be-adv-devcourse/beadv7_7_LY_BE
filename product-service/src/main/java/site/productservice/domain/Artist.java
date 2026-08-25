@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.common.text.TextNormalizer;
 
 /**
  * 아티스트. 상품(Product)이 이 테이블을 artistId 숫자로 참조한다.

@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.common.text.TextNormalizer;
 
 /**
  * 상품 1건 = 특정 시기·국가에서 찍어낸 LP 한 종류 (예: Abbey Road 1969년 영국 초판).

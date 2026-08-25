@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.common.text.TextNormalizer;
 
 /**
  * 상품 제목의 다른 표기 (애비 로드 / Abbey Road). 어느 표기로 검색해도 같은 상품이 나오게 한다.

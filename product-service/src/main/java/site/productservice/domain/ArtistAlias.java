@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import site.common.entity.BaseEntity;
+import site.common.text.TextNormalizer;
 
 /**
  * 아티스트의 다른 표기 (비틀즈 / The Beatles). 어느 표기로 검색해도 같은 아티스트의 상품이
