@@ -38,6 +38,6 @@ class ProductSnapshotResponseTest {
         assertThat(response.mergedIntoId()).isNull();
         // 검색 색인이 소비하는 두 필드. 이름이 어긋나면 예외가 아니라 조용히 null이 된다
         assertThat(response.catalogNumber()).isEqualTo("PCS 7088");
-        assertThat(response.masterId()).isEqualTo(24047L);
+        assertThat(response.discogsMasterId()).isEqualTo(24047L);
     }
 }

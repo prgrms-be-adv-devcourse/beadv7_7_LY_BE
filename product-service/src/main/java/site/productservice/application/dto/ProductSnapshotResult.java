@@ -22,7 +22,7 @@ public record ProductSnapshotResult(
         boolean active,
         Long mergedIntoId,
         String catalogNumber,
-        Long masterId
+        Long discogsMasterId
 ) {
     public static ProductSnapshotResult of(Product product, Artist artist) {
         return new ProductSnapshotResult(

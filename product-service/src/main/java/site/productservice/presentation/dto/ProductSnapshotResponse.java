@@ -19,7 +19,7 @@ public record ProductSnapshotResponse(
         boolean active,
         Long mergedIntoId,
         String catalogNumber,
-        Long masterId
+        Long discogsMasterId
 ) {
     public static ProductSnapshotResponse from(ProductSnapshotResult result) {
         return new ProductSnapshotResponse(
@@ -35,7 +35,7 @@ public record ProductSnapshotResponse(
                 result.active(),
                 result.mergedIntoId(),
                 result.catalogNumber(),
-                result.masterId()
+                result.discogsMasterId()
         );
     }
 }
