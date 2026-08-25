@@ -8,7 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import site.auctionservice.exception.ConcurrentLockException;
+import site.auctionservice.exception.LockAcquisitionFailedException;
 
 import java.util.concurrent.TimeUnit;
 
@@ -60,27 +60,27 @@ class RedissonLockManagerTest {
     }
 
     @Test
-    @DisplayName("락 획득에 실패하면 ConcurrentLockException을 던지고 unlock을 호출하지 않는다")
+    @DisplayName("락 획득에 실패하면 LockAcquisitionFailedException을 던지고 unlock을 호출하지 않는다")
     void executeWithLock_notAcquired_throwsAndSkipsUnlock() throws InterruptedException {
         given(redissonClient.getLock("auction:lock:1")).willReturn(rLock);
         given(rLock.tryLock(3L, TimeUnit.MILLISECONDS)).willReturn(false);
 
         assertThatThrownBy(() ->
                 lockManager.executeWithLock("auction:lock:1", 3L, -1L, TimeUnit.MILLISECONDS, () -> "ok"))
-                .isInstanceOf(ConcurrentLockException.class);
+                .isInstanceOf(LockAcquisitionFailedException.class);
 
         verify(rLock, never()).unlock();
     }
 
     @Test
-    @DisplayName("tryLock 도중 인터럽트되면 ConcurrentLockException을 던지고 인터럽트 상태를 복원한다")
+    @DisplayName("tryLock 도중 인터럽트되면 LockAcquisitionFailedException을 던지고 인터럽트 상태를 복원한다")
     void executeWithLock_interrupted_throwsAndRestoresInterruptFlag() throws InterruptedException {
         given(redissonClient.getLock("auction:lock:1")).willReturn(rLock);
         given(rLock.tryLock(3L, TimeUnit.MILLISECONDS)).willThrow(new InterruptedException());
 
         assertThatThrownBy(() ->
                 lockManager.executeWithLock("auction:lock:1", 3L, -1L, TimeUnit.MILLISECONDS, () -> "ok"))
-                .isInstanceOf(ConcurrentLockException.class);
+                .isInstanceOf(LockAcquisitionFailedException.class);
 
         assertThat(Thread.interrupted()).isTrue();
         verify(rLock, never()).unlock();

@@ -5,7 +5,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 import site.auctionservice.application.port.LockPort;
-import site.auctionservice.exception.ConcurrentLockException;
+import site.auctionservice.exception.LockAcquisitionFailedException;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -25,12 +25,12 @@ public class RedissonLockManager implements LockPort {
                     ? lock.tryLock(waitTime, unit)
                     : lock.tryLock(waitTime, leaseTime, unit);
             if (!acquired) {
-                throw new ConcurrentLockException(key);
+                throw new LockAcquisitionFailedException(key);
             }
             return action.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ConcurrentLockException(key, e);
+            throw new LockAcquisitionFailedException(key, e);
         } finally {
             if (acquired && lock.isHeldByCurrentThread()) {
                 lock.unlock();
