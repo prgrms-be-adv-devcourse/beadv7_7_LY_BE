@@ -241,21 +241,24 @@ public class AuctionService {
         try {
             return transactionTemplate.execute(status -> executeBid(command, holdInfoRef));
         } catch (RuntimeException e) {
-            WalletHoldInfo holdInfo = holdInfoRef.get();
-            if (holdInfo == null) {
-                // hold() 자체가 실패해서 holdId가 없는 경우 - 보상할 대상이 없으므로 그대로 전파
-                throw e;
-            }
-            log.error("입찰 처리 실패 - 예치금 홀드 보상(rollback) 시도: holdId={}, auctionId={}, bidderId={}, amount={}",
-                    holdInfo.holdId(), command.auctionId(), command.bidderId(), command.amount(), e);
-            // 보상 호출 자체가 실패해도 원래 입찰 실패 사유를 덮어쓰면 안 되므로 별도로 잡아서 로그만 남긴다
-            try {
-                walletPort.rollback(holdInfo.holdId(), command.auctionId(), command.bidderId(), Money.from(command.amount()));
-            } catch (RuntimeException rollbackFailure) {
-                log.error("예치금 홀드 보상(rollback) 실패 - 홀드가 해제되지 않은 채 남아있을 수 있음: holdId={}, auctionId={}, bidderId={}",
-                        holdInfo.holdId(), command.auctionId(), command.bidderId(), rollbackFailure);
-            }
+            compensateHold(command, holdInfoRef.get(), e);
             throw e;
+        }
+    }
+
+    private void compensateHold(PlaceBidCommand command, WalletHoldInfo holdInfo, RuntimeException cause) {
+        if (holdInfo == null) {
+            // hold() 자체가 실패해서 holdId가 없는 경우 - 보상할 대상이 없으므로 그대로 전파
+            return;
+        }
+        log.error("입찰 처리 실패 - 예치금 홀드 보상(rollback) 시도: holdId={}, auctionId={}, bidderId={}, amount={}",
+                holdInfo.holdId(), command.auctionId(), command.bidderId(), command.amount(), cause);
+        try {
+            walletPort.rollback(holdInfo.holdId(), command.auctionId(), command.bidderId(), Money.from(command.amount()));
+        } catch (RuntimeException rollbackFailure) {
+            // 보상 호출 자체가 실패해도 원래 입찰 실패 사유를 덮어쓰면 안 되므로 별도로 잡아서 로그만 남긴다
+            log.error("예치금 홀드 보상(rollback) 실패 - 홀드가 해제되지 않은 채 남아있을 수 있음: holdId={}, auctionId={}, bidderId={}",
+                    holdInfo.holdId(), command.auctionId(), command.bidderId(), rollbackFailure);
         }
     }
 
