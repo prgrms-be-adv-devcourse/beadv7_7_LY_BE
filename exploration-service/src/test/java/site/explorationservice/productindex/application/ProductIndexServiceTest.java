@@ -190,6 +190,27 @@ class ProductIndexServiceTest {
         assertThat(document.getNormalizedCatalogNumber()).isNull();
     }
 
+    @Test
+    @DisplayName("다듬으면 아무 문자도 남지 않는 번호는 원본도 비운다")
+    void 번호_구분자만() {
+        // given
+        // 상품 서비스는 이런 값을 아예 저장하지 않지만, 응답에 실려 오면 화면에는 보이는데
+        // 번호로는 찾을 수 없는 상품이 생긴다. 두 값이 갈리지 않게 여기서 맞춘다.
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, "---", 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isNull();
+        assertThat(document.getNormalizedCatalogNumber()).isNull();
+    }
+
     private void givenEmbedding(final float[]... vectors) {
         given(embeddingService.embed(anyList(), any(), any()))
             .willReturn(new EmbeddingResult(List.of(vectors), MODEL, 30, 30));

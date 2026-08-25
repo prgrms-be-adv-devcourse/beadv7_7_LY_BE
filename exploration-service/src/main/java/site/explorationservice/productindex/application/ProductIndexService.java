@@ -81,6 +81,9 @@ public class ProductIndexService {
     private ProductDocument toDocument(final ProductIndexCommand command,
         final String identityText, final String originText, final String editionText,
         final float[] identityVector, final float[] originVector, final float[] editionVector) {
+        // 다듬으면 아무 문자도 남지 않는 번호(구분자만 있는 값 등)는 원본도 비운다 — 화면에는 보이는데
+        // 번호로는 찾을 수 없는 상태를 만들지 않기 위해서고, 상품 서비스가 저장할 때 쓰는 규칙과 같다.
+        final String normalizedCatalogNumber = TextNormalizer.normalize(command.catalogNumber());
         return ProductDocument.builder()
             .productId(command.productId())
             .title(command.title())
@@ -96,8 +99,8 @@ public class ProductIndexService {
             .pressType(command.pressType())
             // 원본은 화면에 보여주기 위한 것이고, 대조는 표기를 다듬은 값으로 한다.
             // 검색어를 다듬을 때와 같은 함수를 써야 색인된 값과 검색 키가 맞는다.
-            .catalogNumber(command.catalogNumber())
-            .normalizedCatalogNumber(TextNormalizer.normalize(command.catalogNumber()))
+            .catalogNumber(normalizedCatalogNumber == null ? null : command.catalogNumber())
+            .normalizedCatalogNumber(normalizedCatalogNumber)
             .groupKey(ProductDocument.groupKeyOf(command.discogsMasterId(), command.productId()))
             // 검색이 다른 표기로 찾을 때 쓴다. 임베딩 텍스트에는 들어가지 않으므로 벡터에 영향이 없다
             .titleAliases(command.titleAliases())
