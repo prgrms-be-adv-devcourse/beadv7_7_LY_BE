@@ -14,7 +14,7 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
-# 6개 서비스의 이미지 정보. 어느 배포 잡이든 .env에 6개를 전부 써야 하므로
+# 7개 서비스의 이미지 정보. 어느 배포 잡이든 .env에 7개를 전부 써야 하므로
 # (부분만 쓰면 나머지 서비스의 이미지 변수가 빈 값이 된다) 잡이 아니라
 # 워크플로 레벨에 둔다. .github/actions/prepare-deploy-files가 이 값을 읽는다.
 env:
@@ -24,6 +24,7 @@ env:
   AUCTION_SERVICE_IMAGE_REPOSITORY: ${{ secrets.AUCTION_SERVICE_GHCR_IMAGE }}
   FULFILLMENT_SERVICE_IMAGE_REPOSITORY: ${{ secrets.FULFILLMENT_SERVICE_GHCR_IMAGE }}
   POINTWALLET_SERVICE_IMAGE_REPOSITORY: ${{ secrets.POINTWALLET_SERVICE_GHCR_IMAGE }}
+  EXPLORATION_SERVICE_IMAGE_REPOSITORY: ${{ secrets.EXPLORATION_SERVICE_GHCR_IMAGE }}
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -37,6 +38,7 @@ jobs:
       auction_service_deploy: ${{ steps.check-deploy-label.outputs.auction_service_deploy }}
       fulfillment_service_deploy: ${{ steps.check-deploy-label.outputs.fulfillment_service_deploy }}
       pointwallet_service_deploy: ${{ steps.check-deploy-label.outputs.pointwallet_service_deploy }}
+      exploration_service_deploy: ${{ steps.check-deploy-label.outputs.exploration_service_deploy }}
     steps:
       - name: Check deploy label
         id: check-deploy-label
@@ -66,6 +68,9 @@ jobs:
 
             const hasPointwalletServiceDeployLabel = pr.data.labels.map(label => label.name).includes("pointwallet-service-deploy");
             core.setOutput("pointwallet_service_deploy", hasPointwalletServiceDeployLabel ? "true" : "false");
+
+            const hasExplorationServiceDeployLabel = pr.data.labels.map(label => label.name).includes("exploration-service-deploy");
+            core.setOutput("exploration_service_deploy", hasExplorationServiceDeployLabel ? "true" : "false");
 
       - name: Explain deploy decision
         run: |
@@ -109,6 +114,13 @@ jobs:
             echo "🚚 pointwallet-service 배포 작업을 진행합니다."
           else
             echo "✋ pointwallet-service 배포 작업을 진행하지 않습니다."
+          fi
+
+          # exploration-service 배포 여부 체크
+          if [[ "${{ steps.check-deploy-label.outputs.exploration_service_deploy }}" == "true" ]]; then
+            echo "🚚 exploration-service 배포 작업을 진행합니다."
+          else
+            echo "✋ exploration-service 배포 작업을 진행하지 않습니다."
           fi
 
   gateway-service-image-build:
@@ -421,6 +433,58 @@ jobs:
           echo "pointwallet_service_image_build_result=fail" >> $GITHUB_OUTPUT
           if [[ ${{ steps.docker-build-and-push.outcome }} == "success" ]]; then
           echo "pointwallet_service_image_build_result=success" >> $GITHUB_OUTPUT
+          fi
+
+  exploration-service-image-build:
+    needs: [ check-deploy-condition ]
+    if: needs.check-deploy-condition.outputs.exploration_service_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      exploration_service_image_build_result: ${{ steps.image-build-result.outputs.exploration_service_image_build_result }}
+    continue-on-error: true
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+
+      - name: Set up jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with gradle
+        run: ./gradlew :exploration-service:bootJar -Pspring.profiles.active=prod --info
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Docker build & push
+        id: docker-build-and-push
+        working-directory: ./exploration-service
+        run: |
+          docker build --no-cache -f docker/Dockerfile --build-arg SPRINGBOOT_APP_PROFILE=prod --platform linux/amd64 -t ${{ secrets.EXPLORATION_SERVICE_GHCR_IMAGE }}:${{ github.sha }} .
+          docker push ${{ secrets.EXPLORATION_SERVICE_GHCR_IMAGE }}:${{ github.sha }}
+
+      - name: Set Image build result
+        if: always()
+        id: image-build-result
+        run: |
+          echo "exploration_service_image_build_result=fail" >> $GITHUB_OUTPUT
+          if [[ ${{ steps.docker-build-and-push.outcome }} == "success" ]]; then
+          echo "exploration_service_image_build_result=success" >> $GITHUB_OUTPUT
           fi
 
   gateway-service-deploy:
@@ -862,8 +926,77 @@ jobs:
           echo "pointwallet_service_deploy_result=success" >> $GITHUB_OUTPUT
           fi
 
+  exploration-service-deploy:
+    needs: [ exploration-service-image-build ]
+    if: needs.exploration-service-image-build.outputs.exploration_service_image_build_result == 'success'
+    runs-on: groovid-app-ec2-runner
+    continue-on-error: true
+    outputs:
+      exploration_service_deploy_result: ${{ steps.deploy-result.outputs.exploration_service_deploy_result }}
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Create secret file
+        uses: ./.github/actions/prepare-deploy-files
+        with:
+          service: exploration-service
+          secret-body: |
+            PORT_NUMBER=8080
+            TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+
+            ELASTICSEARCH_URIS=${{ secrets.ELASTICSEARCH_URIS }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+
+            PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+
+      - name: Start new server application
+        id: start-new-server-application
+        run: |
+          cd ~/project
+          sudo docker-compose stop exploration-service || true
+          sudo docker-compose rm -f exploration-service || true
+          sudo docker-compose up -d exploration-service
+
+          echo "🔍 exploration-service 헬스 체크 확인 중..."
+          for i in {1..20}; do
+            response=$(curl -s http://localhost:8087/exploration-service/actuator/health || true)
+            if [[ "$response" == *'"status":"UP"'* ]]; then
+              echo "🍺 exploration-service 정상 실행 확인!"
+              exit 0
+            else
+              echo "⏳ exploration-service 실행 대기... ($i/20)"
+              sleep 3
+            fi
+          done
+          echo "❌ exploration-service가 60초 동안 정상 실행되지 않음..."
+          exit 1
+
+      - name: Dump container logs on failure
+        if: failure()
+        uses: ./.github/actions/dump-service-logs
+        with:
+          service: exploration-service
+
+      - name: Set deploy result
+        if: always()
+        id: deploy-result
+        run: |
+          echo "exploration_service_deploy_result=fail" >> $GITHUB_OUTPUT
+          if [[ ${{ steps.start-new-server-application.outcome }} == "success" ]]; then
+          echo "exploration_service_deploy_result=success" >> $GITHUB_OUTPUT
+          fi
+
   cleanup-secret-files:
-    needs: [ gateway-service-deploy, member-service-deploy, product-service-deploy, auction-service-deploy, fulfillment-service-deploy, pointwallet-service-deploy ]
+    needs: [ gateway-service-deploy, member-service-deploy, product-service-deploy, auction-service-deploy, fulfillment-service-deploy, pointwallet-service-deploy, exploration-service-deploy ]
     if: |
       always() &&
       (needs.gateway-service-deploy.result != 'skipped'
@@ -871,13 +1004,14 @@ jobs:
       || needs.product-service-deploy.result != 'skipped'
       || needs.auction-service-deploy.result != 'skipped'
       || needs.fulfillment-service-deploy.result != 'skipped'
-      || needs.pointwallet-service-deploy.result != 'skipped')
+      || needs.pointwallet-service-deploy.result != 'skipped'
+      || needs.exploration-service-deploy.result != 'skipped')
     runs-on: groovid-app-ec2-runner
     steps:
       - name: Remove secret files from EC2 host
         run: |
           cd ~/project
-          sudo rm -rf .env .gateway-service-secret .member-service-secret .product-service-secret .auction-service-secret .fulfillment-service-secret .pointwallet-service-secret
+          sudo rm -rf .env .gateway-service-secret .member-service-secret .product-service-secret .auction-service-secret .fulfillment-service-secret .pointwallet-service-secret .exploration-service-secret
           echo "🧹 민감 정보 파일(.env, secret)이 깔끔하게 정리되었습니다."
 
   # 이미지 빌드 / 배포 잡은 전부 continue-on-error다 - 한 서비스가 실패해도
@@ -887,8 +1021,10 @@ jobs:
   report-deploy-result:
     needs: [ gateway-service-image-build, member-service-image-build, product-service-image-build,
              auction-service-image-build, fulfillment-service-image-build, pointwallet-service-image-build,
+             exploration-service-image-build,
              gateway-service-deploy, member-service-deploy, product-service-deploy,
-             auction-service-deploy, fulfillment-service-deploy, pointwallet-service-deploy ]
+             auction-service-deploy, fulfillment-service-deploy, pointwallet-service-deploy,
+             exploration-service-deploy ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -921,6 +1057,7 @@ jobs:
           report "auction-service" "${{ needs.auction-service-image-build.outputs.auction_service_image_build_result }}" "${{ needs.auction-service-deploy.outputs.auction_service_deploy_result }}"
           report "fulfillment-service" "${{ needs.fulfillment-service-image-build.outputs.fulfillment_service_image_build_result }}" "${{ needs.fulfillment-service-deploy.outputs.fulfillment_service_deploy_result }}"
           report "pointwallet-service" "${{ needs.pointwallet-service-image-build.outputs.pointwallet_service_image_build_result }}" "${{ needs.pointwallet-service-deploy.outputs.pointwallet_service_deploy_result }}"
+          report "exploration-service" "${{ needs.exploration-service-image-build.outputs.exploration_service_image_build_result }}" "${{ needs.exploration-service-deploy.outputs.exploration_service_deploy_result }}"
 
           if [[ $FAILED == 1 ]]; then
             echo "💥 실패한 서비스가 있습니다. 위 목록과 각 잡의 로그를 확인해주세요."

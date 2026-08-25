@@ -26,7 +26,7 @@ runs:
         set -euo pipefail
         cd ~/project
 
-        SERVICES="gateway member product auction fulfillment pointwallet"
+        SERVICES="gateway member product auction fulfillment pointwallet exploration"
         HINT="cd.yml의 워크플로 레벨 env 블록을 확인하세요"
 
         : "${IMAGE_TAG:?IMAGE_TAG가 비어 있습니다. $HINT}"
