@@ -33,7 +33,7 @@ public class InterestWeightRecomputeService {
             if (!wishlistProducts.isEmpty()) {
                 final AxisWeights weights =
                     interestWeightService.analyzeWeights(wishlistProducts).toAxisWeights();
-                interestWeightCacheRepository.save(due.memberId(), weights);
+                interestWeightCacheRepository.save(due.memberId(), weights, due.dirtySince());
             }
 
             dirtyMemberTracker.complete(due.memberId(), due.dirtySince());

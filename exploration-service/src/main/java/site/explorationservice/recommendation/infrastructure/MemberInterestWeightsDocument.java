@@ -37,4 +37,7 @@ public class MemberInterestWeightsDocument {
 
     @Field(type = FieldType.Date)
     private Instant computedAt;
+
+    @Field(type = FieldType.Date)
+    private Instant wishlistChangedAt;
 }

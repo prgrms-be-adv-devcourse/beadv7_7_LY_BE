@@ -23,9 +23,8 @@ import site.explorationservice.recommendation.domain.DueMember;
 import site.explorationservice.recommendation.domain.InterestWeightCacheRepository;
 
 /**
- * 성공/빈 위시리스트/실패 세 갈래에서 complete·release가 정확히 갈리는지 검증한다 — 여기서 잘못되면 dirty 신호가 영구히
- * 사라지거나 재클레임이 영원히 막히는(inFlight 누수) 실제 장애로
- * 이어진다.
+ * 성공/빈 위시리스트/실패 세 갈래에서 complete·release가 정확히 갈리는지 검증한다 — 여기서 잘못되면 dirty 신호가 영구히 사라지거나 재클레임이 영원히
+ * 막히는(inFlight 누수) 실제 장애로 이어진다.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("관심사 가중치 비동기 재계산")
@@ -61,7 +60,7 @@ class InterestWeightRecomputeServiceTest {
 
         sut.recompute(DUE);
 
-        then(interestWeightCacheRepository).should().save(MEMBER_ID, weights);
+        then(interestWeightCacheRepository).should().save(MEMBER_ID, weights, DIRTY_SINCE);
         then(dirtyMemberTracker).should().complete(MEMBER_ID, DIRTY_SINCE);
         then(dirtyMemberTracker).should(never()).release(any());
     }
@@ -74,7 +73,7 @@ class InterestWeightRecomputeServiceTest {
         sut.recompute(DUE);
 
         then(interestWeightService).should(never()).analyzeWeights(anyList());
-        then(interestWeightCacheRepository).should(never()).save(any(), any());
+        then(interestWeightCacheRepository).should(never()).save(any(), any(), any());
         then(dirtyMemberTracker).should().complete(MEMBER_ID, DIRTY_SINCE);
     }
 
@@ -88,7 +87,7 @@ class InterestWeightRecomputeServiceTest {
 
         sut.recompute(DUE);
 
-        then(interestWeightCacheRepository).should(never()).save(any(), any());
+        then(interestWeightCacheRepository).should(never()).save(any(), any(), any());
         then(dirtyMemberTracker).should(never()).complete(any(), any());
         then(dirtyMemberTracker).should().release(MEMBER_ID);
     }

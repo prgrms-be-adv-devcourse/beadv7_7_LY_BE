@@ -22,13 +22,14 @@ public class InterestWeightCacheRepositoryImpl implements InterestWeightCacheRep
     }
 
     @Override
-    public void save(final Long memberId, final AxisWeights weights) {
+    public void save(final Long memberId, final AxisWeights weights, final Instant wishlistChangedAt) {
         elasticsearchRepository.save(MemberInterestWeightsDocument.builder()
             .memberId(memberId)
             .identityWeight(weights.identity())
             .originWeight(weights.origin())
             .editionWeight(weights.edition())
             .computedAt(Instant.now())
+            .wishlistChangedAt(wishlistChangedAt)
             .build());
     }
 }

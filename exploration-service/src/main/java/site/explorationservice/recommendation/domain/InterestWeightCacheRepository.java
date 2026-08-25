@@ -1,5 +1,6 @@
 package site.explorationservice.recommendation.domain;
 
+import java.time.Instant;
 import java.util.Optional;
 import site.explorationservice.productindex.domain.AxisWeights;
 
@@ -10,5 +11,5 @@ public interface InterestWeightCacheRepository {
 
     Optional<AxisWeights> find(Long memberId);
 
-    void save(Long memberId, AxisWeights weights);
+    void save(Long memberId, AxisWeights weights, Instant wishlistChangedAt);
 }
