@@ -54,6 +54,7 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("3개 벡터가 응답 순서대로(identity·origin·edition 블록) 각자의 필드에 붙는다")
     void 벡터_정렬() {
+        // given
         // 블록 순서(identity 3개, origin 3개, edition 3개)로 9개를 준다 — ProductIndexService가 이 순서를
         // 전제로 3등분하기 때문에, 순서가 어긋나면 이 테스트가 잡아낸다.
         givenEmbedding(
@@ -62,8 +63,10 @@ class ProductIndexServiceTest {
             v(6), v(7), v(8) // edition
         );
 
+        // when
         productIndexService.indexAll(commands());
 
+        // then
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         final List<ProductDocument> documents = documentsCaptor.getValue();
 
@@ -86,10 +89,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("상품이 여럿이어도 임베딩은 한 번만 호출한다 — 텍스트가 3배로 늘어도 호출 횟수는 그대로")
     void 배치_호출() {
+        // given
         givenEmbedding(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8));
 
+        // when
         productIndexService.indexAll(commands());
 
+        // then
         // 상품 수만큼 호출이 늘어나면 백필에서 그대로 비용이 된다.
         then(embeddingService).should(times(1)).embed(anyList(), any(), any());
         then(productDocumentRepository).should(times(1)).saveAll(anyList());
@@ -98,10 +104,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("상품별로 자기 텍스트가 임베딩된다 — identity·origin·edition 전부")
     void 텍스트_조립() {
+        // given
         givenEmbedding(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8));
 
+        // when
         final List<ProductIndexResult> results = productIndexService.indexAll(commands());
 
+        // then
         assertThat(results).extracting(ProductIndexResult::identityText).containsExactly(
             "Jazz · Miles Davis", "포크 · 김광석", "그런지 · Nirvana"
         );
@@ -116,11 +125,14 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("active가 비어 있으면 살아 있는 것으로 본다")
     void active_기본값() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
-        // null이면 active 필터에 걸려 추천에서 통째로 빠지므로, 색인 대상으로 들어온 이상 기본값이 필요하다.
+        // when
         productIndexService.index(command(1L, "Miles Davis", null));
 
+        // then
+        // null이면 active 필터에 걸려 추천에서 통째로 빠지므로, 색인 대상으로 들어온 이상 기본값이 필요하다.
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         assertThat(documentsCaptor.getValue().getFirst().getActive()).isTrue();
     }
@@ -128,10 +140,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("active가 false면 그대로 저장한다")
     void active_유지() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
+        // when
         productIndexService.index(command(1L, "Miles Davis", false));
 
+        // then
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         assertThat(documentsCaptor.getValue().getFirst().getActive()).isFalse();
     }
@@ -139,11 +154,14 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("단건 색인은 그 상품의 결과만 돌려준다")
     void 단건_색인() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
+        // when
         final ProductIndexResult result =
             productIndexService.index(command(1L, "Miles Davis", true));
 
+        // then
         assertThat(result.productId()).isEqualTo(1L);
         assertThat(result.dimensions()).isEqualTo(1);
         assertThat(result.embeddingModel()).isEqualTo(MODEL);
