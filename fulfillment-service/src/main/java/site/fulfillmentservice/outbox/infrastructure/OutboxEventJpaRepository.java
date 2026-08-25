@@ -12,6 +12,7 @@ import site.fulfillmentservice.outbox.domain.OutboxEventStatus;
 
 public interface OutboxEventJpaRepository extends JpaRepository<OutboxEvent, Long> {
 
+    /** createdAt은 폴링 순서(오래된 순)의 기준이다. */
     List<OutboxEvent> findByStatusOrderByCreatedAtAsc(OutboxEventStatus status, Pageable pageable);
 
     /**

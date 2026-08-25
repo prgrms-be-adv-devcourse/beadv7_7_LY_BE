@@ -40,7 +40,6 @@ class OutboxEventTest {
             // then
             assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
             assertThat(event.getRetryCount()).isEqualTo(0);
-            assertThat(event.getCreatedAt()).isNotNull();
             assertThat(event.getPublishedAt()).isNull();
             assertThat(event.getLastError()).isNull();
         }

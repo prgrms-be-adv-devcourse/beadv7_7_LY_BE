@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.common.entity.BaseEntity;
 
 @Entity
 @Table(
@@ -13,7 +14,7 @@ import lombok.NoArgsConstructor;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OutboxEvent {
+public class OutboxEvent extends BaseEntity {
 
     public static final int MAX_RETRY_COUNT = 5;
 
@@ -39,11 +40,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private OutboxEventStatus status;
 
-    /** 폴링 순서(오래된 순)의 기준. */
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    /** 실제로 Kafka 발행에 성공한 시각. createdAt과 의도적으로 분리했다 - 재시도가 있었다면
+    /** 실제로 Kafka 발행에 성공한 시각. createdAt(BaseEntity)과 의도적으로 분리했다 - 재시도가 있었다면
      *  그 차이가 곧 "발행이 얼마나 지연됐는지"를 보여준다. */
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
@@ -61,7 +58,6 @@ public class OutboxEvent {
         this.eventType = eventType;
         this.payload = payload;
         this.status = OutboxEventStatus.PENDING;
-        this.createdAt = LocalDateTime.now();
     }
 
     public static OutboxEvent create(String topic, String partitionKey, String eventType, String payload) {
