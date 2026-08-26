@@ -12,10 +12,12 @@ import site.productservice.application.dto.ProductPageResult;
 import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.port.AuctionOpenCountPort;
 import site.productservice.domain.Artist;
+import site.productservice.domain.ArtistAliasRepository;
 import site.productservice.domain.ArtistRepository;
 import site.productservice.domain.price.PriceHistory;
 import site.productservice.domain.price.PriceHistoryRepository;
 import site.productservice.domain.Product;
+import site.productservice.domain.ProductAliasRepository;
 import site.productservice.domain.search.ProductSearchHit;
 import site.productservice.domain.search.ProductSearchPage;
 import site.productservice.domain.search.ProductSearchRepository;
@@ -51,6 +53,8 @@ public class ProductService {
     private final ProductSearchRepository productSearchRepository;
     private final PriceHistoryRepository priceHistoryRepository;
     private final AuctionOpenCountPort auctionOpenCountPort;
+    private final ProductAliasRepository productAliasRepository;
+    private final ArtistAliasRepository artistAliasRepository;
 
     /** 공개 상세(1-3). 비활성 상품은 사용자에겐 없는 상품이므로 404로 취급한다. */
     public ProductDetailResult getActiveProductDetail(Long productId) {
@@ -64,7 +68,7 @@ public class ProductService {
     public ProductSnapshotResult getProductSnapshot(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(ProductNotFoundException::new);
-        return ProductSnapshotResult.of(product, getArtist(product.getArtistId()));
+        return ProductSnapshotResult.withoutAliases(product, getArtist(product.getArtistId()));
     }
 
     /** getProductSnapshot의 배치 버전. */
@@ -72,7 +76,7 @@ public class ProductService {
         List<Product> products = productRepository.findAllByIds(productIds);
         Map<Long, Artist> artistsById = getArtists(products);
         return products.stream()
-                .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
+                .map(product -> ProductSnapshotResult.withoutAliases(product, artistsById.get(product.getArtistId())))
                 .toList();
     }
 
@@ -91,8 +95,20 @@ public class ProductService {
         List<Product> products = hasNext ? fetched.subList(0, pageSize) : fetched;
         Map<Long, Artist> artistsById = getArtists(products);
 
+        // 별칭은 검색 색인만 쓰므로 이 경로에서만 채운다
+        List<Long> productIds = products.stream().map(Product::getId).toList();
+        List<Long> artistIds = products.stream().map(Product::getArtistId).distinct().toList();
+        Map<Long, List<String>> titleAliasesByProduct =
+                productAliasRepository.findNamesByProductIds(productIds);
+        Map<Long, List<String>> artistAliasesByArtist =
+                artistAliasRepository.findNamesByArtistIds(artistIds);
+
         List<ProductSnapshotResult> items = products.stream()
-                .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
+                .map(product -> ProductSnapshotResult.of(
+                        product,
+                        artistsById.get(product.getArtistId()),
+                        titleAliasesByProduct.getOrDefault(product.getId(), List.of()),
+                        artistAliasesByArtist.getOrDefault(product.getArtistId(), List.of())))
                 .toList();
         Long nextCursor = hasNext ? products.getLast().getId() : null;
 

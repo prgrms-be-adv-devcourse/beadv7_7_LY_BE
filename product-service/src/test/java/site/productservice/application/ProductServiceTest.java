@@ -24,11 +24,13 @@ import site.productservice.application.dto.ProductPageResult;
 import site.productservice.application.dto.ProductSnapshotResult;
 import site.productservice.application.port.AuctionOpenCountPort;
 import site.productservice.domain.Artist;
+import site.productservice.domain.ArtistAliasRepository;
 import site.productservice.domain.ArtistRepository;
 import site.productservice.domain.PressType;
 import site.productservice.domain.price.PriceHistory;
 import site.productservice.domain.price.PriceHistoryRepository;
 import site.productservice.domain.Product;
+import site.productservice.domain.ProductAliasRepository;
 import site.productservice.domain.search.ProductSearchHit;
 import site.productservice.domain.search.ProductSearchPage;
 import site.productservice.domain.search.ProductSearchRepository;
@@ -55,6 +57,12 @@ class ProductServiceTest {
 
     @Mock
     private AuctionOpenCountPort auctionOpenCountPort;
+
+    @Mock
+    private ProductAliasRepository productAliasRepository;
+
+    @Mock
+    private ArtistAliasRepository artistAliasRepository;
 
     @InjectMocks
     private ProductService productService;
@@ -298,6 +306,86 @@ class ProductServiceTest {
 
         assertThat(page.items()).isEmpty();
         assertThat(page.hasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("전체 순회는 상품과 아티스트의 별칭을 함께 싣는다")
+    void getProductPage는_별칭을_싣는다() {
+        // given
+        Product product = productWithId(55L);
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+        given(productAliasRepository.findNamesByProductIds(List.of(55L)))
+                .willReturn(Map.of(55L, List.of("애비 로드")));
+        given(artistAliasRepository.findNamesByArtistIds(List.of(3L)))
+                .willReturn(Map.of(3L, List.of("비틀즈", "Beatles")));
+
+        // when
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        // then
+        assertThat(page.items().getFirst().titleAliases()).containsExactly("애비 로드");
+        assertThat(page.items().getFirst().artistAliases())
+                .containsExactlyInAnyOrder("비틀즈", "Beatles");
+    }
+
+    @Test
+    @DisplayName("별칭이 없는 상품은 빈 목록을 싣는다")
+    void getProductPage는_별칭이_없으면_빈_목록() {
+        // given
+        // null이 그대로 흘러가면 색인 문서의 필드가 비고, 검색이 안 될 때 원인을 찾기 어렵다
+        Product product = productWithId(55L);
+        given(productRepository.findAllOrderByIdAfter(null, 101)).willReturn(List.of(product));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+        given(productAliasRepository.findNamesByProductIds(List.of(55L))).willReturn(Map.of());
+        given(artistAliasRepository.findNamesByArtistIds(List.of(3L))).willReturn(Map.of());
+
+        // when
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        // then
+        assertThat(page.items().getFirst().titleAliases()).isEmpty();
+        assertThat(page.items().getFirst().artistAliases()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 아티스트의 상품 여럿에 아티스트 별칭이 각각 실린다")
+    void getProductPage는_아티스트_별칭을_상품마다_배분한다() {
+        // given
+        // 별칭은 아티스트에 붙어 있어 조회는 아티스트 단위지만, 담기는 것은 상품 단위다.
+        // 상품 id로 조회했다고 착각하면 여기서 드러난다.
+        Product first = productWithId(55L);
+        Product second = productWithId(56L);
+        given(productRepository.findAllOrderByIdAfter(null, 101))
+                .willReturn(List.of(first, second));
+        given(artistRepository.findAllByIds(List.of(3L))).willReturn(List.of(artist));
+        given(productAliasRepository.findNamesByProductIds(List.of(55L, 56L))).willReturn(Map.of());
+        given(artistAliasRepository.findNamesByArtistIds(List.of(3L)))
+                .willReturn(Map.of(3L, List.of("비틀즈")));
+
+        // when
+        ProductPageResult page = productService.getProductPage(null, 100);
+
+        // then
+        assertThat(page.items()).allSatisfy(item ->
+                assertThat(item.artistAliases()).containsExactly("비틀즈"));
+    }
+
+    @Test
+    @DisplayName("단건 스냅샷은 별칭을 채우지 않는다")
+    void getProductSnapshot은_별칭이_비어_있다() {
+        // given
+        // 경매·주문·위시리스트가 쓰는 경로다. 별칭을 쓰는 곳이 없어 조회만 늘어난다.
+        Product product = productWithId(55L);
+        given(productRepository.findById(55L)).willReturn(Optional.of(product));
+        given(artistRepository.findById(3L)).willReturn(Optional.of(artist));
+
+        // when
+        ProductSnapshotResult result = productService.getProductSnapshot(55L);
+
+        // then
+        assertThat(result.titleAliases()).isEmpty();
+        assertThat(result.artistAliases()).isEmpty();
     }
 
     private Product productWithId(Long id) {

@@ -1,5 +1,6 @@
 package site.productservice.application.dto;
 
+import java.util.List;
 import site.productservice.domain.Artist;
 import site.productservice.domain.PressType;
 import site.productservice.domain.Product;
@@ -22,9 +23,22 @@ public record ProductSnapshotResult(
         boolean active,
         Long mergedIntoId,
         String catalogNumber,
-        Long discogsMasterId
+        Long discogsMasterId,
+        List<String> titleAliases,
+        List<String> artistAliases
 ) {
-    public static ProductSnapshotResult of(Product product, Artist artist) {
+    /**
+     * 별칭을 쓰지 않는 경로용 — 목록 조회 밖에서는 소비하는 곳이 없어 빈 목록으로 둔다.
+     * <p>
+     * 이름으로 나눈 것은 별칭이 빈다는 사실을 호출부에서 보이게 하려는 것이다. 인자 개수만 다르면
+     * 목록 경로에서 실수로 이쪽을 불러도 예외 없이 별칭만 조용히 빈다.
+     */
+    public static ProductSnapshotResult withoutAliases(Product product, Artist artist) {
+        return of(product, artist, List.of(), List.of());
+    }
+
+    public static ProductSnapshotResult of(Product product, Artist artist,
+            List<String> titleAliases, List<String> artistAliases) {
         return new ProductSnapshotResult(
                 product.getId(),
                 product.getTitle(),
@@ -38,7 +52,9 @@ public record ProductSnapshotResult(
                 product.isActive(),
                 null,
                 product.getCatalogNumber(),
-                product.getDiscogsMasterId()
+                product.getDiscogsMasterId(),
+                titleAliases,
+                artistAliases
         );
     }
 }

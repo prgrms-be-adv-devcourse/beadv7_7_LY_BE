@@ -20,7 +20,7 @@ class ProductSnapshotResultTest {
         Artist artist = Artist.of("John Coltrane");
 
         // when
-        ProductSnapshotResult result = ProductSnapshotResult.of(product, artist);
+        ProductSnapshotResult result = ProductSnapshotResult.withoutAliases(product, artist);
 
         // then
         // 색인하는 쪽이 표기를 다듬으므로 여기서는 손대지 않고 그대로 넘긴다.
@@ -39,7 +39,7 @@ class ProductSnapshotResultTest {
         Artist artist = Artist.of("John Coltrane");
 
         // when
-        ProductSnapshotResult result = ProductSnapshotResult.of(product, artist);
+        ProductSnapshotResult result = ProductSnapshotResult.withoutAliases(product, artist);
 
         // then
         assertThat(result.discogsMasterId()).isNull();
