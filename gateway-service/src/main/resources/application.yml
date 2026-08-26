@@ -158,7 +158,7 @@ spring:
                 - Path=/api/v*/recommendations, /api/v*/recommendations/**
               filters:
                 - JwtAuthenticationFilter
-            - id: exploration-service-no-auth
+            - id: exploration-service-search-no-auth
               uri: ${EXPLORATION_SERVICE_URI}
               predicates:
                 - Path=/api/v*/search/products
