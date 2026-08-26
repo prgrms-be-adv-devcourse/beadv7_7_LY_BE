@@ -1,5 +1,11 @@
 package site.explorationservice.productindex.infrastructure;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -54,6 +60,7 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     private static final double EDITION_WEIGHT_THRESHOLD = 0.15;
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final ElasticsearchClient elasticsearchClient;
     private final ProductVectorReader productVectorReader;
 
     /**
@@ -63,9 +70,11 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
 
     public ProductDocumentRepositoryImpl(
         final ElasticsearchOperations elasticsearchOperations,
+        final ElasticsearchClient elasticsearchClient,
         final ProductVectorReader productVectorReader,
         @Value("${exploration.product-index.write-target:lp_products}") final String writeTarget) {
         this.elasticsearchOperations = elasticsearchOperations;
+        this.elasticsearchClient = elasticsearchClient;
         this.productVectorReader = productVectorReader;
         this.writeTarget = writeTarget;
     }
@@ -81,6 +90,35 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     @Override
     public Map<Long, ProductVectors> findVectors(final List<Long> productIds) {
         return productVectorReader.findVectors(productIds);
+    }
+
+    /**
+     * Spring Data가 아니라 저수준 클라이언트로 매핑을 읽는다 — 쓰기 대상이 별칭일 때 응답이 별칭이 아니라 실제 인덱스 이름으로 키가 잡혀서, 이름으로 꺼내는
+     * Spring Data 경로로는 매핑을 못 찾는다. 저수준 응답은 이름과 무관하게 값을 순회할 수 있다.
+     */
+    @Override
+    public boolean hasVectorMapping() {
+        final GetMappingResponse response = findMapping();
+        if (response == null || response.mappings().isEmpty()) {
+            return false;
+        }
+        return response.mappings().values().stream()
+            .allMatch(record -> isDenseVector(record.mappings().properties().get(IDENTITY_FIELD)));
+    }
+
+    private GetMappingResponse findMapping() {
+        try {
+            return elasticsearchClient.indices().getMapping(request -> request.index(writeTarget));
+        } catch (final ElasticsearchException e) {
+            // 인덱스(별칭)가 없으면 404로 온다. 매핑이 없는 것이므로 조회 결과 없음으로 본다
+            return null;
+        } catch (final IOException e) {
+            throw new UncheckedIOException("상품 인덱스 매핑 조회 실패 — " + writeTarget, e);
+        }
+    }
+
+    private boolean isDenseVector(final Property property) {
+        return property != null && property.isDenseVector();
     }
 
     /**

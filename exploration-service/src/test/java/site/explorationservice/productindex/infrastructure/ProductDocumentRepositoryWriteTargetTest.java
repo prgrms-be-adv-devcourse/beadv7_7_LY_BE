@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,9 @@ class ProductDocumentRepositoryWriteTargetTest {
     private ElasticsearchOperations elasticsearchOperations;
 
     @Mock
+    private ElasticsearchClient elasticsearchClient;
+
+    @Mock
     private ProductVectorReader productVectorReader;
 
     @Captor
@@ -34,7 +38,7 @@ class ProductDocumentRepositoryWriteTargetTest {
     void 기본_대상은_별칭() {
         // given
         final ProductDocumentRepositoryImpl repository = new ProductDocumentRepositoryImpl(
-            elasticsearchOperations, productVectorReader, "lp_products");
+            elasticsearchOperations, elasticsearchClient, productVectorReader, "lp_products");
 
         // when
         repository.saveAll(List.of(ProductDocument.builder().productId(1L).build()));
@@ -51,7 +55,7 @@ class ProductDocumentRepositoryWriteTargetTest {
         // 재색인 중에는 별칭이 옛 인덱스를 가리킨 채로 검색을 서비스하고 있어서,
         // 새 인덱스를 채우려면 별칭을 우회해 직접 써야 한다.
         final ProductDocumentRepositoryImpl repository = new ProductDocumentRepositoryImpl(
-            elasticsearchOperations, productVectorReader, "lp_products_v2");
+            elasticsearchOperations, elasticsearchClient, productVectorReader, "lp_products_v2");
 
         // when
         repository.saveAll(List.of(ProductDocument.builder().productId(1L).build()));
