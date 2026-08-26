@@ -13,14 +13,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import site.common.response.ApiResponse;
-import site.explorationservice.productindex.application.ProductBackfillService;
 import site.explorationservice.productindex.application.ProductIndexService;
-import site.explorationservice.productindex.application.dto.BackfillResult;
 import site.explorationservice.productindex.application.dto.ProductIndexResult;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.productindex.domain.ProductDocument;
 import site.explorationservice.productindex.domain.ProductDocumentRepository;
-import site.explorationservice.productindex.presentation.dto.BackfillResponse;
 import site.explorationservice.productindex.domain.ProductVectors;
 import site.explorationservice.productindex.presentation.dto.IndexedProductResponse;
 import site.explorationservice.productindex.presentation.dto.ProductIndexProbeRequest;
@@ -45,7 +42,6 @@ import site.explorationservice.productindex.presentation.dto.SimilarProductRespo
 public class ProductIndexProbeController {
 
     private final ProductIndexService productIndexService;
-    private final ProductBackfillService productBackfillService;
     private final ProductDocumentRepository productDocumentRepository;
     private final ElasticsearchOperations elasticsearchOperations;
 
@@ -77,22 +73,6 @@ public class ProductIndexProbeController {
         elasticsearchOperations.indexOps(ProductDocument.class).refresh();
 
         return ApiResponse.success(SampleIndexResponse.from(results, elapsedMs));
-    }
-
-    /**
-     * product-service를 커서로 순회하며 실제 상품을 색인한다. <b>동기 호출이고 maxProducts만큼만 처리하고 멈춘다</b> — 50만 건 전체를 한
-     * 번에 돌리는 게 아니라, 응답의 nextCursor를 다음 호출의 startCursor에 넣어 나눠서 반복 호출하는 걸 전제로 한다. maxProducts를 크게
-     * 잡을수록 응답이 오래 걸린다.
-     */
-    @PostMapping("/backfill")
-    public ApiResponse<BackfillResponse> backfill(
-        @RequestParam(required = false) final Long startCursor,
-        @RequestParam(defaultValue = "10000") final int maxProducts) {
-        final BackfillResult result = productBackfillService.backfill(startCursor, maxProducts);
-
-        elasticsearchOperations.indexOps(ProductDocument.class).refresh();
-
-        return ApiResponse.success(BackfillResponse.from(result));
     }
 
     /**
