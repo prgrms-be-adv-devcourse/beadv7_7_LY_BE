@@ -808,9 +808,9 @@ jobs:
           secret-body: |
             PORT_NUMBER=8080
             TEMPO_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-            DB_URL=${{ secrets.DB_URL }}
-            DB_USER_NAME=${{ secrets.DB_USER_NAME }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_URL=${{ secrets.FULFILLMENT_DB_URL }}
+            DB_USER_NAME=${{ secrets.FULFILLMENT_DB_USER_NAME }}
+            DB_PASSWORD=${{ secrets.FULFILLMENT_DB_PASSWORD }}
 
             KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
