@@ -48,7 +48,7 @@ spring:
             - id: product-service-no-auth
               uri: ${PRODUCT_SERVICE_URI}
               predicates:
-                - Path=/api/v*/products, /api/v*/products/**, /api/v*/search/products
+                - Path=/api/v*/products, /api/v*/products/**
                 - Method=GET
 
             # product-service-liked-products
@@ -158,6 +158,12 @@ spring:
                 - Path=/api/v*/recommendations, /api/v*/recommendations/**
               filters:
                 - JwtAuthenticationFilter
+            # 비로그인 검색을 그대로 유지하려고 인증 필터를 붙이지 않는다
+            - id: exploration-service-search
+              uri: ${EXPLORATION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/search/products
+                - Method=GET
 
 app:
   jwt:
