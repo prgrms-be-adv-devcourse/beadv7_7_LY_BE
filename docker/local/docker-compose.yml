@@ -91,9 +91,10 @@ services:
       # ES 8부터 인증이 기본 켜짐이라, 로컬에서 http://localhost:9200 에 그냥 붙으려면
       # 명시적으로 꺼야 한다. 운영에 이 설정을 그대로 가져가면 안 된다.
       xpack.security.enabled: "false"
-      # heap 기본값은 컨테이너 가용 메모리에 맞춰 자동 산정된다. mysql·kafka와 같이 뜨는
-      # 로컬 환경이라 작게 고정한다.
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      # heap 기본값은 컨테이너 가용 메모리에 맞춰 자동 산정된다. 운영과 같은 값으로 고정한다 —
+      # 43만 건 색인을 이 크기로 완주한 실적이 있고, 로컬만 작으면 색인 버퍼가 좁아 flush·병합이
+      # 잦아져 같은 조건이 아니게 된다. 인덱스 자체는 힙이 아니라 OS 페이지 캐시가 받는다.
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     healthcheck:
