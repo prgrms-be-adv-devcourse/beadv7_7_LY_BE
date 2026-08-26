@@ -2,6 +2,7 @@ package site.productservice.presentation.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.productservice.application.dto.ProductSnapshotResult;
@@ -19,7 +20,7 @@ class ProductSnapshotResponseTest {
         // given: 비활성 + 커버 없음 — 경계 값 조합
         ProductSnapshotResult result = new ProductSnapshotResult(55L, "Abbey Road", "The Beatles",
                 null, "Rock", "Apple", PressType.ORIGINAL, 1969, "영국", false, null,
-                "PCS 7088", 24047L);
+                "PCS 7088", 24047L, List.of("애비 로드"), List.of("비틀즈"));
 
         // when
         ProductSnapshotResponse response = ProductSnapshotResponse.from(result);
@@ -39,5 +40,7 @@ class ProductSnapshotResponseTest {
         // 검색 색인이 소비하는 두 필드. 이름이 어긋나면 예외가 아니라 조용히 null이 된다
         assertThat(response.catalogNumber()).isEqualTo("PCS 7088");
         assertThat(response.discogsMasterId()).isEqualTo(24047L);
+        assertThat(response.titleAliases()).containsExactly("애비 로드");
+        assertThat(response.artistAliases()).containsExactly("비틀즈");
     }
 }

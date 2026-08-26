@@ -244,6 +244,7 @@ class WishlistServiceFacadeTest {
 
     private ProductSnapshotResult snapshot(final Long productId, final boolean active) {
         return new ProductSnapshotResult(productId, "제목", "아티스트", "http://image", "장르",
-            "레이블", PressType.ORIGINAL, 2020, "한국", active, null, "BLP-1567", 4001L);
+            "레이블", PressType.ORIGINAL, 2020, "한국", active, null, "BLP-1567", 4001L,
+            List.of(), List.of());
     }
 }

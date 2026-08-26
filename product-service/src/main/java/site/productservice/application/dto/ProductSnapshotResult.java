@@ -1,5 +1,6 @@
 package site.productservice.application.dto;
 
+import java.util.List;
 import site.productservice.domain.Artist;
 import site.productservice.domain.PressType;
 import site.productservice.domain.Product;
@@ -22,9 +23,19 @@ public record ProductSnapshotResult(
         boolean active,
         Long mergedIntoId,
         String catalogNumber,
-        Long discogsMasterId
+        Long discogsMasterId,
+        List<String> titleAliases,
+        List<String> artistAliases
 ) {
+    /**
+     * 별칭을 모르는 경로용. 목록 조회 밖에서는 별칭을 쓰는 곳이 없어 빈 목록으로 둔다.
+     */
     public static ProductSnapshotResult of(Product product, Artist artist) {
+        return of(product, artist, List.of(), List.of());
+    }
+
+    public static ProductSnapshotResult of(Product product, Artist artist,
+            List<String> titleAliases, List<String> artistAliases) {
         return new ProductSnapshotResult(
                 product.getId(),
                 product.getTitle(),
@@ -38,7 +49,9 @@ public record ProductSnapshotResult(
                 product.isActive(),
                 null,
                 product.getCatalogNumber(),
-                product.getDiscogsMasterId()
+                product.getDiscogsMasterId(),
+                titleAliases,
+                artistAliases
         );
     }
 }
