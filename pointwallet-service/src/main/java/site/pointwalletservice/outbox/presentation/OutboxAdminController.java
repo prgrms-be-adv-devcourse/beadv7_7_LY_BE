@@ -18,7 +18,7 @@ import site.pointwalletservice.outbox.presentation.dto.OutboxEventResponse;
  * 내부 API(/internal/v1)라 상위 레이어에서 접근을 막는다는 전제.
  */
 @RestController
-@RequestMapping("/internal/admin/v1/outbox-events")
+@RequestMapping("/api/admin/v1/outbox-events")
 @RequiredArgsConstructor
 public class OutboxAdminController {
 
