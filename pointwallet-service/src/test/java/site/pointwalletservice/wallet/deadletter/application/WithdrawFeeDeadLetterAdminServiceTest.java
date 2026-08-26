@@ -3,6 +3,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.pointwalletservice.wallet.application.WithdrawFeeEarnedEventHandler;
 import site.pointwalletservice.wallet.deadletter.domain.DeadLetterStatus;
 import site.pointwalletservice.wallet.deadletter.domain.WithdrawFeeDeadLetter;
@@ -35,9 +38,17 @@ class WithdrawFeeDeadLetterAdminServiceTest {
 
     private WithdrawFeeDeadLetterAdminService sut;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     @BeforeEach
     void setUp() {
-        sut = new WithdrawFeeDeadLetterAdminService(repository, withdrawFeeEarnedEventHandler);
+        sut = new WithdrawFeeDeadLetterAdminService(repository, withdrawFeeEarnedEventHandler, transactionTemplate);
+        lenient().doAnswer(invocation -> {
+            TransactionCallbackWithoutResult callback = invocation.getArgument(0);
+            callback.doInTransaction(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
     }
 
     @Test
