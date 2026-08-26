@@ -44,7 +44,12 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 @Setting(settingPath = "elasticsearch/product-index-settings.json")
 public class ProductDocument {
 
+    /**
+     * 문서 본문에도 이 값이 실려 나가므로 매핑에 반드시 있어야 한다. 검색 라이브러리는 식별자 속성을 문서 _id로만 취급해
+     * 매핑에서 빼버리는데, 매핑에 없는 필드를 거부하도록 설정해 두었기 때문에 그대로 두면 모든 저장이 실패한다.
+     */
     @Id
+    @Field(type = FieldType.Long)
     private Long productId;
 
     /**
