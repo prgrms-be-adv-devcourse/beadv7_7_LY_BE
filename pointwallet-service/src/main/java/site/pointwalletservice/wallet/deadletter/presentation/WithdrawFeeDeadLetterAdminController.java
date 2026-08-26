@@ -21,7 +21,7 @@ import site.pointwalletservice.wallet.deadletter.presentation.dto.WithdrawFeeDea
  * 내부 API(/internal/v1)라 게이트웨이 등 상위 레이어에서 접근을 막는다는 전제.
  */
 @RestController
-@RequestMapping("/internal/admin/v1/withdraw-fee-dead-letters")
+@RequestMapping("/api/admin/v1/withdraw-fee-dead-letters")
 @RequiredArgsConstructor
 public class WithdrawFeeDeadLetterAdminController {
 
