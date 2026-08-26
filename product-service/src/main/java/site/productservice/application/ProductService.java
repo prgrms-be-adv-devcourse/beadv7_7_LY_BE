@@ -68,7 +68,7 @@ public class ProductService {
     public ProductSnapshotResult getProductSnapshot(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(ProductNotFoundException::new);
-        return ProductSnapshotResult.of(product, getArtist(product.getArtistId()));
+        return ProductSnapshotResult.withoutAliases(product, getArtist(product.getArtistId()));
     }
 
     /** getProductSnapshot의 배치 버전. */
@@ -76,7 +76,7 @@ public class ProductService {
         List<Product> products = productRepository.findAllByIds(productIds);
         Map<Long, Artist> artistsById = getArtists(products);
         return products.stream()
-                .map(product -> ProductSnapshotResult.of(product, artistsById.get(product.getArtistId())))
+                .map(product -> ProductSnapshotResult.withoutAliases(product, artistsById.get(product.getArtistId())))
                 .toList();
     }
 

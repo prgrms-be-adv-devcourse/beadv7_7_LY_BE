@@ -28,9 +28,12 @@ public record ProductSnapshotResult(
         List<String> artistAliases
 ) {
     /**
-     * 별칭을 모르는 경로용. 목록 조회 밖에서는 별칭을 쓰는 곳이 없어 빈 목록으로 둔다.
+     * 별칭을 쓰지 않는 경로용 — 목록 조회 밖에서는 소비하는 곳이 없어 빈 목록으로 둔다.
+     * <p>
+     * 이름으로 나눈 것은 별칭이 빈다는 사실을 호출부에서 보이게 하려는 것이다. 인자 개수만 다르면
+     * 목록 경로에서 실수로 이쪽을 불러도 예외 없이 별칭만 조용히 빈다.
      */
-    public static ProductSnapshotResult of(Product product, Artist artist) {
+    public static ProductSnapshotResult withoutAliases(Product product, Artist artist) {
         return of(product, artist, List.of(), List.of());
     }
 
