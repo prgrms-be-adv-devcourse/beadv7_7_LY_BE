@@ -48,7 +48,7 @@ spring:
             - id: product-service-no-auth
               uri: ${PRODUCT_SERVICE_URI}
               predicates:
-                - Path=/api/v*/products, /api/v*/products/**, /api/v*/search/products
+                - Path=/api/v*/products, /api/v*/products/**
                 - Method=GET
 
             # product-service-liked-products
@@ -158,6 +158,11 @@ spring:
                 - Path=/api/v*/recommendations, /api/v*/recommendations/**
               filters:
                 - JwtAuthenticationFilter
+            - id: exploration-service-search-no-auth
+              uri: ${EXPLORATION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/search/products
+                - Method=GET
 
 app:
   jwt:
