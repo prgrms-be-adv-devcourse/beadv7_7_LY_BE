@@ -9,6 +9,7 @@ import site.explorationservice.productindex.application.dto.BackfillResult;
 import site.explorationservice.productindex.application.dto.ProductIndexCommand;
 import site.explorationservice.productindex.application.port.ProductPort;
 import site.explorationservice.productindex.application.port.dto.ProductPage;
+import site.explorationservice.productindex.domain.ProductDocumentRepository;
 
 /**
  * product-service를 커서로 순회하며 상품을 색인한다. 지금은 동기다 — 50만 건 전체를 한 호출로 끝내는 게 아니라, maxProducts만큼만 처리하고 멈추는
@@ -28,6 +29,7 @@ public class ProductBackfillService {
 
     private final ProductPort productPort;
     private final ProductIndexService productIndexService;
+    private final ProductDocumentRepository productDocumentRepository;
 
     /**
      * @param startCursor 시작 지점. null이면 처음부터
@@ -35,6 +37,8 @@ public class ProductBackfillService {
      *                    때문)
      */
     public BackfillResult backfill(final Long startCursor, final int maxProducts) {
+        validateWriteTarget();
+
         Long cursor = startCursor;
         Long resumeCursor = startCursor;
         int totalIndexed = 0;
@@ -59,6 +63,18 @@ public class ProductBackfillService {
         }
 
         return new BackfillResult(totalIndexed, resumeCursor, failedProductIds);
+    }
+
+    /**
+     * 문서를 한 건이라도 보내기 전에 대상 인덱스가 준비돼 있는지 확인한다. 인덱스가 없는 채로 저장하면 ES가 첫 문서를 보고 타입을 추측해 인덱스를 자동
+     * 생성하는데, 벡터 필드가 dense_vector로 잡히지 않아 kNN 검색이 통째로 안 된다. 색인 자체는 에러 없이 성공해서 전량을 넣은 뒤에야 알게 되므로,
+     * 여기서 미리 확인하고 즉시 실패시킨다. 페이지 단위 실패를 삼키고 계속 가는 아래 처리와 달리 시작 조건 위반이라 백필 자체를 막는다.
+     */
+    private void validateWriteTarget() {
+        if (!productDocumentRepository.hasVectorMapping()) {
+            throw new IllegalStateException(
+                "색인 대상 인덱스가 없거나 벡터 매핑이 올바르지 않습니다. 인덱스를 만든 뒤 다시 실행하세요");
+        }
     }
 
     /**

@@ -14,7 +14,7 @@ class ProductEmbeddingTemplateTest {
         final Integer releaseYear, final String releaseCountry, final String pressType) {
         return new ProductIndexCommand(
             1L, "Kind of Blue", "Miles Davis", null, genre, label,
-            releaseYear, releaseCountry, pressType, true, List.of(), List.of());
+            releaseYear, releaseCountry, pressType, true, null, null, List.of(), List.of());
     }
 
     private ProductIndexCommand fullCommand() {

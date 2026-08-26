@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Dynamic;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 import org.springframework.data.elasticsearch.annotations.InnerField;
@@ -28,6 +29,10 @@ import org.springframework.data.elasticsearch.annotations.Setting;
  * OpenAI 재호출이 없다. 반면 <b>기존 필드의 분석기·차원·유사도를 바꾸는 것</b>은 인덱스를 새로 만들고 전체
  * 재색인해야 한다 — 그래서 분석기 배정은 뒤집기 비용이 큰 결정이다.
  * <p>
+ * <b>매핑에 없는 필드가 든 문서는 거부된다.</b> 조용히 잘못된 타입으로 굳는 것보다 시끄럽게 실패하는 쪽을
+ * 택했다. 이 설정은 매핑 갱신으로 기존 인덱스에도 반영되므로, 필드를 더할 때는 문서를 저장하기 전에
+ * 매핑부터 갱신해야 한다.
+ * <p>
  * 별칭 두 필드는 <b>아직 값이 비어 있다.</b> 별칭은 상품 테이블이 아니라 별도 테이블에 상품 1건당 여러 행으로
  * 있어서 공급원인 상품 서비스 내부 API가 조인해 내려줘야 하고, 그 확장이 선행이다.
  */
@@ -35,7 +40,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(indexName = "lp_products")
+@Document(indexName = "lp_products", dynamic = Dynamic.STRICT)
 @Setting(settingPath = "elasticsearch/product-index-settings.json")
 public class ProductDocument {
 
@@ -119,6 +124,27 @@ public class ProductDocument {
     private String pressType;
 
     /**
+     * 화면에 보여주는 원본 표기다. 매칭에는 쓰지 않는다 — 같은 번호가 여러 표기로 존재하기 때문이다
+     * (DR LP 001 · DR-LP-001 · DRLP-001 · DRLP001).
+     */
+    @Field(type = FieldType.Keyword)
+    private String catalogNumber;
+
+    /**
+     * 번호 검색이 실제로 보는 값이다. 구분자를 없애고 소문자로 통일한 표기라, 사용자가 하이픈을 넣든 빼든
+     * 같은 상품에 도달한다. 색인할 때 원본에서 만들며, 검색어를 다듬을 때와 같은 함수를 쓴다.
+     */
+    @Field(type = FieldType.Keyword)
+    private String normalizedCatalogNumber;
+
+    /**
+     * 같은 앨범의 여러 판본을 하나로 묶을 때 쓰는 키. 판본 묶기 기능이 붙기 전이라 아직 질의가 이 필드를
+     * 보지 않지만, 값을 나중에 채우려면 전체 재색인이 필요해서 지금 함께 넣는다.
+     */
+    @Field(type = FieldType.Keyword)
+    private String groupKey;
+
+    /**
      * identity/origin/edition 그룹 상한(`ProductDocumentRepositoryImpl.capByGroup`)이 쓰는 그룹 키
      */
     @Field(type = FieldType.Keyword)
@@ -159,4 +185,12 @@ public class ProductDocument {
         knnSimilarity = KnnSimilarity.COSINE
     )
     private float[] editionVector;
+
+    /**
+     * 마스터 번호가 없는 상품은 자기 자신이 하나의 그룹이 된다. 그때 상품 번호를 그대로 쓰면 같은 숫자의
+     * 마스터 번호와 값이 겹치므로 접두어로 체계를 나눈다.
+     */
+    public static String groupKeyOf(final Long discogsMasterId, final Long productId) {
+        return discogsMasterId == null ? "p" + productId : String.valueOf(discogsMasterId);
+    }
 }

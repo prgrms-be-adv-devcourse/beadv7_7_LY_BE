@@ -8,6 +8,12 @@ public interface ProductDocumentRepository {
     void saveAll(List<ProductDocument> documents);
 
     /**
+     * 색인을 쓰는 대상 인덱스에 벡터 필드가 dense_vector 타입으로 잡혀 있는지 확인한다. 인덱스가 아예 없거나, 문서 저장이 먼저 일어나 ES가 타입을
+     * 추측해 만든 인덱스라면 false다 — 그런 인덱스는 벡터가 숫자 배열로 굳어 kNN 검색이 통째로 안 되는데도 색인 자체는 에러 없이 성공한다.
+     */
+    boolean hasVectorMapping();
+
+    /**
      * 색인된 상품의 identity·origin·edition 3벡터를 되읽는다. <b>찾은 것만 담아 돌려준다</b> — 아직 색인되지 않은 상품이 섞여 있어도 실패로
      * 보지 않는다.
      * <p>

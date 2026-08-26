@@ -54,6 +54,7 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("3개 벡터가 응답 순서대로(identity·origin·edition 블록) 각자의 필드에 붙는다")
     void 벡터_정렬() {
+        // given
         // 블록 순서(identity 3개, origin 3개, edition 3개)로 9개를 준다 — ProductIndexService가 이 순서를
         // 전제로 3등분하기 때문에, 순서가 어긋나면 이 테스트가 잡아낸다.
         givenEmbedding(
@@ -62,8 +63,10 @@ class ProductIndexServiceTest {
             v(6), v(7), v(8) // edition
         );
 
+        // when
         productIndexService.indexAll(commands());
 
+        // then
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         final List<ProductDocument> documents = documentsCaptor.getValue();
 
@@ -86,10 +89,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("상품이 여럿이어도 임베딩은 한 번만 호출한다 — 텍스트가 3배로 늘어도 호출 횟수는 그대로")
     void 배치_호출() {
+        // given
         givenEmbedding(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8));
 
+        // when
         productIndexService.indexAll(commands());
 
+        // then
         // 상품 수만큼 호출이 늘어나면 백필에서 그대로 비용이 된다.
         then(embeddingService).should(times(1)).embed(anyList(), any(), any());
         then(productDocumentRepository).should(times(1)).saveAll(anyList());
@@ -98,10 +104,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("상품별로 자기 텍스트가 임베딩된다 — identity·origin·edition 전부")
     void 텍스트_조립() {
+        // given
         givenEmbedding(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8));
 
+        // when
         final List<ProductIndexResult> results = productIndexService.indexAll(commands());
 
+        // then
         assertThat(results).extracting(ProductIndexResult::identityText).containsExactly(
             "Jazz · Miles Davis", "포크 · 김광석", "그런지 · Nirvana"
         );
@@ -116,11 +125,14 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("active가 비어 있으면 살아 있는 것으로 본다")
     void active_기본값() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
-        // null이면 active 필터에 걸려 추천에서 통째로 빠지므로, 색인 대상으로 들어온 이상 기본값이 필요하다.
+        // when
         productIndexService.index(command(1L, "Miles Davis", null));
 
+        // then
+        // null이면 active 필터에 걸려 추천에서 통째로 빠지므로, 색인 대상으로 들어온 이상 기본값이 필요하다.
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         assertThat(documentsCaptor.getValue().getFirst().getActive()).isTrue();
     }
@@ -128,10 +140,13 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("active가 false면 그대로 저장한다")
     void active_유지() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
+        // when
         productIndexService.index(command(1L, "Miles Davis", false));
 
+        // then
         then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
         assertThat(documentsCaptor.getValue().getFirst().getActive()).isFalse();
     }
@@ -139,14 +154,79 @@ class ProductIndexServiceTest {
     @Test
     @DisplayName("단건 색인은 그 상품의 결과만 돌려준다")
     void 단건_색인() {
+        // given
         givenEmbedding(v(0), v(1), v(2));
 
+        // when
         final ProductIndexResult result =
             productIndexService.index(command(1L, "Miles Davis", true));
 
+        // then
         assertThat(result.productId()).isEqualTo(1L);
         assertThat(result.dimensions()).isEqualTo(1);
         assertThat(result.embeddingModel()).isEqualTo(MODEL);
+    }
+
+    @Test
+    @DisplayName("카탈로그 번호는 원본과 다듬은 표기를 함께 담는다")
+    void 번호_두_자리() {
+        // given
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, "BLP-1567", 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        // 실데이터에서 같은 번호가 여러 표기로 존재한다. 원본만 색인하면 사용자가 표기를
+        // 정확히 알아야만 찾을 수 있다.
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isEqualTo("BLP-1567");
+        assertThat(document.getNormalizedCatalogNumber()).isEqualTo("blp1567");
+    }
+
+    @Test
+    @DisplayName("카탈로그 번호가 없으면 두 자리 모두 비운다")
+    void 번호_없음() {
+        // given
+        // 실데이터의 5.4%가 카탈로그 번호를 갖고 있지 않다
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, null, 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isNull();
+        assertThat(document.getNormalizedCatalogNumber()).isNull();
+    }
+
+    @Test
+    @DisplayName("다듬으면 아무 문자도 남지 않는 번호는 원본도 비운다")
+    void 번호_구분자만() {
+        // given
+        // 상품 서비스는 이런 값을 아예 저장하지 않지만, 응답에 실려 오면 화면에는 보이는데
+        // 번호로는 찾을 수 없는 상품이 생긴다. 두 값이 갈리지 않게 여기서 맞춘다.
+        givenEmbedding(v(0), v(1), v(2));
+        final ProductIndexCommand command = new ProductIndexCommand(
+            1L, "Blue Train", "John Coltrane", null, "Jazz", "Blue Note",
+            1957, "US", "ORIGINAL", true, "---", 4001L, List.of(), List.of());
+
+        // when
+        productIndexService.indexAll(List.of(command));
+
+        // then
+        then(productDocumentRepository).should().saveAll(documentsCaptor.capture());
+        final ProductDocument document = documentsCaptor.getValue().getFirst();
+        assertThat(document.getCatalogNumber()).isNull();
+        assertThat(document.getNormalizedCatalogNumber()).isNull();
     }
 
     private void givenEmbedding(final float[]... vectors) {
@@ -161,17 +241,17 @@ class ProductIndexServiceTest {
     private List<ProductIndexCommand> commands() {
         return List.of(
             new ProductIndexCommand(1L, "Kind of Blue", "Miles Davis", null, "Jazz", "Columbia",
-                1959, "미국", "ORIGINAL", true, List.of(), List.of()),
+                1959, "미국", "ORIGINAL", true, null, null, List.of(), List.of()),
             new ProductIndexCommand(2L, "다시 부르기 2", "김광석", null, "포크", "킹레코드",
-                1995, "한국", "REISSUE", true, List.of(), List.of()),
+                1995, "한국", "REISSUE", true, null, null, List.of(), List.of()),
             new ProductIndexCommand(3L, "Nevermind", "Nirvana", null, "그런지", "DGC",
-                1991, "미국", "ORIGINAL", true, List.of(), List.of())
+                1991, "미국", "ORIGINAL", true, null, null, List.of(), List.of())
         );
     }
 
     private ProductIndexCommand command(final Long productId, final String artistName,
         final Boolean active) {
         return new ProductIndexCommand(productId, "제목", artistName, null, "Jazz", "Columbia",
-            1959, "미국", "ORIGINAL", active, List.of(), List.of());
+            1959, "미국", "ORIGINAL", active, null, null, List.of(), List.of());
     }
 }

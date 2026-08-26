@@ -1,5 +1,11 @@
 package site.explorationservice.productindex.infrastructure;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -8,10 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.stereotype.Repository;
 import site.explorationservice.productindex.domain.AxisWeights;
 import site.explorationservice.productindex.domain.ProductDocument;
@@ -24,7 +31,6 @@ import site.explorationservice.productindex.domain.ScoredProduct;
  * kNN 질의는 어차피 그쪽으로만 조립할 수 있다.
  */
 @Repository
-@RequiredArgsConstructor
 public class ProductDocumentRepositoryImpl implements ProductDocumentRepository {
 
     private static final String IDENTITY_FIELD = "identityVector";
@@ -54,19 +60,65 @@ public class ProductDocumentRepositoryImpl implements ProductDocumentRepository 
     private static final double EDITION_WEIGHT_THRESHOLD = 0.15;
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final ElasticsearchClient elasticsearchClient;
     private final ProductVectorReader productVectorReader;
+
+    /**
+     * 평소에는 별칭에 쓴다. 재색인할 때만 아직 별칭이 가리키지 않는 새 인덱스를 지정해, 검색이 옛 인덱스로 서비스되는 동안 새 인덱스를 채운다.
+     */
+    private final String writeTarget;
+
+    public ProductDocumentRepositoryImpl(
+        final ElasticsearchOperations elasticsearchOperations,
+        final ElasticsearchClient elasticsearchClient,
+        final ProductVectorReader productVectorReader,
+        @Value("${exploration.product-index.write-target:lp_products}") final String writeTarget) {
+        this.elasticsearchOperations = elasticsearchOperations;
+        this.elasticsearchClient = elasticsearchClient;
+        this.productVectorReader = productVectorReader;
+        this.writeTarget = writeTarget;
+    }
 
     /**
      * 문서 id가 productId라 같은 상품을 다시 저장하면 덮어쓰기가 된다 — 재색인이 자연히 멱등하다.
      */
     @Override
     public void saveAll(final List<ProductDocument> documents) {
-        elasticsearchOperations.save(documents);
+        elasticsearchOperations.save(documents, IndexCoordinates.of(writeTarget));
     }
 
     @Override
     public Map<Long, ProductVectors> findVectors(final List<Long> productIds) {
         return productVectorReader.findVectors(productIds);
+    }
+
+    /**
+     * Spring Data가 아니라 저수준 클라이언트로 매핑을 읽는다 — 쓰기 대상이 별칭일 때 응답이 별칭이 아니라 실제 인덱스 이름으로 키가 잡혀서, 이름으로 꺼내는
+     * Spring Data 경로로는 매핑을 못 찾는다. 저수준 응답은 이름과 무관하게 값을 순회할 수 있다.
+     */
+    @Override
+    public boolean hasVectorMapping() {
+        final GetMappingResponse response = findMapping();
+        if (response == null || response.mappings().isEmpty()) {
+            return false;
+        }
+        return response.mappings().values().stream()
+            .allMatch(record -> isDenseVector(record.mappings().properties().get(IDENTITY_FIELD)));
+    }
+
+    private GetMappingResponse findMapping() {
+        try {
+            return elasticsearchClient.indices().getMapping(request -> request.index(writeTarget));
+        } catch (final ElasticsearchException e) {
+            // 인덱스(별칭)가 없으면 404로 온다. 매핑이 없는 것이므로 조회 결과 없음으로 본다
+            return null;
+        } catch (final IOException e) {
+            throw new UncheckedIOException("상품 인덱스 매핑 조회 실패 — " + writeTarget, e);
+        }
+    }
+
+    private boolean isDenseVector(final Property property) {
+        return property != null && property.isDenseVector();
     }
 
     /**

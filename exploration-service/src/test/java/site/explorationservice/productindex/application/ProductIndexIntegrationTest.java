@@ -173,7 +173,7 @@ class ProductIndexIntegrationTest {
         productIndexService.index(command());
         productIndexService.index(
             new ProductIndexCommand(PRODUCT_ID, "바뀐 제목", "Miles Davis", null, "Jazz", "Columbia",
-                1959, "미국", "ORIGINAL", true, List.of(), List.of()));
+                1959, "미국", "ORIGINAL", true, null, null, List.of(), List.of()));
 
         final ProductDocument found = elasticsearchOperations.get(
             String.valueOf(PRODUCT_ID), ProductDocument.class);
@@ -189,7 +189,7 @@ class ProductIndexIntegrationTest {
     void active_기본값() {
         productIndexService.index(
             new ProductIndexCommand(PRODUCT_ID, "Kind of Blue", "Miles Davis", null, "Jazz",
-                "Columbia", 1959, "미국", "ORIGINAL", null, List.of(), List.of()));
+                "Columbia", 1959, "미국", "ORIGINAL", null, null, null, List.of(), List.of()));
 
         final ProductDocument found = elasticsearchOperations.get(
             String.valueOf(PRODUCT_ID), ProductDocument.class);
@@ -199,7 +199,7 @@ class ProductIndexIntegrationTest {
 
     private ProductIndexCommand command() {
         return new ProductIndexCommand(PRODUCT_ID, "Kind of Blue", "Miles Davis", null, "Jazz",
-            "Columbia", 1959, "미국", "ORIGINAL", true, List.of(), List.of());
+            "Columbia", 1959, "미국", "ORIGINAL", true, null, null, List.of(), List.of());
     }
 
     /**
