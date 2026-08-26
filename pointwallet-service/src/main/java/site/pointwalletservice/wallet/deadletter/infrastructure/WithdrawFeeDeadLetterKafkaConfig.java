@@ -44,6 +44,9 @@ public class WithdrawFeeDeadLetterKafkaConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(withdrawFeeDeadLetterErrorHandler);
+        // 플랫폼 계정(PLATFORM_USER_ID) 지갑 락 경합 방지 - 파티션 키가 withdrawId라 여러 파티션에
+        // 흩어질 수 있는데, concurrency=1로 고정해 이 리스너는 항상 순차 처리되게 강제한다.
+        factory.setConcurrency(1);
         return factory;
     }
 }
