@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.function.Consumer;
+import org.springframework.transaction.TransactionStatus;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.pointwalletservice.wallet.application.WithdrawFeeEarnedEventHandler;
 import site.pointwalletservice.wallet.deadletter.domain.DeadLetterStatus;
@@ -45,8 +46,8 @@ class WithdrawFeeDeadLetterAdminServiceTest {
     void setUp() {
         sut = new WithdrawFeeDeadLetterAdminService(repository, withdrawFeeEarnedEventHandler, transactionTemplate);
         lenient().doAnswer(invocation -> {
-            TransactionCallbackWithoutResult callback = invocation.getArgument(0);
-            callback.doInTransaction(null);
+            Consumer<TransactionStatus> callback = invocation.getArgument(0);
+            callback.accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
     }

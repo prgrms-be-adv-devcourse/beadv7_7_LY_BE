@@ -22,6 +22,7 @@ import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.outbox.application.OutboxEventStore;
 import site.pointwalletservice.shared.Money;
+import site.pointwalletservice.shared.PlatformAccount;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
@@ -154,11 +155,13 @@ class WithdrawApplicationServiceTest {
             // 플랫폼 계정 charge()는 더 이상 이 트랜잭션 안에서 직접 호출되지 않는다
             verify(walletService, never()).charge(any(), any());
 
-            // 대신 같은 트랜잭션 안에서 WithdrawFeeEarnedEvent가 Outbox에 저장된다
+            // 대신 같은 트랜잭션 안에서 WithdrawFeeEarnedEvent가 Outbox에 저장된다 —
+// 파티션 키는 withdrawId가 아니라 PLATFORM_USER_ID로 고정된다(모든 인출 수수료 이벤트가
+// 한 파티션에 몰려 순차 처리되도록 보장하기 위함).
             ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
             verify(outboxEventStore).store(
                     org.mockito.ArgumentMatchers.eq(WithdrawFeeEarnedEvent.TOPIC),
-                    org.mockito.ArgumentMatchers.eq(WITHDRAW_ID.toString()),
+                    org.mockito.ArgumentMatchers.eq(PlatformAccount.PLATFORM_USER_ID.toString()),
                     eventCaptor.capture()
             );
             assertThat(eventCaptor.getValue()).isInstanceOf(WithdrawFeeEarnedEvent.class);
