@@ -77,4 +77,44 @@ class SearchKeywordTest {
         assertThat(keyword.getValue()).isEmpty();
         assertThat(keyword.isTooShort()).isTrue();
     }
+
+    @Test
+    @DisplayName("표기가_달라도_같은_번호는_같은_정규화_값이_된다")
+    void 번호_표기_통일() {
+        // given
+        final String hyphen = "BLP-1567";
+        final String spaced = "blp 1567";
+        final String joined = "blp1567";
+
+        // when & then
+        // 색인할 때와 같은 규칙을 타야 저장된 값과 맞는다
+        assertThat(SearchKeyword.from(hyphen).getNormalized()).isEqualTo("blp1567");
+        assertThat(SearchKeyword.from(spaced).getNormalized()).isEqualTo("blp1567");
+        assertThat(SearchKeyword.from(joined).getNormalized()).isEqualTo("blp1567");
+    }
+
+    @Test
+    @DisplayName("원문은_정규화와_무관하게_그대로_남는다")
+    void 원문_보존() {
+        // given
+        final String raw = "BLP-1567";
+
+        // when
+        final SearchKeyword keyword = SearchKeyword.from(raw);
+
+        // then
+        // 이름 검색은 분석기를 타는 필드를 보므로 원문이 필요하다
+        assertThat(keyword.getValue()).isEqualTo("BLP-1567");
+    }
+
+    @Test
+    @DisplayName("글자와_숫자가_하나도_없으면_정규화_값이_비어_있다")
+    void 정규화_결과_없음() {
+        // given — 기호만 있는 검색어
+        final SearchKeyword keyword = SearchKeyword.from("--");
+
+        // when & then
+        assertThat(keyword.hasNormalized()).isFalse();
+        assertThat(keyword.getNormalized()).isEmpty();
+    }
 }
