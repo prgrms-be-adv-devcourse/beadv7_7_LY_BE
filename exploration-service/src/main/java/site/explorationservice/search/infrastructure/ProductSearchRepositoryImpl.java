@@ -1,6 +1,5 @@
 package site.explorationservice.search.infrastructure;
 
-import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
@@ -49,7 +48,7 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
     private static final List<String> RELEVANCE_FIELDS = List.of(
         "title^3", "titleAliases^3", "artistName^1.5", "artistAliases^1.5");
 
-    /** 번호를 정확히 친 사람에게 앞부분만 겹치는 번호(BLP-15670)가 먼저 가지 않도록 정확 일치를 위로 올린다. */
+    /** 정확 일치는 두 절 모두에 걸려 이미 위로 오고, 이 가산점은 앞부분만 겹치는 번호와의 점수 차를 더 벌린다. */
     private static final float CATALOG_EXACT_BOOST = 2.0f;
     private static final String CATALOG_FIELD = "normalizedCatalogNumber";
 

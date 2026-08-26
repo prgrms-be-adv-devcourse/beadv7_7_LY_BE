@@ -105,7 +105,7 @@ class ProductSearchControllerTest {
     }
 
     @Test
-    @DisplayName("대상을_주면_서비스에_그대로_넘긴다")
+    @DisplayName("대상을 주면 서비스에 그대로 넘긴다")
     void 대상_전달() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
@@ -123,7 +123,7 @@ class ProductSearchControllerTest {
     }
 
     @Test
-    @DisplayName("대상을_안_주면_null로_넘어간다")
+    @DisplayName("대상을 안 주면 null로 넘어간다")
     void 대상_미지정() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
@@ -139,7 +139,7 @@ class ProductSearchControllerTest {
     }
 
     @Test
-    @DisplayName("모르는_대상은_400과_정해진_에러코드로_응답한다")
+    @DisplayName("모르는 대상은 400과 정해진 에러코드로 응답한다")
     void 미지원_대상_응답() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))

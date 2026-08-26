@@ -205,7 +205,7 @@ class ProductSearchServiceTest {
     }
 
     @Test
-    @DisplayName("대상을_안_주면_이름_검색_경로로_간다")
+    @DisplayName("대상을 안 주면 이름 검색 경로로 간다")
     void 대상_미지정_이름검색() {
         // given
         given(productSearchRepository.search(any(SearchKeyword.class), anyInt(), anyInt()))
@@ -222,7 +222,7 @@ class ProductSearchServiceTest {
     }
 
     @Test
-    @DisplayName("카탈로그_대상이면_번호_조회로_간다")
+    @DisplayName("카탈로그 대상이면 번호 조회로 간다")
     void 카탈로그_대상_번호조회() {
         // given
         given(productSearchRepository.searchByCatalogNumber(any(SearchKeyword.class), anyInt(), anyInt()))
@@ -238,7 +238,7 @@ class ProductSearchServiceTest {
     }
 
     @Test
-    @DisplayName("모르는_대상은_조회하지_않고_거절한다")
+    @DisplayName("모르는 대상은 조회하지 않고 거절한다")
     void 미지원_대상_거절() {
         // given
         // when & then
@@ -248,7 +248,7 @@ class ProductSearchServiceTest {
     }
 
     @Test
-    @DisplayName("번호로_대조할_글자가_없으면_조회하지_않고_빈_결과를_준다")
+    @DisplayName("번호로 대조할 글자가 없으면 조회하지 않고 빈 결과를 준다")
     void 정규화_값_없으면_빈_결과() {
         // given — 기호만 있는 검색어. 짧지는 않아서 길이 규칙에는 안 걸린다
         // when

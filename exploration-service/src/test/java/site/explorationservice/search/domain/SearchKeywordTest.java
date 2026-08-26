@@ -79,7 +79,7 @@ class SearchKeywordTest {
     }
 
     @Test
-    @DisplayName("표기가_달라도_같은_번호는_같은_정규화_값이_된다")
+    @DisplayName("표기가 달라도 같은 번호는 같은 정규화 값이 된다")
     void 번호_표기_통일() {
         // given
         final String hyphen = "BLP-1567";
@@ -94,7 +94,7 @@ class SearchKeywordTest {
     }
 
     @Test
-    @DisplayName("원문은_정규화와_무관하게_그대로_남는다")
+    @DisplayName("원문은 정규화와 무관하게 그대로 남는다")
     void 원문_보존() {
         // given
         final String raw = "BLP-1567";
@@ -108,7 +108,7 @@ class SearchKeywordTest {
     }
 
     @Test
-    @DisplayName("글자와_숫자가_하나도_없으면_정규화_값이_비어_있다")
+    @DisplayName("글자와 숫자가 하나도 없으면 정규화 값이 비어 있다")
     void 정규화_결과_없음() {
         // given — 기호만 있는 검색어
         final SearchKeyword keyword = SearchKeyword.from("--");

@@ -249,7 +249,7 @@ class ProductSearchQueryTest {
     }
 
     @Test
-    @DisplayName("번호_질의는_정확_일치와_앞부분_일치_두_절을_가진다")
+    @DisplayName("번호 질의는 정확 일치와 앞부분 일치 두 절을 가진다")
     void 번호_질의_두_절() {
         // given
         // when
@@ -262,7 +262,7 @@ class ProductSearchQueryTest {
     }
 
     @Test
-    @DisplayName("정확_일치가_앞부분_일치보다_높은_가중치를_받는다")
+    @DisplayName("정확 일치가 앞부분 일치보다 높은 가중치를 받는다")
     void 정확_일치_우선() {
         // given
         // when
@@ -279,7 +279,7 @@ class ProductSearchQueryTest {
     }
 
     @Test
-    @DisplayName("번호_질의도_판매중인_상품만_본다")
+    @DisplayName("번호 질의도 판매중인 상품만 본다")
     void 번호_질의_활성_필터() {
         // given
         // when
@@ -292,7 +292,7 @@ class ProductSearchQueryTest {
     }
 
     @Test
-    @DisplayName("번호_질의는_점수_다음_정렬_키로_상품_번호를_준다")
+    @DisplayName("번호 질의는 점수 다음 정렬 키로 상품 번호를 준다")
     void 번호_질의_2차_정렬() {
         // given
         // when

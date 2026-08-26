@@ -11,7 +11,7 @@ import site.explorationservice.search.exception.UnsupportedSearchTargetException
 class SearchTargetTest {
 
     @Test
-    @DisplayName("대상을_안_주면_이름_검색으로_본다")
+    @DisplayName("대상을 안 주면 이름 검색으로 본다")
     void 기본값_이름검색() {
         // given
         // when
@@ -23,7 +23,7 @@ class SearchTargetTest {
     }
 
     @Test
-    @DisplayName("빈_문자열도_이름_검색으로_본다")
+    @DisplayName("빈 문자열도 이름 검색으로 본다")
     void 빈_값_이름검색() {
         // given
         final String raw = "   ";
@@ -36,7 +36,21 @@ class SearchTargetTest {
     }
 
     @Test
-    @DisplayName("대소문자가_달라도_같은_대상으로_읽는다")
+    @DisplayName("이름을 그대로 주면 이름 검색으로 본다")
+    void 이름_대상() {
+        // given
+        final String raw = "name";
+
+        // when
+        final SearchTarget target = SearchTarget.from(raw);
+
+        // then
+        // 프론트가 선택기를 붙이면 이 값을 직접 보낸다. 상수 이름이 바뀌면 여기서 걸린다
+        assertThat(target).isEqualTo(SearchTarget.NAME);
+    }
+
+    @Test
+    @DisplayName("대소문자가 달라도 같은 대상으로 읽는다")
     void 대소문자_무시() {
         // given
         // when & then
@@ -46,7 +60,7 @@ class SearchTargetTest {
     }
 
     @Test
-    @DisplayName("모르는_값은_거절한다")
+    @DisplayName("모르는 값은 거절한다")
     void 미지원_대상_거절() {
         // given — catalog의 흔한 오타
         final String raw = "catlog";
