@@ -55,6 +55,21 @@ public class HoldApplicationService implements HoldService {
         // 못 막아서, previousUserId를 읽은 시점과 실제 해제 시점 사이에 값이 바뀌는
         // TOCTOU 레이스가 있었음 - PR 리뷰 참고)
         Optional<Hold> currentHold = findByAuctionIdForUpdate(auctionId);
+
+        // 멱등성 가드 — 요청이 지금 걸려있는 홀드와 완전히 동일(같은 유저, 같은 금액)하면
+        // 실질적으로 아무 것도 바뀌지 않는 요청이다(전형적으로 auction-service의 응답유실 후
+        // 재시도). 이 경우 지갑 lock조차 잡지 않고 곧장 기존 상태를 그대로 반환한다 —
+        // release+deduct를 실행하면 최종 잔액은 결국 같아지지만(그래서 지금까지 "멱등하다"고
+        // 느껴졌던 것), 그 과정에서 Hold 행이 새 ID로 교체되고 원장에 실질 변화 없는
+        // RELEASE+HOLD 한 쌍이 매번 쌓인다 - 원장은 "모든 자산 변경을 기록한다"는 방침의
+        // 반대쪽, 즉 "변경이 없으면 아무 것도 남기지 않는다"를 지키기 위한 조기 반환이다.
+        // 무엇이 "같은 홀드"인지는 Hold.isSameRequest()가 판단한다(트랜잭션 스크립트 지양 -
+        // 여기서 getUserId()/getAmount()를 직접 비교하지 않는다).
+        if (currentHold.filter(hold -> hold.isSameRequest(userId, amount)).isPresent()) {
+            Money balanceAfter = walletService.getBalance(userId);
+            return new HoldResult(currentHold.get().getId(), null, balanceAfter);
+        }
+
         Long previousUserId = currentHold.map(Hold::getUserId).orElse(null);
 
         // 데드락 방지: 지갑 두 개를 건드릴 수 있으니, WalletService가 정해둔 고정 순서로 잠근다.
@@ -176,7 +191,8 @@ public class HoldApplicationService implements HoldService {
 
         // 5) 남은 최소 검증 — userId/amount도 요청값과 실제 Hold가 일치하는지 확인한다.
         // 여기서부터는 이미 락을 잡고 조회해둔 currentHold로 비교하므로 원장을 추가로 읽을 필요가 없다.
-        if (!currentHold.getUserId().equals(userId) || !currentHold.getAmount().equals(amount)) {
+        // "무엇이 같은 홀드인가"는 hold()와 동일하게 Hold.isSameRequest()에 위임한다.
+        if (!currentHold.isSameRequest(userId, amount)) {
             log.error("롤백 요청의 userId/amount가 실제 홀드와 불일치: holdId={}, 요청=(userId={}, amount={}), 실제=(userId={}, amount={})",
                     holdId, userId, amount, currentHold.getUserId(), currentHold.getAmount());
             throw new HoldException(HoldErrorCode.HOLD_MISMATCH);
