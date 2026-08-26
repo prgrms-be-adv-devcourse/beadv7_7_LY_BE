@@ -8,6 +8,7 @@ import site.pointwalletservice.ledger.application.PointTransactionService;
 import site.pointwalletservice.ledger.domain.PointTransactionType;
 import site.pointwalletservice.outbox.application.OutboxEventStore;
 import site.pointwalletservice.shared.Money;
+import site.pointwalletservice.shared.PlatformAccount;
 import site.pointwalletservice.wallet.application.WalletBalanceResult;
 import site.pointwalletservice.wallet.application.WalletService;
 import site.pointwalletservice.wallet.domain.InsufficientBalanceException;
@@ -99,7 +100,7 @@ public class WithdrawApplicationService implements WithdrawService {
 
             outboxEventStore.store(
                     WithdrawFeeEarnedEvent.TOPIC,
-                    w.getId().toString(),
+                    PlatformAccount.PLATFORM_USER_ID.toString(),   // ← 항상 같은 키
                     new WithdrawFeeEarnedEvent(w.getId(), feeAmount.getValue())
             );
 

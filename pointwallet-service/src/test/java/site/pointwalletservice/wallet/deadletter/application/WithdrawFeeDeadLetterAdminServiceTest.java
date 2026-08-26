@@ -2,11 +2,15 @@ package site.pointwalletservice.wallet.deadletter.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.function.Consumer;
+import org.springframework.transaction.TransactionStatus;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.pointwalletservice.wallet.application.WithdrawFeeEarnedEventHandler;
 import site.pointwalletservice.wallet.deadletter.domain.DeadLetterStatus;
 import site.pointwalletservice.wallet.deadletter.domain.WithdrawFeeDeadLetter;
@@ -33,9 +39,17 @@ class WithdrawFeeDeadLetterAdminServiceTest {
 
     private WithdrawFeeDeadLetterAdminService sut;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     @BeforeEach
     void setUp() {
-        sut = new WithdrawFeeDeadLetterAdminService(repository, withdrawFeeEarnedEventHandler);
+        sut = new WithdrawFeeDeadLetterAdminService(repository, withdrawFeeEarnedEventHandler, transactionTemplate);
+        lenient().doAnswer(invocation -> {
+            Consumer<TransactionStatus> callback = invocation.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
     }
 
     @Test
@@ -87,6 +101,22 @@ class WithdrawFeeDeadLetterAdminServiceTest {
         verify(withdrawFeeEarnedEventHandler, never()).handle(any(WithdrawFeeEarnedEvent.class));
         assertThat(deadLetter.getStatus()).isEqualTo(DeadLetterStatus.RESOLVED);
         assertThat(deadLetter.getResolvedNote()).isEqualTo("이미 별도로 정산 처리함");
+    }
+
+    @Test
+    @DisplayName("reprocess 중 유니크 제약 위반이 나면 실패가 아니라 이미 처리된 것으로 간주해 RESOLVED로 전환한다")
+    void reprocess_유니크제약위반시_이미처리된것으로_간주하고_RESOLVED로_전환한다() {
+        WithdrawFeeDeadLetter deadLetter =
+                WithdrawFeeDeadLetter.open(5L, BigDecimal.valueOf(3_000), "일시적 DB 오류");
+        when(repository.findById(1L)).thenReturn(Optional.of(deadLetter));
+        doThrow(new DataIntegrityViolationException("uk_point_transaction_related_id_type"))
+                .when(withdrawFeeEarnedEventHandler)
+                .handle(new WithdrawFeeEarnedEvent(5L, BigDecimal.valueOf(3_000)));
+
+        sut.reprocess(1L);
+
+        assertThat(deadLetter.getStatus()).isEqualTo(DeadLetterStatus.RESOLVED);
+        assertThat(deadLetter.getResolvedNote()).contains("이미 처리된 이벤트");
     }
 
     @Test
