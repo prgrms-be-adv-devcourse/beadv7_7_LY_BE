@@ -57,4 +57,17 @@ public class Hold {
     public static Hold place(Long auctionId, Long userId, Money amount) {
         return new Hold(auctionId, userId, amount);
     }
+
+    /**
+     * 이 홀드가 (userId, amount) 요청과 실질적으로 동일한 홀드인지 판단한다 - 즉 이 요청을
+     * 처리해도 최고 입찰자·홀드 금액에 아무 변화가 없는지를 홀드 스스로에게 묻는 것이다.
+     * <p>
+     * hold() 재시도(auction-service의 응답유실 후 재호출 등)로 이미 걸려있는 것과 같은 요청이
+     * 다시 들어왔을 때, 애플리케이션 계층이 getUserId()/getAmount()를 까서 직접 비교하지 않고
+     * 이 메서드를 통해 판단하게 하기 위해 존재한다 - "무엇이 같은 홀드인가"는 Hold 자신의
+     * 지식이지 호출부의 절차가 아니다.
+     */
+    public boolean isSameRequest(Long userId, Money amount) {
+        return this.userId.equals(userId) && this.amount.equals(amount);
+    }
 }
