@@ -61,8 +61,8 @@ public class ProductSearchService {
     }
 
     private ProductSearchResult searchByCatalogNumber(final SearchKeyword keyword, final int page, final int size) {
-        // 대조할 값이 없다. 빈 값으로 앞부분 일치를 걸면 판매중인 상품 전체가 결과로 나온다
-        if (!keyword.hasNormalized()) {
+        // 표기를 통일하고 나면 한 글자만 남을 수 있다. 그 한 글자로 앞부분 일치를 걸면 번호 대부분이 걸린다
+        if (keyword.isNormalizedTooShort()) {
             return ProductSearchResult.empty(page, size);
         }
 

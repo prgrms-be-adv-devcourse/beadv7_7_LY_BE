@@ -50,8 +50,8 @@ public final class SearchKeyword {
         return normalized;
     }
 
-    /** 글자·숫자가 하나도 없는 검색어는 번호로 대조할 수 없다. */
-    public boolean hasNormalized() {
-        return !normalized.isEmpty();
+    /** 표기를 통일하면서 글자가 줄어들 수 있으므로, 번호 대조는 통일한 값의 길이로 다시 잰다. */
+    public boolean isNormalizedTooShort() {
+        return normalized.length() < MIN_LENGTH;
     }
 }

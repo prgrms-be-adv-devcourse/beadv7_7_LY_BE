@@ -114,7 +114,8 @@ class SearchKeywordTest {
         final SearchKeyword keyword = SearchKeyword.from("--");
 
         // when & then
-        assertThat(keyword.hasNormalized()).isFalse();
+        // 대조할 글자가 없으면 질의까지 가면 안 된다
+        assertThat(keyword.isNormalizedTooShort()).isTrue();
         assertThat(keyword.getNormalized()).isEmpty();
     }
 }

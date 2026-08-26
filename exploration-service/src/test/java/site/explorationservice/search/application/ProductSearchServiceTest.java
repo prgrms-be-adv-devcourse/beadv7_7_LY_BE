@@ -260,4 +260,18 @@ class ProductSearchServiceTest {
         assertThat(result.totalElements()).isZero();
         then(productSearchRepository).shouldHaveNoInteractions();
     }
+
+    @Test
+    @DisplayName("번호로 대조할 글자가 한 자뿐이면 조회하지 않고 빈 결과를 준다")
+    void 정규화_값이_짧으면_빈_결과() {
+        // given — 기호를 걷어내면 한 글자만 남는다. 원문은 세 글자라 길이 규칙에는 안 걸린다
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("--a", "catalog", 0, 20);
+
+        // then
+        // 한 글자로 앞부분 일치를 걸면 번호 대부분이 걸려 전체 건수까지 세게 된다
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        then(productSearchRepository).shouldHaveNoInteractions();
+    }
 }
