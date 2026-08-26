@@ -16,6 +16,9 @@ public enum SearchErrorCode implements ErrorCode {
      */
     SEARCH_KEYWORD_REQUIRED(HttpStatus.BAD_REQUEST, "PERR-4001", "검색어(q)는 필수입니다"),
 
+    /** 상품 서비스에는 짝이 없는 코드다. 검색 대상 자체가 이 서비스에서 처음 생긴 개념이라 새 번호를 뗀다. */
+    SEARCH_TARGET_UNSUPPORTED(HttpStatus.BAD_REQUEST, "PERR-4002", "지원하지 않는 검색 대상입니다"),
+
     ;
 
     private final HttpStatus status;
