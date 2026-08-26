@@ -62,6 +62,27 @@ public class WalletHttpClient implements WalletPort {
         return body.getData();
     }
 
+    /**
+     * hold() 성공 이후 자기 쪽 트랜잭션이 실패했을 때의 보상 호출
+     * 실패해도 원래 입찰 실패 사유를 덮으면 안 되므로 개별 실패를 도메인 예외로 세분화해서 번역하지 않는다.
+     * 호출부(AuctionService)가 이 예외를 잡아 로그만 남기고 원래 예외를 그대로 전파하는 책임을 진다
+     */
+    @Override
+    public void rollback(Long holdId, Long auctionId, Long memberId, Money amount) {
+        try {
+            auctionWalletRestClient.post()
+                    .uri("/internal/v1/wallet/hold/{holdId}/rollback", holdId)
+                    .body(Map.of(
+                            "auctionId", auctionId,
+                            "memberId", memberId,
+                            "amount", amount.getValue()))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RuntimeException e) {
+            throw new WalletBusinessException(AuctionErrorCode.WALLET_ROLLBACK_FAILED, e);
+        }
+    }
+
     // resilience4j의 fallbackMethod는 record/ignore-exceptions 설정과 무관하게 이 시그니처와 매치되는
     // 예외는 전부 여기로 넘긴다 — 이미 도메인 에러코드로 번역된 AuctionException(잔액부족/지갑없음/응답이상)은
     // 여기서 한 번 더 감싸지 않고 그대로 재던져야 각자의 원래 코드가 클라이언트까지 살아서 전파된다.

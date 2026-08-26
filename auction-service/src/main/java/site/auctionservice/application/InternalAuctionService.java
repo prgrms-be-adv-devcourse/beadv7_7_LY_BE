@@ -39,7 +39,7 @@ public class InternalAuctionService {
             auction.getId(), auction.getProductId(),
             auction.getItemInfo().getCondition().name(),
             bidCount, finalPrice,
-            auction.getSchedule().getPeriod().getEndAt(),
+            auction.getEndAt(),
             auction.getEffectiveStatusAt(LocalDateTime.now()).name()
         );
     }

@@ -1,5 +1,6 @@
 package site.auctionservice.application;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
 import site.auctionservice.application.port.MemberPort;
@@ -63,8 +67,21 @@ class AuctionServiceTest {
     @Mock
     private ImageUrlValidator imageUrlValidator;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     @InjectMocks
     private AuctionService auctionService;
+
+    @BeforeEach
+    void setUp() {
+        // TransactionTemplate.execute()가 실제 트랜잭션 없이 콜백을 즉시 실행하도록 스텁 —
+        // pointwallet-service의 WithdrawApplicationServiceTest 등과 동일한 패턴.
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction((TransactionStatus) null);
+        }).when(transactionTemplate).execute(any());
+    }
 
     private static final String DESCRIPTION = "충분히 긴 상품 설명입니다.";
     private static final LocalDateTime PAST_START = LocalDateTime.of(2000, 1, 1, 0, 0);
@@ -937,7 +954,7 @@ class AuctionServiceTest {
         assertThat(auction.getHighestBid().isBidder(2L)).isTrue();
 
         verify(walletPort).hold(1L, 2L, Money.of(13_000L));
-        verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getSchedule().getPeriod().getEndAt());
+        verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getEndAt());
     }
 
     @Test
@@ -1039,11 +1056,13 @@ class AuctionServiceTest {
                 .extracting(e -> ((AuctionException) e).getErrorCode())
                 .isEqualTo(AuctionErrorCode.WALLET_HOLD_FAILED);
         verify(bidRepository, never()).save(any());
+        // hold() 자체가 실패하면 holdId가 존재하지 않으므로 보상(rollback) 호출도 없어야 한다
+        verify(walletPort, never()).rollback(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("예치금 홀드 이후 단계에서 예외가 나도 삼키지 않고 그대로 전파한다")
-    void testPlaceBid_failureAfterHold_propagatesException() {
+    @DisplayName("예치금 홀드 이후 단계에서 예외가 나면 삼키지 않고 그대로 전파하되, 홀드를 보상(rollback)한다")
+    void testPlaceBid_failureAfterHold_propagatesExceptionAndRollsBackHold() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
@@ -1063,6 +1082,37 @@ class AuctionServiceTest {
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
 
         // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND);
+        verify(walletPort).rollback(100L, 1L, 2L, Money.of(13_000L));
+    }
+
+    @Test
+    @DisplayName("보상(rollback) 호출 자체가 실패해도 원래 입찰 실패 사유를 덮지 않고 그대로 전파한다")
+    void testPlaceBid_rollbackItselfFails_stillPropagatesOriginalException() {
+        // given
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(any(), any(), any()))
+                .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
+        given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
+            Bid bid = invocation.getArgument(0);
+            ReflectionTestUtils.setField(bid, "id", 50L);
+            return bid;
+        });
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.empty());
+        given(bidRepository.countByAuctionId(1L)).willReturn(1L);
+        willThrow(new AuctionException(AuctionErrorCode.AUCTION_SEARCH_VIEW_NOT_FOUND))
+                .given(searchViewRepository).updateOnBid(any(), any(), anyInt(), any());
+        willThrow(new AuctionException(AuctionErrorCode.WALLET_ROLLBACK_FAILED))
+                .given(walletPort).rollback(any(), any(), any(), any());
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then: 보상 실패(WALLET_ROLLBACK_FAILED)가 아니라 원래 실패 사유가 그대로 전파돼야 한다
         assertThatThrownBy(() -> auctionService.placeBid(command))
                 .isInstanceOf(AuctionException.class)
                 .extracting(e -> ((AuctionException) e).getErrorCode())
