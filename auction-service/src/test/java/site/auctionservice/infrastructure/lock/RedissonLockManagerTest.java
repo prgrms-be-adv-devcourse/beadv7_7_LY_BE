@@ -8,6 +8,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.RedisConnectionException;
+import site.auctionservice.exception.InfrastructureUnavailableException;
 import site.auctionservice.exception.LockAcquisitionFailedException;
 
 import java.util.concurrent.TimeUnit;
@@ -83,6 +85,19 @@ class RedissonLockManagerTest {
                 .isInstanceOf(LockAcquisitionFailedException.class);
 
         assertThat(Thread.interrupted()).isTrue();
+        verify(rLock, never()).unlock();
+    }
+
+    @Test
+    @DisplayName("Redis 연결 장애로 tryLock이 실패하면 InfrastructureUnavailableException을 던지고 unlock을 호출하지 않는다")
+    void executeWithLock_redisUnavailable_throwsInfrastructureUnavailable() throws InterruptedException {
+        given(redissonClient.getLock("auction:lock:1")).willReturn(rLock);
+        given(rLock.tryLock(3L, TimeUnit.MILLISECONDS)).willThrow(new RedisConnectionException("connection refused"));
+
+        assertThatThrownBy(() ->
+                lockManager.executeWithLock("auction:lock:1", 3L, -1L, TimeUnit.MILLISECONDS, () -> "ok"))
+                .isInstanceOf(InfrastructureUnavailableException.class);
+
         verify(rLock, never()).unlock();
     }
 
