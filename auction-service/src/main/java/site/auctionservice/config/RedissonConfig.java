@@ -30,13 +30,13 @@ public class RedissonConfig {
                 .setAddress(REDISSON_HOST_PREFIX + redisHost + ":" + redisPort)
                 .setConnectionPoolSize(64)
                 .setConnectionMinimumIdleSize(24)
-                // 락 소유 스레드가 죽었을 때 자동 해제까지 걸리는 기본 시간(watchdog)
                 .setTimeout(3000);
         if (!redisPassword.isBlank()) {
             singleServerConfig.setPassword(redisPassword);
         }
-        // lockWatchdogTimeout 기본값은 30_000ms. leaseTime을 명시하지 않고
-        // tryLock(waitTime, unit) 2-파라미터 오버로드를 쓰면 이 watchdog이 자동 갱신을 돌려준다.
+        // leaseTime을 명시하지 않고 tryLock(waitTime, unit) 2-파라미터 오버로드를 쓰면 이 시간만큼의 TTL로 락을 걸고 살아있는 동안 계속 갱신한다(watchdog).
+        // 스레드가 죽으면 갱신이 멈추고 TTL이 그대로 만료되며 락이 풀린다 — Redisson 기본값(30_000ms)과 동일하지만 암묵적 의존을 피하려 명시.
+        config.setLockWatchdogTimeout(30_000L);
         return Redisson.create(config);
     }
 }
