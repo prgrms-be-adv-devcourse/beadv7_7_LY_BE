@@ -36,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -86,11 +88,11 @@ class AuctionServiceTest {
             return callback.doInTransaction((TransactionStatus) null);
         }).when(transactionTemplate).execute(any());
 
-        // LockPort.executeWithLock()도 실제 락 없이 액션을 바로 실행하도록 스텁
+        // LockPort.executeWithLockOnAuction()도 실제 락 없이 액션을 바로 실행하도록 스텁
         org.mockito.Mockito.lenient().doAnswer(invocation -> {
             java.util.function.Supplier<?> action = invocation.getArgument(4);
             return action.get();
-        }).when(lockPort).executeWithLock(any(), org.mockito.ArgumentMatchers.anyLong(),
+        }).when(lockPort).executeWithLockOnAuction(any(), org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyLong(), any(), any());
     }
 
@@ -936,6 +938,10 @@ class AuctionServiceTest {
 
         verify(walletPort).hold(1L, 2L, Money.of(13_000L));
         verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getEndAt());
+        // placeBid()의 수동 락 호출도 @DistributedLock 애노테이션 경로(DistributedLockAspect)와
+        // 똑같이 LockPort.executeWithLockOnAuction()에 auctionId를 그대로 넘긴다는 걸 검증한다
+        // (키 조합은 LockPort 안에서 AuctionRedisKeys.lockKey()로 통일돼 있다).
+        verify(lockPort).executeWithLockOnAuction(eq(1L), anyLong(), anyLong(), any(), any());
     }
 
     @Test

@@ -76,7 +76,7 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
-    @DistributedLock(prefix = "auction", key = "#command.auctionId()")
+    @DistributedLock(key = "#command.auctionId()")
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
         Auction auction = auctionRepository.findById(command.auctionId())
@@ -105,7 +105,7 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
-    @DistributedLock(prefix = "auction", key = "#auctionId")
+    @DistributedLock(key = "#auctionId")
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
         Auction auction = auctionRepository.findById(auctionId)
@@ -247,10 +247,9 @@ public class AuctionService {
      */
     public PlaceBidResult placeBid(PlaceBidCommand command) {
         AtomicReference<WalletHoldInfo> holdInfoRef = new AtomicReference<>();
-        String lockKey = "auction:lock:" + command.auctionId();
         try {
-            return lockPort.executeWithLock(lockKey, BID_LOCK_WAIT_TIME, BID_LOCK_LEASE_TIME, TimeUnit.SECONDS,
-                    () -> transactionTemplate.execute(status -> executeBid(command, holdInfoRef)));
+            return lockPort.executeWithLockOnAuction(command.auctionId(), BID_LOCK_WAIT_TIME, BID_LOCK_LEASE_TIME,
+                    TimeUnit.SECONDS, () -> transactionTemplate.execute(status -> executeBid(command, holdInfoRef)));
         } catch (RuntimeException e) {
             compensateHold(command, holdInfoRef.get(), e);
             throw e;
@@ -304,7 +303,7 @@ public class AuctionService {
         return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
     }
 
-    @DistributedLock(prefix = "auction", key = "#auctionId")
+    @DistributedLock(key = "#auctionId")
     @Transactional
     public void forceCancelAuction(Long auctionId) {
         LocalDateTime now = LocalDateTime.now();

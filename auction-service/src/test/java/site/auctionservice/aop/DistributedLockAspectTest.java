@@ -32,7 +32,7 @@ class DistributedLockAspectTest {
     private DistributedLockAspect aspect;
 
     private static class TestTarget {
-        @DistributedLock(prefix = "auction", key = "#auctionId")
+        @DistributedLock(key = "#auctionId")
         public String doSomething(Long auctionId) {
             return "raw";
         }
@@ -40,7 +40,7 @@ class DistributedLockAspectTest {
 
     @SuppressWarnings("unchecked")
     private void stubLockManagerToRunAction() {
-        given(lockManager.executeWithLock(any(), anyLong(), anyLong(), any(), any()))
+        given(lockManager.executeWithLockOnAuction(any(), anyLong(), anyLong(), any(), any()))
                 .willAnswer(invocation -> {
                     Supplier<Object> action = invocation.getArgument(4);
                     return action.get();
@@ -58,8 +58,8 @@ class DistributedLockAspectTest {
     }
 
     @Test
-    @DisplayName("prefix와 SpEL로 평가한 식별자를 'prefix:lock:식별자' 형식으로 조립해 락 매니저에 넘긴다")
-    void lock_buildsKeyWithPrefixConvention() throws Throwable {
+    @DisplayName("SpEL로 평가한 식별자를 LockPort.executeWithLockOnAuction()에 그대로 넘긴다 (키 조합은 LockPort 책임)")
+    void lock_passesIdentifierToLockPort() throws Throwable {
         stubLockManagerToRunAction();
         Method method = TestTarget.class.getMethod("doSomething", Long.class);
         DistributedLock annotation = method.getAnnotation(DistributedLock.class);
@@ -69,8 +69,8 @@ class DistributedLockAspectTest {
         Object result = aspect.lock(joinPoint, annotation);
 
         assertThat(result).isEqualTo("raw");
-        org.mockito.Mockito.verify(lockManager).executeWithLock(
-                eq("auction:lock:5"), eq(3L), eq(-1L), eq(TimeUnit.MILLISECONDS), any());
+        org.mockito.Mockito.verify(lockManager).executeWithLockOnAuction(
+                eq("5"), eq(3L), eq(-1L), eq(TimeUnit.MILLISECONDS), any());
     }
 
     @Test

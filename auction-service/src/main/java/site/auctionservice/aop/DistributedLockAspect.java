@@ -35,10 +35,9 @@ public class DistributedLockAspect {
     @Around("@annotation(distributedLock)")
     public Object lock(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
         String identifier = parseKey(joinPoint, distributedLock.key());
-        String key = distributedLock.prefix() + ":lock:" + identifier;
 
-        return lockManager.executeWithLock(
-                key, distributedLock.waitTime(), distributedLock.leaseTime(), distributedLock.timeUnit(),
+        return lockManager.executeWithLockOnAuction(
+                identifier, distributedLock.waitTime(), distributedLock.leaseTime(), distributedLock.timeUnit(),
                 () -> {
                     try {
                         return joinPoint.proceed();
