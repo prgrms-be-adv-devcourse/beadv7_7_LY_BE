@@ -4,26 +4,22 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import site.productservice.domain.PressType;
 import site.productservice.domain.search.ProductSearchHit;
 import site.productservice.domain.search.ProductSearchPage;
 import site.productservice.domain.search.ProductSearchRepository;
 import site.productservice.domain.search.SearchKeyword;
-import site.productservice.infrastructure.ProductJpaRepository;
 
 /**
  * LIKE 기반 검색 구현. 검색 SQL을 직접 조립한다 — 토큰 수만큼 조건이 늘어나는 동적 쿼리라
- * 정적 JPQL로는 표현할 수 없기 때문. 목록(findActivePage)은 기존 JPQL 경로를 그대로 쓴다.
+ * 정적 JPQL로는 표현할 수 없기 때문.
  */
 @Repository
 @RequiredArgsConstructor
 public class ProductSearchRepositoryImpl implements ProductSearchRepository {
 
     private final EntityManager entityManager;
-    // 검색은 네이티브 SQL로 옮겼지만 findActivePage(카탈로그 목록)는 여전히 이 리포지토리를 쓴다
-    private final ProductJpaRepository productJpaRepository;
 
     @Override
     public ProductSearchPage searchActiveByKeyword(SearchKeyword keyword, int page, int size) {
@@ -37,13 +33,6 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
         long total = rows.isEmpty() ? countByKeyword(keyword) : ((Number) rows.getFirst()[7]).longValue();
         List<ProductSearchHit> hits = rows.stream().map(this::toHit).toList();
         return new ProductSearchPage(hits, total);
-    }
-
-    @Override
-    public ProductSearchPage findActivePage(int page, int size) {
-        List<ProductSearchHit> hits = productJpaRepository.findActiveHits(PageRequest.of(page, size));
-        long totalElements = productJpaRepository.countActive();
-        return new ProductSearchPage(hits, totalElements);
     }
 
     /**

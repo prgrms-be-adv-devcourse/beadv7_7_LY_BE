@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import site.productservice.domain.Artist;
 import site.productservice.domain.PressType;
 import site.productservice.domain.Product;
@@ -78,26 +77,5 @@ class ProductCountActiveTest {
 
         // then
         assertThat(count).isEqualTo(2);
-    }
-
-    /**
-     * 목록에 뿌리는 쿼리는 아티스트 이름을 읽어야 해서 조인이 남아 있다. 위 상품이 목록에서는 빠지므로, 두 숫자가
-     * 갈라진다는 사실 자체를 기록해 둔다. 지금 데이터에는 그런 상품이 없어 문제가 되지 않지만, 생기면 여기가 근거다.
-     */
-    @Test
-    @DisplayName("아티스트가 없는 상품은 목록에서는 빠져 건수와 어긋난다")
-    void 목록과_건수가_갈라지는_경우() {
-        // given
-        Long artistId = artistJpaRepository.save(Artist.of("The Beatles")).getId();
-        saveProduct(artistId, "Abbey Road");
-        saveProduct(artistId + 10_000L, "Unknown Artist Album");
-
-        // when
-        long count = productJpaRepository.countActive();
-        int listed = productJpaRepository.findActiveHits(PageRequest.of(0, 10)).size();
-
-        // then
-        assertThat(count).isEqualTo(2);
-        assertThat(listed).isEqualTo(1);
     }
 }
