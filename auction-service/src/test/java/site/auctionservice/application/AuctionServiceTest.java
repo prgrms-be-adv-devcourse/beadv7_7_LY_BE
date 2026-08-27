@@ -975,6 +975,23 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("제재된 회원이 입찰하면 예외를 던지고 락/경매 조회/예치금 홀드를 호출하지 않는다")
+    void testPlaceBid_restrictedMember_throwsWithoutTouchingAuctionOrWallet() {
+        // given
+        given(memberPort.getMemberRestriction(2L)).willReturn(true);
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+
+        // when & then
+        assertThatThrownBy(() -> auctionService.placeBid(command))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_MEMBER_RESTRICTED);
+        verify(auctionRepository, never()).findById(any());
+        verify(walletPort, never()).hold(any(), any(), any());
+        verify(lockPort, never()).executeWithLockOnAuction(any(), anyLong(), anyLong(), any(), any());
+    }
+
+    @Test
     @DisplayName("존재하지 않는 경매에 입찰하면 예외를 던지고 예치금 홀드를 호출하지 않는다")
     void testPlaceBid_auctionNotFound_throws() {
         // given

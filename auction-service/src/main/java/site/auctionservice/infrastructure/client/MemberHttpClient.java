@@ -37,6 +37,27 @@ public class MemberHttpClient implements MemberPort {
         return body.getData().nickname();
     }
 
+    @Override
+    public boolean getMemberRestriction(Long memberId) {
+        ApiResponse<RestrictionResponse> body;
+        try {
+            body = auctionMemberRestClient.get()
+                    .uri("/internal/v1/members/{memberId}/restrictions", memberId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<ApiResponse<RestrictionResponse>>() {});
+        } catch (HttpClientErrorException e) {
+            throw new UpstreamContractViolationException(
+                    "회원 제재 조회 실패 - memberId : "+ memberId + ", 상태: " + e.getStatusCode());
+        }
+
+        if (body == null || body.getData() == null) {
+            throw new UpstreamContractViolationException("회원 제재 응답 본문이 비어있습니다. - memberId" + memberId);
+        }
+        return body.getData().isRestricted();
+    }
+
     private record NicknameResponse(String nickname) {}
+
+    private record RestrictionResponse(boolean isRestricted) {}
 
 }
