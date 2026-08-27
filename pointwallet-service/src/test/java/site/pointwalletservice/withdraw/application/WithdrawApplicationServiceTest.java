@@ -2,6 +2,7 @@ package site.pointwalletservice.withdraw.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,9 +64,6 @@ class WithdrawApplicationServiceTest {
     @Mock
     private OutboxEventStore outboxEventStore;
 
-    @Mock
-    private TransactionStatus transactionStatus;
-
     private WithdrawApplicationService sut;
 
     private static final Long USER_ID = 1L;
@@ -74,17 +72,16 @@ class WithdrawApplicationServiceTest {
     private static final Money AMOUNT = Money.of(100_000);
     private static final Money FEE_AMOUNT = Money.of(2_000);  // 100,000 * 2%
     private static final Money NET_AMOUNT = Money.of(98_000);
-    private static final String IDEMPOTENCY_KEY = "idem-key-1";
+    private static final String IDEMPOTENCY_KEY = "test-idem-key-0001";
     private static final BankAccount BANK_ACCOUNT = new BankAccount("하나은행", "123-123456-12301", "홍길동");
 
     @BeforeEach
     void setUp() {
         // TransactionTemplate.execute()가 실제 트랜잭션 없이 콜백을 즉시 실행하도록 스텁 —
-        // DepositApplicationServiceTest와 동일한 패턴. status는 null 대신 mock을 넘겨서, 유니크 제약
-        // 충돌 시 setRollbackOnly() 호출을 검증할 수 있게 한다.
+        // DepositApplicationServiceTest와 동일한 패턴.
         org.mockito.Mockito.lenient().doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
-            return callback.doInTransaction(transactionStatus);
+            return callback.doInTransaction((TransactionStatus) null);
         }).when(transactionTemplate).execute(any());
 
         sut = new WithdrawApplicationService(
@@ -131,34 +128,33 @@ class WithdrawApplicationServiceTest {
     }
 
     @Nested
-    @DisplayName("멱등키 조회 (findByIdempotencyKey) — 파사드가 사전 확인에 사용하는 부분")
-    class FindByIdempotencyKey {
+    @DisplayName("멱등키 사전 조회 (findExisting) — userId를 항상 함께 대조한다")
+    class FindExisting {
 
         @Test
-        @DisplayName("이미 처리된 건이 있으면 그 결과를 반환한다")
-        void 존재하면_결과반환() {
+        @DisplayName("같은 (userId, idempotencyKey)로 저장된 건이 있으면 그 건을 반환한다")
+        void 존재하면_반환() {
             // given
-            Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT, IDEMPOTENCY_KEY);
-            ReflectionTestUtils.setField(withdraw, "id", WITHDRAW_ID);
-            withdraw.complete();
-            when(withdrawRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).thenReturn(Optional.of(withdraw));
+            Withdraw existing = Withdraw.request(USER_ID, IDEMPOTENCY_KEY, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
+            when(withdrawRepository.findByUserIdAndIdempotencyKey(USER_ID, IDEMPOTENCY_KEY))
+                    .thenReturn(Optional.of(existing));
 
             // when
-            Optional<WithdrawRequestResult> result = sut.findByIdempotencyKey(IDEMPOTENCY_KEY);
+            Optional<Withdraw> result = sut.findExisting(USER_ID, IDEMPOTENCY_KEY);
 
             // then
-            assertThat(result).isPresent();
-            assertThat(result.get().status()).isEqualTo(WithdrawStatus.SUCCESS);
+            assertThat(result).contains(existing);
         }
 
         @Test
-        @DisplayName("처리된 적 없으면 빈 Optional을 반환한다")
-        void 없으면_empty() {
+        @DisplayName("없으면 빈 Optional을 반환한다")
+        void 없으면_빈값() {
             // given
-            when(withdrawRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).thenReturn(Optional.empty());
+            when(withdrawRepository.findByUserIdAndIdempotencyKey(USER_ID, IDEMPOTENCY_KEY))
+                    .thenReturn(Optional.empty());
 
             // when
-            Optional<WithdrawRequestResult> result = sut.findByIdempotencyKey(IDEMPOTENCY_KEY);
+            Optional<Withdraw> result = sut.findExisting(USER_ID, IDEMPOTENCY_KEY);
 
             // then
             assertThat(result).isEmpty();
@@ -264,32 +260,43 @@ class WithdrawApplicationServiceTest {
         }
 
         @Test
-        @DisplayName("동시 요청이 같은 멱등키로 먼저 저장을 마치면(유니크 제약 위반), " +
-                "트랜잭션을 롤백시키고 이미 저장된 기존 건을 그대로 반환한다 — 원장/Outbox를 다시 기록하지 않는다")
-        void 동시요청_유니크제약위반시_기존건반환() {
-            // given
-            when(walletService.deduct(USER_ID, AMOUNT))
-                    .thenReturn(new WalletBalanceResult(WALLET_ID, Money.of(0)));
+        @DisplayName("커밋 시점에 (user_id, idempotency_key) 유니크 제약 위반이 나면 " +
+                "(동시에 같은 키로 들어온 다른 요청이 레이스로 먼저 이겼다는 뜻) " +
+                "재시도하지 않고 이미 저장된 기존 건을 조회해 반환한다")
+        void 유니크제약위반시_기존건으로_수렴한다() {
+            // given: 트랜잭션 커밋 자체가 유니크 제약 위반으로 실패한다고 가정
+            // (실제로는 이 트랜잭션 안에서 지갑 차감도 함께 자동 롤백된 상태)
+            doThrow(new DataIntegrityViolationException("duplicate key"))
+                    .when(transactionTemplate).execute(any());
 
-            DataIntegrityViolationException conflict = new DataIntegrityViolationException("duplicate key");
-            when(withdrawRepository.save(any(Withdraw.class))).thenThrow(conflict);
-
-            Withdraw alreadyCompleted =
-                    Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT, IDEMPOTENCY_KEY);
-            ReflectionTestUtils.setField(alreadyCompleted, "id", WITHDRAW_ID);
-            alreadyCompleted.complete();
-            when(withdrawRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).thenReturn(Optional.of(alreadyCompleted));
+            Withdraw existing = Withdraw.request(USER_ID, IDEMPOTENCY_KEY, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
+            ReflectionTestUtils.setField(existing, "id", WITHDRAW_ID);
+            existing.complete();
+            when(withdrawRepository.findByUserIdAndIdempotencyKey(USER_ID, IDEMPOTENCY_KEY))
+                    .thenReturn(Optional.of(existing));
 
             // when
             Withdraw result = sut.executeDeductionAndOutbox(USER_ID, AMOUNT, IDEMPOTENCY_KEY);
 
-            // then
-            assertThat(result).isSameAs(alreadyCompleted);
-            verify(transactionStatus).setRollbackOnly();
+            // then — 레이스에서 진 요청은 자기가 새로 저장을 시도하지 않고, 이긴 쪽의 결과를 그대로 받는다
+            assertThat(result).isSameAs(existing);
+            verify(withdrawRepository).findByUserIdAndIdempotencyKey(USER_ID, IDEMPOTENCY_KEY);
+        }
 
-            // 이미 완결된 건이므로 원장 기록/Outbox 저장이 다시 일어나면 안 된다
-            verify(pointTransactionService, never()).record(any(), any(), any(), any(), any());
-            verify(outboxEventStore, never()).store(any(), any(), any());
+        @Test
+        @DisplayName("유니크 제약 위반인데 기존 건 조회마저 실패하면(비정상 상황) WITHDRAW_NOT_FOUND를 던진다")
+        void 유니크제약위반인데_기존건도_없으면_예외() {
+            // given
+            doThrow(new DataIntegrityViolationException("duplicate key"))
+                    .when(transactionTemplate).execute(any());
+            when(withdrawRepository.findByUserIdAndIdempotencyKey(USER_ID, IDEMPOTENCY_KEY))
+                    .thenReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.executeDeductionAndOutbox(USER_ID, AMOUNT, IDEMPOTENCY_KEY))
+                    .isInstanceOf(WithdrawException.class)
+                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+                    .isEqualTo(WithdrawErrorCode.WITHDRAW_NOT_FOUND);
         }
     }
 
@@ -341,7 +348,7 @@ class WithdrawApplicationServiceTest {
         @DisplayName("존재하면 상태를 반환한다")
         void getStatus_정상조회() {
             // given
-            Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT, IDEMPOTENCY_KEY);
+            Withdraw withdraw = Withdraw.request(USER_ID, IDEMPOTENCY_KEY, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
             ReflectionTestUtils.setField(withdraw, "id", 1L);
             when(withdrawRepository.findById(1L)).thenReturn(Optional.of(withdraw));
 

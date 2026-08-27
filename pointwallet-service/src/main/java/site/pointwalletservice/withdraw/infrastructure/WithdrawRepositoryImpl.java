@@ -22,7 +22,7 @@ public class WithdrawRepositoryImpl implements WithdrawRepository {
     }
 
     @Override
-    public Optional<Withdraw> findByIdempotencyKey(String idempotencyKey) {
-        return withdrawJpaRepository.findByIdempotencyKey(idempotencyKey);
+    public Optional<Withdraw> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey) {
+        return withdrawJpaRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
     }
 }

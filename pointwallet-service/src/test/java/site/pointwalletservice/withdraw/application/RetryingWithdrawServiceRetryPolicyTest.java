@@ -27,7 +27,6 @@ import site.pointwalletservice.withdraw.exception.WithdrawLockContentionExceptio
  * <p>
  * 재시도 대상이 executeDeductionAndOutbox()로 바뀌었다 - 계좌 조회(validateBankAccount)는
  * WithdrawServiceFacade가 재시도 루프 진입 전에 1회만 부르므로 여기 대상이 아니다.
- * idempotencyKey는 재시도되는 매 시도마다 동일하게 전달된다(같은 요청의 재시도이므로).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RetryingWithdrawService의 재시도 정책 (executeDeductionAndOutbox()만 재시도)")
@@ -42,7 +41,7 @@ class RetryingWithdrawServiceRetryPolicyTest {
     private static final Money AMOUNT = Money.of(100_000);
     private static final Money FEE_AMOUNT = Money.of(2_000);
     private static final Money NET_AMOUNT = Money.of(98_000);
-    private static final String IDEMPOTENCY_KEY = "idem-key-1";
+    private static final String IDEMPOTENCY_KEY = "test-idem-key-0001";
 
     @BeforeEach
     void setUp() {
@@ -58,7 +57,7 @@ class RetryingWithdrawServiceRetryPolicyTest {
     }
 
     private Withdraw stubWithdraw() {
-        Withdraw withdraw = Withdraw.request(USER_ID, AMOUNT, FEE_AMOUNT, NET_AMOUNT, IDEMPOTENCY_KEY);
+        Withdraw withdraw = Withdraw.request(USER_ID, IDEMPOTENCY_KEY, AMOUNT, FEE_AMOUNT, NET_AMOUNT);
         ReflectionTestUtils.setField(withdraw, "id", 1L);
         withdraw.complete();
         return withdraw;
