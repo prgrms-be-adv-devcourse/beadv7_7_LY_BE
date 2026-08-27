@@ -5,6 +5,6 @@ import site.pointwalletservice.withdraw.application.dto.WithdrawRequestResult;
 import site.pointwalletservice.withdraw.application.dto.WithdrawStatusResult;
 
 public interface WithdrawService {
-    WithdrawRequestResult requestWithdraw(Long userId, Money amount);
+    WithdrawRequestResult requestWithdraw(Long userId, Money amount, String idempotencyKey);
     WithdrawStatusResult getStatus(Long withdrawRequestId);
 }

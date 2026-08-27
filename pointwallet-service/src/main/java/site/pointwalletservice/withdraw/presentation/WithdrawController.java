@@ -18,9 +18,11 @@ public class WithdrawController {
 
     @PostMapping("/request")
     public ApiResponse<WithdrawRequestResponse> requestWithdraw(
-            @MemberId Long memberId, @RequestBody WithdrawRequest request) {
+            @MemberId Long memberId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestBody WithdrawRequest request) {
         return ApiResponse.success(WithdrawRequestResponse.from(
-                withdrawService.requestWithdraw(memberId, Money.of(request.amount()))));
+                withdrawService.requestWithdraw(memberId, Money.of(request.amount()), idempotencyKey)));
     }
 
     @GetMapping("/{withdrawRequestId}")

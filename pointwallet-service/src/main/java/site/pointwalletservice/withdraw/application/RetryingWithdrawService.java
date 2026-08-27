@@ -1,4 +1,3 @@
-// withdraw/application/RetryingWithdrawService.java
 package site.pointwalletservice.withdraw.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.resilience.annotation.Retryable;
@@ -17,6 +16,10 @@ import site.pointwalletservice.withdraw.exception.WithdrawLockContentionExceptio
  * WithdrawServiceFacade가 재시도 루프 진입 전에 1회만 실행한다. 그래서 여기서 재시도되는 단위는
  * 순수하게 "지갑 차감 트랜잭션"뿐이고, 재시도 5번이 돌아도 외부 API를 다시 부르지 않는다.
  * <p>
+ * idempotencyKey는 재시도되는 매 시도마다 그대로 전달된다 - 같은 요청의 재시도이므로 키가 바뀌면 안
+ * 된다. executeDeductionAndOutbox() 내부의 유니크 제약 캐치 덕분에, 만약 재시도 도중 다른 스레드가
+ * (드물게) 같은 키로 먼저 성공해도 안전하게 그 결과로 수렴한다.
+ * <p>
  * jitter=25는 RetryingHoldService 벤치마크로 검증한 값을 그대로 가져왔다.
  */
 @Service
@@ -34,8 +37,8 @@ public class RetryingWithdrawService implements WithdrawService {
             maxDelay = 800
     )
     @Override
-    public WithdrawRequestResult requestWithdraw(Long userId, Money amount) {
-        Withdraw withdraw = withdrawApplicationService.executeDeductionAndOutbox(userId, amount);
+    public WithdrawRequestResult requestWithdraw(Long userId, Money amount, String idempotencyKey) {
+        Withdraw withdraw = withdrawApplicationService.executeDeductionAndOutbox(userId, amount, idempotencyKey);
         return WithdrawRequestResult.from(withdraw);
     }
 

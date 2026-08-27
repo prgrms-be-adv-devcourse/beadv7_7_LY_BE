@@ -13,23 +13,25 @@ class WithdrawTest {
     private static final Money AMOUNT = Money.of(100_000);
     private static final Money FEE = Money.of(2_000);
     private static final Money NET = Money.of(98_000);
+    private static final String IDEMPOTENCY_KEY = "idem-key-1";
 
     @Test
     @DisplayName("request()로 만들면 PENDING 상태로 시작한다")
     void request_초기상태_PENDING() {
         // when
-        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET);
+        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET, IDEMPOTENCY_KEY);
 
         // then
         assertThat(withdraw.getStatus()).isEqualTo(WithdrawStatus.PENDING);
         assertThat(withdraw.getProcessedAt()).isNull();
+        assertThat(withdraw.getIdempotencyKey()).isEqualTo(IDEMPOTENCY_KEY);
     }
 
     @Test
     @DisplayName("complete()하면 SUCCESS로 바뀌고 processedAt이 채워진다")
     void complete_SUCCESS로_전이() {
         // given
-        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET);
+        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET, IDEMPOTENCY_KEY);
 
         // when
         withdraw.complete();
@@ -43,7 +45,7 @@ class WithdrawTest {
     @DisplayName("fail()하면 FAILED로 바뀌고 사유가 남는다")
     void fail_FAILED로_전이() {
         // given
-        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET);
+        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET, IDEMPOTENCY_KEY);
 
         // when
         withdraw.fail("계좌 확인 실패");
@@ -58,7 +60,7 @@ class WithdrawTest {
     @DisplayName("이미 처리된(PENDING이 아닌) 건을 다시 처리하려 하면 ALREADY_PROCESSED를 던진다")
     void 이미처리된건_재처리시_예외() {
         // given
-        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET);
+        Withdraw withdraw = Withdraw.request(1L, AMOUNT, FEE, NET, IDEMPOTENCY_KEY);
         withdraw.complete();
 
         // when & then
