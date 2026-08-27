@@ -18,9 +18,9 @@ import site.productservice.domain.price.PriceHistory;
 import site.productservice.domain.price.PriceHistoryRepository;
 import site.productservice.domain.Product;
 import site.productservice.domain.ProductAliasRepository;
-import site.productservice.domain.search.ProductSearchHit;
-import site.productservice.domain.search.ProductSearchPage;
-import site.productservice.domain.search.ProductSearchRepository;
+import site.productservice.domain.catalog.CatalogItem;
+import site.productservice.domain.catalog.CatalogPage;
+import site.productservice.domain.catalog.CatalogRepository;
 import site.productservice.exception.ProductNotFoundException;
 import site.productservice.domain.ProductRepository;
 
@@ -50,7 +50,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ArtistRepository artistRepository;
-    private final ProductSearchRepository productSearchRepository;
+    private final CatalogRepository catalogRepository;
     private final PriceHistoryRepository priceHistoryRepository;
     private final AuctionOpenCountPort auctionOpenCountPort;
     private final ProductAliasRepository productAliasRepository;
@@ -155,18 +155,18 @@ public class ProductService {
     public ProductListResult getProductList(ProductListQuery query) {
         int page = Math.max(query.page(), 0);
         int size = clampListSize(query.size());
-        ProductSearchPage searchPage = productSearchRepository.findActivePage(page, size);
-        List<Long> productIds = searchPage.content().stream().map(ProductSearchHit::productId).toList();
+        CatalogPage catalogPage = catalogRepository.findActivePage(page, size);
+        List<Long> productIds = catalogPage.items().stream().map(CatalogItem::productId).toList();
         Map<Long, Long> lastTradedPrices = findLastTradedPrices(productIds);
         Optional<Map<Long, Long>> openAuctionCounts = findOpenAuctionCounts(productIds);
 
-        List<ProductListResult.Item> items = searchPage.content().stream()
-                .map(hit -> new ProductListResult.Item(hit.productId(), hit.title(), hit.artistName(),
-                        hit.coverImageUrl(), hit.releaseYear(), hit.pressType(), hit.country(),
-                        lastTradedPrices.get(hit.productId()),
-                        openAuctionCounts.map(counts -> counts.getOrDefault(hit.productId(), 0L)).orElse(null)))
+        List<ProductListResult.Item> items = catalogPage.items().stream()
+                .map(item -> new ProductListResult.Item(item.productId(), item.title(), item.artistName(),
+                        item.coverImageUrl(), item.releaseYear(), item.pressType(), item.country(),
+                        lastTradedPrices.get(item.productId()),
+                        openAuctionCounts.map(counts -> counts.getOrDefault(item.productId(), 0L)).orElse(null)))
                 .toList();
-        return ProductListResult.of(items, page, size, searchPage.totalElements());
+        return new ProductListResult(items, page, size, catalogPage.totalElements(), catalogPage.hasNext());
     }
 
     private Map<Long, Long> findLastTradedPrices(List<Long> productIds) {
