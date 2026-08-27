@@ -19,14 +19,9 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
-    // Redis / Redisson 추가
+    // Redisson
     // Spring Boot 공식 BOM에 포함되지 않는 외부 라이브러리이므로 버전 명시 필요 (spring boot 4 => 4.x.y버전)
     implementation 'org.redisson:redisson-spring-boot-starter:4.7.0'
-
-    // AOP (분산락 어노테이션 - @Aspect 처리를 위해 필요)
-    // Spring Boot 4부터 spring-boot-starter-aop가 없어져서(4.0.0-M2까지만 존재) aspectjweaver를 직접 추가한다.
-    // 버전은 Spring Boot BOM이 관리하므로 명시하지 않는다.
-    implementation 'org.aspectj:aspectjweaver'
 
     // H2 (테스트)
     testRuntimeOnly 'com.h2database:h2'
@@ -35,7 +30,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // AOP
-    implementation 'org.springframework.boot:spring-boot-starter-aspectj'       // spring boot 4.1.0 이후
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
 
     // resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot4:2.4.0'     // spring boot4
