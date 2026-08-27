@@ -70,7 +70,7 @@ class DistributedLockAspectTest {
 
         assertThat(result).isEqualTo("raw");
         org.mockito.Mockito.verify(lockManager).executeWithLockOnAuction(
-                eq("5"), eq(3L), eq(-1L), eq(TimeUnit.MILLISECONDS), any());
+                eq("5"), eq(3L), eq(-1L), eq(TimeUnit.SECONDS), any());
     }
 
     @Test

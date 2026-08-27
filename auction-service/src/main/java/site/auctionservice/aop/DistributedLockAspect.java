@@ -16,10 +16,6 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 import site.auctionservice.application.port.LockPort;
 
-// @Transactional 어드바이스보다 바깥쪽에서 실행되도록 순위를 강제한다.
-// 순서가 뒤바뀌면 트랜잭션 커밋 전에 락이 풀려서 다른 스레드가 변경 이전 데이터를 읽을 수 있다.
-// 극단값(HIGHEST_PRECEDENCE) 대신 여유 있는 숫자를 써서, 나중에 이보다 더 바깥이어야 하는
-// 애스펙트가 생기면 그 사이 값으로 끼워 넣을 수 있게 여지를 남긴다.
 @Aspect
 @Component
 @Order(1)

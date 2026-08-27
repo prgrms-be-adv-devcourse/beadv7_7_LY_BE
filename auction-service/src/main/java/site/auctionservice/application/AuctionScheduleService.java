@@ -20,7 +20,7 @@ public class AuctionScheduleService {
 
     private final AuctionRepository auctionRepository;
 
-    @DistributedLock(key = "#auctionId")
+    @DistributedLock(key = "#auctionId", waitTime = 1)
     @Transactional
     protected Auction startAuction(final Long auctionId) {
         final Auction auction = auctionRepository.findById(auctionId)
