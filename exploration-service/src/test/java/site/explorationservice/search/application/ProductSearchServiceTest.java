@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -23,6 +24,7 @@ import site.explorationservice.search.domain.ProductSearchPage;
 import site.explorationservice.search.domain.ProductSearchRepository;
 import site.explorationservice.search.domain.SearchKeyword;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
+import site.explorationservice.search.exception.UnsupportedSearchTargetException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("상품 검색")
@@ -41,7 +43,7 @@ class ProductSearchServiceTest {
         final String keyword = null;
 
         // when & then
-        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, 0, 20))
+        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, null, 0, 20))
             .isInstanceOf(SearchKeywordRequiredException.class);
         verify(productSearchRepository, never()).search(any(), anyInt(), anyInt());
     }
@@ -53,7 +55,7 @@ class ProductSearchServiceTest {
         final String keyword = "   ";
 
         // when & then
-        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, 0, 20))
+        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, null, 0, 20))
             .isInstanceOf(SearchKeywordRequiredException.class);
     }
 
@@ -64,7 +66,7 @@ class ProductSearchServiceTest {
         final String keyword = "a";
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts(keyword, 0, 20);
+        final ProductSearchResult result = productSearchService.searchProducts(keyword, null, 0, 20);
 
         // then
         // 400으로 던지면 프론트가 응답 형식을 두 갈래로 다뤄야 한다. 형식을 유지한 채 결과만 비운다.
@@ -82,7 +84,7 @@ class ProductSearchServiceTest {
             .willReturn(ProductSearchPage.empty());
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", -5, 20);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, -5, 20);
 
         // then
         assertThat(result.page()).isZero();
@@ -97,7 +99,7 @@ class ProductSearchServiceTest {
             .willReturn(ProductSearchPage.empty());
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 0);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 0, 0);
 
         // then
         assertThat(result.size()).isEqualTo(20);
@@ -111,7 +113,7 @@ class ProductSearchServiceTest {
             .willReturn(ProductSearchPage.empty());
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 5000);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 0, 5000);
 
         // then
         // 상한이 없으면 한 번의 요청으로 인덱스 전체를 긁어갈 수 있다
@@ -126,7 +128,7 @@ class ProductSearchServiceTest {
             .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", 0, 20);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 0, 20);
 
         // then
         assertThat(result.hasNext()).isTrue();
@@ -140,7 +142,7 @@ class ProductSearchServiceTest {
             .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", 2, 20);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 2, 20);
 
         // then
         // 45건을 20개씩 나누면 2페이지(0,1,2)가 마지막이다
@@ -156,7 +158,7 @@ class ProductSearchServiceTest {
         final int page = 500;
 
         // when
-        final ProductSearchResult result = productSearchService.searchProducts("장기하", page, 20);
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, page, 20);
 
         // then
         assertThat(result.content()).isEmpty();
@@ -176,7 +178,7 @@ class ProductSearchServiceTest {
             .willReturn(ProductSearchPage.empty());
 
         // when
-        productSearchService.searchProducts("장기하", 499, 20);
+        productSearchService.searchProducts("장기하", null, 499, 20);
 
         // then
         verify(productSearchRepository).search(any(), eq(499), eq(20));
@@ -195,10 +197,81 @@ class ProductSearchServiceTest {
         final ArgumentCaptor<SearchKeyword> captor = ArgumentCaptor.forClass(SearchKeyword.class);
 
         // when
-        productSearchService.searchProducts("  장기하와   얼굴들 ", 0, 20);
+        productSearchService.searchProducts("  장기하와   얼굴들 ", null, 0, 20);
 
         // then
         verify(productSearchRepository).search(captor.capture(), anyInt(), anyInt());
         assertThat(captor.getValue().getValue()).isEqualTo("장기하와 얼굴들");
+    }
+
+    @Test
+    @DisplayName("대상을 안 주면 이름 검색 경로로 간다")
+    void 대상_미지정_이름검색() {
+        // given
+        given(productSearchRepository.search(any(SearchKeyword.class), anyInt(), anyInt()))
+                .willReturn(new ProductSearchPage(List.of(), 0L));
+
+        // when
+        productSearchService.searchProducts("장기하", null, 0, 20);
+
+        // then
+        // 이 갈래가 뒤집히면 type을 안 보내던 기존 프론트 호출이 전부 번호 검색으로 샌다
+        then(productSearchRepository).should().search(any(SearchKeyword.class), anyInt(), anyInt());
+        then(productSearchRepository).should(never())
+                .searchByCatalogNumber(any(SearchKeyword.class), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("카탈로그 대상이면 번호 조회로 간다")
+    void 카탈로그_대상_번호조회() {
+        // given
+        given(productSearchRepository.searchByCatalogNumber(any(SearchKeyword.class), anyInt(), anyInt()))
+                .willReturn(new ProductSearchPage(List.of(), 0L));
+
+        // when
+        productSearchService.searchProducts("BLP-1567", "catalog", 0, 20);
+
+        // then
+        then(productSearchRepository).should()
+                .searchByCatalogNumber(any(SearchKeyword.class), anyInt(), anyInt());
+        then(productSearchRepository).should(never()).search(any(SearchKeyword.class), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("모르는 대상은 조회하지 않고 거절한다")
+    void 미지원_대상_거절() {
+        // given
+        // when & then
+        assertThatThrownBy(() -> productSearchService.searchProducts("BLP-1567", "catlog", 0, 20))
+                .isInstanceOf(UnsupportedSearchTargetException.class);
+        then(productSearchRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("번호로 대조할 글자가 없으면 조회하지 않고 빈 결과를 준다")
+    void 정규화_값_없으면_빈_결과() {
+        // given — 기호만 있는 검색어. 짧지는 않아서 길이 규칙에는 안 걸린다
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("--", "catalog", 0, 20);
+
+        // then
+        // 조회를 막지 않으면 판매중인 상품 전체가 번호 검색 결과로 나온다
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        then(productSearchRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("번호로 대조할 글자가 한 자뿐이면 조회하지 않고 빈 결과를 준다")
+    void 정규화_값이_짧으면_빈_결과() {
+        // given — 기호를 걷어내면 한 글자만 남는다. 원문은 세 글자라 길이 규칙에는 안 걸린다
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("--a", "catalog", 0, 20);
+
+        // then
+        // 한 글자로 앞부분 일치를 걸면 번호 대부분이 걸려 전체 건수까지 세게 된다
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        then(productSearchRepository).shouldHaveNoInteractions();
     }
 }

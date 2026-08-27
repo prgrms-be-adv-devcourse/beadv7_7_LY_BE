@@ -1,6 +1,7 @@
 package site.explorationservice.search.presentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -25,6 +26,7 @@ import site.explorationservice.search.application.ProductSearchService;
 import site.explorationservice.search.application.dto.ProductSearchResult;
 import site.explorationservice.search.domain.ProductSearchHit;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
+import site.explorationservice.search.exception.UnsupportedSearchTargetException;
 
 /**
  * 검색을 이 서비스로 옮기는 게 목적이라 나가는 응답이 상품 서비스의 것과 같아야 한다. 필드 이름 하나만 달라져도
@@ -47,7 +49,7 @@ class ProductSearchControllerTest {
         // given
         final ProductSearchHit hit = new ProductSearchHit(42L, "별일 없이 산다", "장기하와 얼굴들",
             "https://img.example.com/42.jpg", 2009, "ORIGINAL");
-        given(productSearchService.searchProducts(anyString(), anyInt(), anyInt()))
+        given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
             .willReturn(new ProductSearchResult(List.of(hit), 0, 20, 45L, true));
 
         // when & then
@@ -70,7 +72,7 @@ class ProductSearchControllerTest {
     @DisplayName("페이지 정보를 생략하면 0페이지 20건으로 조회한다")
     void 페이지_기본값() throws Exception {
         // given
-        given(productSearchService.searchProducts(anyString(), anyInt(), anyInt()))
+        given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
             .willReturn(new ProductSearchResult(List.of(), 0, 20, 0L, false));
         final ArgumentCaptor<Integer> pageCaptor = ArgumentCaptor.forClass(Integer.class);
         final ArgumentCaptor<Integer> sizeCaptor = ArgumentCaptor.forClass(Integer.class);
@@ -81,7 +83,7 @@ class ProductSearchControllerTest {
 
         // then
         // 기본값이 바뀌면 프론트가 첫 화면에 받는 건수가 달라진다
-        verify(productSearchService).searchProducts(eq("장기하"), pageCaptor.capture(), sizeCaptor.capture());
+        verify(productSearchService).searchProducts(eq("장기하"), any(), pageCaptor.capture(), sizeCaptor.capture());
         assertThat(pageCaptor.getValue()).isZero();
         assertThat(sizeCaptor.getValue()).isEqualTo(20);
     }
@@ -92,7 +94,7 @@ class ProductSearchControllerTest {
         // given
         // 서비스가 검색어를 검증하고 그 예외를 공통 핸들러가 400으로 바꾼다. 이 경로가 끊기면
         // 프레임워크 예외가 그대로 500으로 새어 나가 프론트가 코드로 분기할 수 없다
-        given(productSearchService.searchProducts(isNull(), anyInt(), anyInt()))
+        given(productSearchService.searchProducts(isNull(), any(), anyInt(), anyInt()))
             .willThrow(new SearchKeywordRequiredException());
 
         // when & then
@@ -100,5 +102,52 @@ class ProductSearchControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("PERR-4001"));
+    }
+
+    @Test
+    @DisplayName("대상을 주면 서비스에 그대로 넘긴다")
+    void 대상_전달() throws Exception {
+        // given
+        given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
+                .willReturn(ProductSearchResult.empty(0, 20));
+        final ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
+
+        // when
+        mockMvc.perform(get("/api/v1/search/products").param("q", "BLP-1567").param("searchBy", "catalog"))
+                .andExpect(status().isOk());
+
+        // then
+        // 이 파라미터가 서비스까지 안 닿으면 대상을 줘도 이름 검색이 돈다
+        verify(productSearchService).searchProducts(anyString(), typeCaptor.capture(), anyInt(), anyInt());
+        assertThat(typeCaptor.getValue()).isEqualTo("catalog");
+    }
+
+    @Test
+    @DisplayName("대상을 안 주면 null로 넘어간다")
+    void 대상_미지정() throws Exception {
+        // given
+        given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
+                .willReturn(ProductSearchResult.empty(0, 20));
+
+        // when
+        mockMvc.perform(get("/api/v1/search/products").param("q", "장기하"))
+                .andExpect(status().isOk());
+
+        // then
+        // 기본값 판단은 도메인(SearchTarget.from)이 한다. 컨트롤러가 문자열 기본값을 끼워 넣으면 규칙이 두 곳에 생긴다
+        verify(productSearchService).searchProducts(anyString(), isNull(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("모르는 대상은 400과 정해진 에러코드로 응답한다")
+    void 미지원_대상_응답() throws Exception {
+        // given
+        given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
+                .willThrow(new UnsupportedSearchTargetException());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/search/products").param("q", "BLP-1567").param("searchBy", "catlog"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("PERR-4002"));
     }
 }

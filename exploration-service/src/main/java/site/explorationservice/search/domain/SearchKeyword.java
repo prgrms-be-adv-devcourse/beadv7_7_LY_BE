@@ -1,5 +1,7 @@
 package site.explorationservice.search.domain;
 
+import site.common.text.TextNormalizer;
+
 /**
  * 검색어를 질의에 넣기 전 손질한다.
  * <p>
@@ -12,9 +14,13 @@ public final class SearchKeyword {
     private static final int MIN_LENGTH = 2;
 
     private final String value;
+    private final String normalized;
 
     private SearchKeyword(final String value) {
         this.value = value;
+        // TextNormalizer는 남는 글자가 없으면 null을 준다. 위 계층이 null을 검사하게 만들지 않으려고 여기서 흡수한다
+        final String normalizedValue = TextNormalizer.normalize(value);
+        this.normalized = normalizedValue == null ? "" : normalizedValue;
     }
 
     public static SearchKeyword from(final String raw) {
@@ -34,5 +40,18 @@ public final class SearchKeyword {
 
     public String getValue() {
         return value;
+    }
+
+    /**
+     * 번호 대조에만 쓰는, 표기를 통일한 값. 색인할 때와 같은 규칙이라 저장된 값과 글자 단위로 맞는다.
+     * 이름 검색은 원문을 쓴다 — 그쪽 필드는 분석기를 타기 때문이다.
+     */
+    public String getNormalized() {
+        return normalized;
+    }
+
+    /** 표기를 통일하면서 글자가 줄어들 수 있으므로, 번호 대조는 통일한 값의 길이로 다시 잰다. */
+    public boolean isNormalizedTooShort() {
+        return normalized.length() < MIN_LENGTH;
     }
 }

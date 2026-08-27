@@ -18,14 +18,16 @@ public class ProductSearchController {
 
     /**
      * q를 required=true로 두면 프레임워크가 던지는 예외가 500으로 새어 나간다. 검증은 서비스에서 해서
-     * 400 + 정해진 에러코드로 나가게 한다.
+     * 400 + 정해진 에러코드로 나가게 한다. searchBy도 같은 이유로 문자열로 받는다 — 열거 타입으로 바로 받으면
+     * 모르는 값이 왔을 때 프레임워크 예외가 같은 방식으로 샌다.
      */
     @GetMapping("/products")
     public ApiResponse<ProductSearchResponse> searchProducts(
         @RequestParam(required = false) final String q,
+        @RequestParam(required = false) final String searchBy,
         @RequestParam(defaultValue = "0") final int page,
         @RequestParam(defaultValue = "20") final int size) {
         return ApiResponse.success(
-            ProductSearchResponse.from(productSearchService.searchProducts(q, page, size)));
+            ProductSearchResponse.from(productSearchService.searchProducts(q, searchBy, page, size)));
     }
 }

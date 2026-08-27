@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -47,6 +48,10 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
     private static final List<String> RELEVANCE_FIELDS = List.of(
         "title^3", "titleAliases^3", "artistName^1.5", "artistAliases^1.5");
 
+    /** 정확 일치는 두 절 모두에 걸려 이미 위로 오고, 이 가산점은 앞부분만 겹치는 번호와의 점수 차를 더 벌린다. */
+    private static final float CATALOG_EXACT_BOOST = 2.0f;
+    private static final String CATALOG_FIELD = "normalizedCatalogNumber";
+
     private final ElasticsearchOperations elasticsearchOperations;
 
     @Override
@@ -55,6 +60,23 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
             .withQuery(buildQuery(keyword.getValue()))
             .withPageable(PageRequest.of(page, size))
             // 기본값은 10,000에서 세기를 멈춘다. 프론트가 이 값으로 마지막 페이지를 판단한다.
+            .withTrackTotalHits(true)
+            .build();
+
+        final SearchHits<ProductDocument> hits =
+            elasticsearchOperations.search(query, ProductDocument.class);
+
+        return new ProductSearchPage(
+            hits.getSearchHits().stream().map(hit -> toSearchHit(hit.getContent())).toList(),
+            hits.getTotalHits());
+    }
+
+    @Override
+    public ProductSearchPage searchByCatalogNumber(final SearchKeyword keyword, final int page, final int size) {
+        final NativeQuery query = NativeQuery.builder()
+            .withQuery(buildCatalogQuery(keyword.getNormalized()))
+            .withPageable(PageRequest.of(page, size))
+            .withSort(catalogSort())
             .withTrackTotalHits(true)
             .build();
 
@@ -101,5 +123,30 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
                 .operator(Operator.And)
                 .fields(RELEVANCE_FIELDS)))
             .filter(f -> f.term(t -> t.field("active").value(true)))));
+    }
+
+    /**
+     * 대조하는 필드가 분석기를 타지 않으므로, 색인할 때와 같은 규칙으로 다듬은 값이 들어온다고 전제한다.
+     */
+    static Query buildCatalogQuery(final String normalized) {
+        return Query.of(q -> q.bool(b -> b
+            .minimumShouldMatch("1")
+            .should(s -> s.term(t -> t.field(CATALOG_FIELD)
+                .value(normalized)
+                .boost(CATALOG_EXACT_BOOST)))
+            .should(s -> s.prefix(p -> p.field(CATALOG_FIELD)
+                .value(normalized)))
+            .filter(f -> f.term(t -> t.field("active").value(true)))));
+    }
+
+    /**
+     * 앞부분 일치만 걸린 문서는 점수가 전부 같다. 그 순서를 검색 엔진에 맡기면 요청마다 달라져, 페이지를
+     * 넘기는 사이 같은 상품이 두 번 보이거나 빠진다. 값이 안 변하는 필드를 2차 키로 준다.
+     * <p>
+     * 이 필드는 글자로 저장돼 있어 정렬도 글자 순서다 (100, 1000, 99 순). 순서를 고정하는 것이 목적이라
+     * 그대로 두지만, 결과가 번호 순으로 안 보이는 이유가 이것이다.
+     */
+    static Sort catalogSort() {
+        return Sort.by(Sort.Order.desc("_score"), Sort.Order.asc("productId"));
     }
 }

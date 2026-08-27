@@ -6,6 +6,7 @@ import site.explorationservice.search.application.dto.ProductSearchResult;
 import site.explorationservice.search.domain.ProductSearchPage;
 import site.explorationservice.search.domain.ProductSearchRepository;
 import site.explorationservice.search.domain.SearchKeyword;
+import site.explorationservice.search.domain.SearchTarget;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
 
 /**
@@ -29,11 +30,13 @@ public class ProductSearchService {
 
     private final ProductSearchRepository productSearchRepository;
 
-    public ProductSearchResult searchProducts(final String keyword, final int page, final int size) {
+    public ProductSearchResult searchProducts(final String keyword, final String searchBy, final int page,
+            final int size) {
         if (keyword == null || keyword.isBlank()) {
             throw new SearchKeywordRequiredException();
         }
 
+        final SearchTarget searchTarget = SearchTarget.from(searchBy);
         final int safePage = Math.max(page, 0);
         final int safeSize = clampSize(size);
         final SearchKeyword searchKeyword = SearchKeyword.from(keyword);
@@ -49,8 +52,22 @@ public class ProductSearchService {
             return ProductSearchResult.empty(safePage, safeSize);
         }
 
+        if (searchTarget == SearchTarget.CATALOG) {
+            return searchByCatalogNumber(searchKeyword, safePage, safeSize);
+        }
+
         final ProductSearchPage searchPage = productSearchRepository.search(searchKeyword, safePage, safeSize);
         return ProductSearchResult.of(searchPage, safePage, safeSize);
+    }
+
+    private ProductSearchResult searchByCatalogNumber(final SearchKeyword keyword, final int page, final int size) {
+        // 표기를 통일하고 나면 한 글자만 남을 수 있다. 그 한 글자로 앞부분 일치를 걸면 번호 대부분이 걸린다
+        if (keyword.isNormalizedTooShort()) {
+            return ProductSearchResult.empty(page, size);
+        }
+
+        final ProductSearchPage searchPage = productSearchRepository.searchByCatalogNumber(keyword, page, size);
+        return ProductSearchResult.of(searchPage, page, size);
     }
 
     private boolean isBeyondResultWindow(final int page, final int size) {

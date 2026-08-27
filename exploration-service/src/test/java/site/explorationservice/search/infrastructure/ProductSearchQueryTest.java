@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ConstantScoreQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.PrefixQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.InnerField;
 import org.springframework.data.elasticsearch.annotations.MultiField;
@@ -244,5 +246,62 @@ class ProductSearchQueryTest {
             }
         }
         return false;
+    }
+
+    @Test
+    @DisplayName("번호 질의는 정확 일치와 앞부분 일치 두 절을 가진다")
+    void 번호_질의_두_절() {
+        // given
+        // when
+        final BoolQuery bool = ProductSearchRepositoryImpl.buildCatalogQuery("blp1567").bool();
+
+        // then
+        // 정확 일치만 두면 번호를 일부만 아는 사람이 못 찾고, 앞부분 일치만 두면 정확히 친 번호가 밀린다
+        assertThat(bool.should()).hasSize(2);
+        assertThat(bool.minimumShouldMatch()).isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("정확 일치가 앞부분 일치보다 높은 가중치를 받는다")
+    void 정확_일치_우선() {
+        // given
+        // when
+        final BoolQuery bool = ProductSearchRepositoryImpl.buildCatalogQuery("blp1567").bool();
+        final TermQuery exact = bool.should().get(0).term();
+        final PrefixQuery prefix = bool.should().get(1).prefix();
+
+        // then
+        assertThat(exact.field()).isEqualTo("normalizedCatalogNumber");
+        assertThat(prefix.field()).isEqualTo("normalizedCatalogNumber");
+        // 앞부분 일치에는 가중치를 주지 않는다 — 두 절의 차이가 곧 정확 일치를 위로 올리는 힘이다
+        assertThat(exact.boost()).isEqualTo(2.0f);
+        assertThat(prefix.boost()).isNull();
+    }
+
+    @Test
+    @DisplayName("번호 질의도 판매중인 상품만 본다")
+    void 번호_질의_활성_필터() {
+        // given
+        // when
+        final BoolQuery bool = ProductSearchRepositoryImpl.buildCatalogQuery("blp1567").bool();
+
+        // then
+        // 이게 빠지면 내린 상품이 번호로는 계속 검색된다
+        assertThat(bool.filter()).hasSize(1);
+        assertThat(bool.filter().get(0).term().field()).isEqualTo("active");
+    }
+
+    @Test
+    @DisplayName("번호 질의는 점수 다음 정렬 키로 상품 번호를 준다")
+    void 번호_질의_2차_정렬() {
+        // given
+        // when
+        final Sort sort = ProductSearchRepositoryImpl.catalogSort();
+
+        // then
+        // 2차 키가 없으면 페이지를 넘기는 사이 순서가 흔들려 같은 상품이 두 번 보이거나 빠진다
+        assertThat(sort).containsExactly(
+                Sort.Order.desc("_score"),
+                Sort.Order.asc("productId"));
     }
 }
