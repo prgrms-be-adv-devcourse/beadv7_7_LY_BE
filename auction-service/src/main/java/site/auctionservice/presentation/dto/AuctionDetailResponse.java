@@ -22,6 +22,8 @@ public record AuctionDetailResponse(
         @NonNull String itemCondition,
         String itemDescription,
         List<String> itemImages,
+        @NonNull BigDecimal startPrice,
+        @NonNull BigDecimal shippingPrice,
         @NonNull BigDecimal startBidAmount,
         @NonNull BigDecimal bidUnit,
         @NonNull LocalDateTime startAt,
@@ -53,6 +55,8 @@ public record AuctionDetailResponse(
                 .itemCondition(result.itemCondition())
                 .itemDescription(result.itemDescription())
                 .itemImages(result.itemImages())
+                .startPrice(result.startPrice())
+                .shippingPrice(result.shippingPrice())
                 .startBidAmount(result.startBidAmount())
                 .bidUnit(result.bidUnit())
                 .startAt(result.startAt())

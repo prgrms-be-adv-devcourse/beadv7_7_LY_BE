@@ -106,6 +106,7 @@ class AuctionControllerTest {
         return new AuctionDetailResult(
                 1L,
                 "MINT", "충분히 긴 상품 설명입니다.", List.of("1.png"),
+                BigDecimal.valueOf(10_000), BigDecimal.valueOf(3_000),
                 BigDecimal.valueOf(13_000), BigDecimal.valueOf(500),
                 LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 7, 2, 0, 0),
                 false, null,
