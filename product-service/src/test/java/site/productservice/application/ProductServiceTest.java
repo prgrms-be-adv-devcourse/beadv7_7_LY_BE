@@ -31,17 +31,17 @@ import site.productservice.domain.price.PriceHistory;
 import site.productservice.domain.price.PriceHistoryRepository;
 import site.productservice.domain.Product;
 import site.productservice.domain.ProductAliasRepository;
-import site.productservice.domain.search.ProductSearchHit;
-import site.productservice.domain.search.ProductSearchPage;
-import site.productservice.domain.search.ProductSearchRepository;
+import site.productservice.domain.catalog.CatalogItem;
+import site.productservice.domain.catalog.CatalogPage;
+import site.productservice.domain.catalog.CatalogRepository;
 import site.productservice.exception.ProductNotFoundException;
 import site.productservice.domain.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
-    private static final ProductSearchHit CATALOG_HIT =
-            new ProductSearchHit(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK");
+    private static final CatalogItem CATALOG_ITEM =
+            new CatalogItem(55L, "Abbey Road", "The Beatles", null, 1969, PressType.ORIGINAL, "UK");
 
     @Mock
     private ProductRepository productRepository;
@@ -50,7 +50,7 @@ class ProductServiceTest {
     private ArtistRepository artistRepository;
 
     @Mock
-    private ProductSearchRepository productSearchRepository;
+    private CatalogRepository catalogRepository;
 
     @Mock
     private PriceHistoryRepository priceHistoryRepository;
@@ -395,12 +395,16 @@ class ProductServiceTest {
         return p;
     }
 
+    private static CatalogPage catalogPage(List<CatalogItem> items, long totalElements) {
+        return new CatalogPage(items, totalElements, false);
+    }
+
     @Test
     @DisplayName("목록 조회는 상품 카드에 발매국과 진행 중 경매 수를 함께 담는다")
     void getProductList_카드_필드_조합() {
         // given
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(CATALOG_ITEM), 1L));
         given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
         given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of(55L, 2L));
 
@@ -418,10 +422,10 @@ class ProductServiceTest {
     @DisplayName("거래 이력이 있는 상품은 최근 낙찰가를, 없는 상품은 null을 담는다")
     void getProductList_최근_낙찰가_병합() {
         // given
-        ProductSearchHit second = new ProductSearchHit(56L, "Kind of Blue", "Miles Davis", null, 1959,
+        CatalogItem second = new CatalogItem(56L, "Kind of Blue", "Miles Davis", null, 1959,
                 PressType.REISSUE, "US");
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT, second), 2L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(CATALOG_ITEM, second), 2L));
         PriceHistory trade = mock(PriceHistory.class);
         given(trade.getProductId()).willReturn(55L);
         given(trade.getFinalPrice()).willReturn(132000L);
@@ -440,8 +444,8 @@ class ProductServiceTest {
     @DisplayName("경매 건수 조회가 실패해도 목록은 정상 반환하고 openAuctionCount만 전부 null이 된다")
     void getProductList_경매_조회_실패시_건수만_null() {
         // given
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(CATALOG_ITEM), 1L));
         given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
         given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L)))
                 .willThrow(new IllegalStateException("경매 서비스 응답 없음"));
@@ -458,8 +462,8 @@ class ProductServiceTest {
     @DisplayName("경매 건수 응답에 없는 상품은 0건으로 담는다")
     void getProductList_건수_응답에_없으면_0() {
         // given
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(CATALOG_HIT), 1L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(CATALOG_ITEM), 1L));
         given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
         given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of());
 
@@ -474,8 +478,8 @@ class ProductServiceTest {
     @DisplayName("결과가 빈 페이지면 시세·경매 조회를 하지 않는다")
     void getProductList_빈_페이지면_추가_조회_생략() {
         // given
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(), 0L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(), 0L));
 
         // when
         productService.getProductList(new ProductListQuery(0, 20));
@@ -489,17 +493,50 @@ class ProductServiceTest {
     @DisplayName("size는 1 미만이면 기본값 20, 100 초과면 100으로, page는 음수면 0으로 보정한다")
     void getProductList_페이징_보정() {
         // given
-        given(productSearchRepository.findActivePage(0, 20))
-                .willReturn(new ProductSearchPage(List.of(), 0L));
-        given(productSearchRepository.findActivePage(0, 100))
-                .willReturn(new ProductSearchPage(List.of(), 0L));
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(catalogPage(List.of(), 0L));
+        given(catalogRepository.findActivePage(0, 100))
+                .willReturn(catalogPage(List.of(), 0L));
 
         // when
         productService.getProductList(new ProductListQuery(-1, 0));
         productService.getProductList(new ProductListQuery(0, 101));
 
         // then
-        then(productSearchRepository).should().findActivePage(0, 20);
-        then(productSearchRepository).should().findActivePage(0, 100);
+        then(catalogRepository).should().findActivePage(0, 20);
+        then(catalogRepository).should().findActivePage(0, 100);
+    }
+
+    @Test
+    @DisplayName("다음 페이지 유무는 저장소가 판단한 값을 그대로 싣는다")
+    void getProductList_hasNext_저장소_값_사용() {
+        // given
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(new CatalogPage(List.of(CATALOG_ITEM), 1L, true));
+        given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of());
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.hasNext()).isTrue();
+    }
+
+    @Test
+    @DisplayName("전체 건수가 많아도 저장소가 다음이 없다고 하면 hasNext는 거짓이다")
+    void getProductList_hasNext는_전체건수에서_파생되지_않는다() {
+        // given
+        given(catalogRepository.findActivePage(0, 20))
+                .willReturn(new CatalogPage(List.of(CATALOG_ITEM), 435_319L, false));
+        given(priceHistoryRepository.findLatestTrades(List.of(55L))).willReturn(List.of());
+        given(auctionOpenCountPort.findOpenAuctionCounts(List.of(55L))).willReturn(Map.of());
+
+        // when
+        ProductListResult result = productService.getProductList(new ProductListQuery(0, 20));
+
+        // then
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.totalElements()).isEqualTo(435_319L);
     }
 }
