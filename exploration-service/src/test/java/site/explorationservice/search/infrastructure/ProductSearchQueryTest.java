@@ -29,15 +29,15 @@ import site.explorationservice.search.domain.ProductSearchHit;
 class ProductSearchQueryTest {
 
     @Test
-    @DisplayName("점수 버킷을 부스트용과 일반 관련도용 두 개로 나눈다")
-    void should_버킷_두_개() {
+    @DisplayName("점수 버킷을 부스트용·일반 관련도용·오타용 세 개로 나눈다")
+    void should_버킷_세_개() {
         // given
         // when
         final BoolQuery bool = ProductSearchRepositoryImpl.buildQuery("장기하").bool();
 
         // then
         // 버킷이 하나로 합쳐지면 아티스트 정확 매치와 일반 관련도가 같은 잣대로 채점돼 부스트가 무의미해진다
-        assertThat(bool.should()).hasSize(2);
+        assertThat(bool.should()).hasSize(3);
     }
 
     @Test
@@ -133,6 +133,120 @@ class ProductSearchQueryTest {
             .allSatisfy(field -> assertThat(existsInDocument(stripBoost(field)))
                 .as("필드 '%s'가 ProductDocument에 존재해야 한다", field)
                 .isTrue());
+    }
+
+    /** 오타 절만 골라낸다 — should 절의 순서에 기대지 않으려고 유일한 bool 절이라는 점으로 찾는다. */
+    private BoolQuery typoClause(final String keyword) {
+        return ProductSearchRepositoryImpl.buildQuery(keyword).bool().should().stream()
+            .filter(Query::isBool)
+            .map(Query::bool)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("오타를 허용하는 절이 없다"));
+    }
+
+    @Test
+    @DisplayName("오타 절은 검색어의 단어마다 절을 만들어 전부 만족하도록 묶는다")
+    void 오타_절은_단어마다_한_절() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("Abigail Washbburn City Of Refuge");
+
+        // then
+        // 한 절에 몰아넣고 operator를 and로 주면 "모든 단어가 한 필드 안에" 있어야 해서,
+        // 아티스트와 제목에 단어가 갈리는 검색어를 통째로 놓친다
+        assertThat(typo.must()).hasSize(5);
+        assertThat(typo.should()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("오타 절의 각 단어는 세 글자 이하를 정확 매칭으로 두고 첫 글자를 고정한다")
+    void 오타_절_임계값() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("Abigail Washbburn");
+
+        // then
+        // 3글자 이하까지 흔들면 are·man·100 같은 단어가 수십 개 이웃으로 번진다
+        assertThat(typo.must()).allSatisfy(clause -> {
+            // cross_fields로 바뀌면 오타 허용과 같이 쓸 수 없어 검색 요청이 전부 실패한다
+            assertThat(clause.multiMatch().type()).isEqualTo(TextQueryType.BestFields);
+            assertThat(clause.multiMatch().fuzziness()).isEqualTo("AUTO:4,99");
+            assertThat(clause.multiMatch().prefixLength()).isEqualTo(1);
+            assertThat(clause.multiMatch().fields()).containsExactly(
+                "title^3", "titleAliases^3", "artistName^1.5", "artistAliases^1.5");
+        });
+    }
+
+    @Test
+    @DisplayName("오타 절은 기호가 섞인 검색어에서 기호를 뺀 단어만 조건으로 삼는다")
+    void 오타_절은_기호를_조건에서_뺀다() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("Yes Fly From Here - Retrn Trip");
+
+        // then
+        // 기호를 조건으로 남기면 다듬은 뒤 남는 단어가 없어 "맞는 문서 없음"이 되고,
+        // 모두 만족해야 하는 묶음이라 나머지 단어가 다 맞아도 결과가 0건이 된다
+        assertThat(typo.must()).hasSize(6);
+    }
+
+    @Test
+    @DisplayName("오타 절은 단어가 사라진 절을 조건 없음으로 바꾸지 않는다")
+    void 오타_절은_빈_절을_통과시키지_않는다() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("장기하 에서");
+
+        // then
+        // 조사만 친 검색어는 다듬고 나면 남는 단어가 없다. 이걸 "조건 없음"으로 두면 모든 절이 그렇게 되는
+        // 검색어에서 카탈로그 43.5만 건이 통째로 결과가 된다. 걸리지 않는 쪽이 안전하다
+        assertThat(typo.must()).allSatisfy(clause ->
+            assertThat(clause.multiMatch().zeroTermsQuery()).isNull());
+    }
+
+    @Test
+    @DisplayName("기호뿐인 검색어에는 오타 버킷을 얹지 않는다")
+    void 기호뿐인_검색어() {
+        // given
+        // when
+        final BoolQuery bool = ProductSearchRepositoryImpl.buildQuery("- - -").bool();
+
+        // then
+        // 조건이 하나도 없는 묶음은 그 자체로 모든 문서에 걸려, 카탈로그 43.5만 건이 통째로 나간다
+        assertThat(bool.should()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("오타 절은 정확 매칭 절보다 낮은 가중치를 받는다")
+    void 오타_절_가중치() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("coltrane");
+
+        // then
+        // 정확히 맞는 문서는 두 절에 모두 걸려 점수가 합산된다. 오타 절이 세면 그 우위가 뒤집히고,
+        // 0이면 오타로 걸린 문서가 점수를 못 받아 결과 맨 뒤로 밀린다
+        assertThat(typo.boost()).isBetween(0.1f, 0.9f);
+    }
+
+    @Test
+    @DisplayName("기존 cross_fields 절에는 오타 허용을 걸지 않는다")
+    void 기존_절은_그대로() {
+        // given
+        // when
+        final MultiMatchQuery crossFields = ProductSearchRepositoryImpl.buildQuery("장기하").bool()
+            .should().stream()
+            .filter(Query::isMultiMatch)
+            .map(Query::multiMatch)
+            .filter(mm -> mm.type() == TextQueryType.CrossFields)
+            .findFirst()
+            .orElseThrow();
+
+        // then
+        // cross_fields는 여러 필드의 단어 통계를 하나로 합쳐 채점하는데, 오타 허용은 단어 하나를
+        // 여러 후보로 늘려서 합칠 대상이 사라진다. 검색 엔진이 이 조합을 거부하므로 실수로 얹으면
+        // 검색 요청이 전부 실패한다
+        assertThat(crossFields.fuzziness()).isNull();
     }
 
     /**
