@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
+import site.auctionservice.application.port.LockPort;
 import site.auctionservice.application.port.MemberPort;
 import site.auctionservice.application.port.ProductPort;
 import site.auctionservice.application.port.WalletPort;
@@ -35,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -70,6 +73,9 @@ class AuctionServiceTest {
     @Mock
     private TransactionTemplate transactionTemplate;
 
+    @Mock
+    private LockPort lockPort;
+
     @InjectMocks
     private AuctionService auctionService;
 
@@ -81,6 +87,13 @@ class AuctionServiceTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction((TransactionStatus) null);
         }).when(transactionTemplate).execute(any());
+
+        // LockPort.executeWithLockOnAuction()도 실제 락 없이 액션을 바로 실행하도록 스텁
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            java.util.function.Supplier<?> action = invocation.getArgument(4);
+            return action.get();
+        }).when(lockPort).executeWithLockOnAuction(any(), org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyLong(), any(), any());
     }
 
     private static final String DESCRIPTION = "충분히 긴 상품 설명입니다.";
@@ -199,7 +212,7 @@ class AuctionServiceTest {
     void testModifyAuction_scheduledStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -214,7 +227,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_beforeStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         AuctionResult result = auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L);
@@ -228,7 +241,7 @@ class AuctionServiceTest {
     void testModifyAuction_runningStatus_afterStartTime_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, PAST_START, PAST_END), 1L))
@@ -242,7 +255,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 수정하려 하면 예외를 던진다")
     void testModifyAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
@@ -252,26 +265,11 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
-    void testModifyAuction_lockContention_throws() {
-        // given: 락 대기시간 제어와 예외 번역은 AuctionRepositoryImpl의 책임이라 여기서는 그 결과로 온 예외를 AuctionService가 삼키지 않는지만 검증한다.
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(searchViewRepository, never()).updateFromAuction(any(), any());
-    }
-
-    @Test
     @DisplayName("판매자 본인이 아니면 경매를 수정할 수 없다")
     void testModifyAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.modifyAuction(modifyCommand(1L, 100L, FUTURE_START, FUTURE_END), 2L))
@@ -286,7 +284,7 @@ class AuctionServiceTest {
     void testModifyAuction_productIdChanged_refetchesProductAndUpdatesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(productPort.getProduct(200L)).willReturn(productSnapshot);
 
         // when
@@ -304,7 +302,7 @@ class AuctionServiceTest {
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
         ProductSnapshot inactiveProduct =
                 new ProductSnapshot(200L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", false);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(productPort.getProduct(200L)).willReturn(inactiveProduct);
 
         // when & then
@@ -320,7 +318,7 @@ class AuctionServiceTest {
     void testDeleteAuction_cancelsAuctionAndDeletesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.deleteAuction(1L, 1L);
@@ -334,7 +332,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 취소하려 하면 예외를 던진다")
     void testDeleteAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -345,26 +343,11 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 행 락 획득에 실패하면(요청 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED를 그대로 전파한다")
-    void testDeleteAuction_lockContention_throws() {
-        // given
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(searchViewRepository, never()).deleteById(any());
-    }
-
-    @Test
     @DisplayName("판매자 본인이 아니면 경매를 취소할 수 없다")
     void testDeleteAuction_notOwner_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 2L))
@@ -379,7 +362,7 @@ class AuctionServiceTest {
     void testDeleteAuction_notEditable_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.deleteAuction(1L, 1L))
@@ -394,7 +377,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_scheduledStatus_forceCancelsAndDeletesSearchView() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.forceCancelAuction(1L);
@@ -410,7 +393,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_runningStatus_afterStartTime_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when
         auctionService.forceCancelAuction(1L);
@@ -428,7 +411,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
 
         // when
@@ -446,7 +429,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         Bid activeBid = Bid.place(1L, 5L, Money.of(15_000L), PAST_START.plusMinutes(1));
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(activeBid));
         willThrow(new RuntimeException("kafka down"))
                 .given(auctionEventPublisher).publishForceCanceled(1L, 5L);
@@ -463,7 +446,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_withoutActiveBid_succeeds() {
         // given
         Auction auction = auctionWith(AuctionStatus.SCHEDULED, FUTURE_START, FUTURE_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         auctionService.forceCancelAuction(1L);
@@ -476,7 +459,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매를 강제 취소하려 하면 예외를 던진다")
     void testForceCancelAuction_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))
@@ -491,7 +474,7 @@ class AuctionServiceTest {
     void testForceCancelAuction_alreadyEnded_throws() {
         // given
         Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         // when & then
         assertThatThrownBy(() -> auctionService.forceCancelAuction(1L))
@@ -929,7 +912,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(1L, 2L, Money.of(13_000L)))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
@@ -955,23 +938,10 @@ class AuctionServiceTest {
 
         verify(walletPort).hold(1L, 2L, Money.of(13_000L));
         verify(searchViewRepository).updateOnBid(1L, BigDecimal.valueOf(13_000), 1, auction.getEndAt());
-    }
-
-    @Test
-    @DisplayName("경매 행 락 획득에 실패하면(입찰 몰림) 리포지토리가 던진 LOCK_ACQUISITION_FAILED가 그대로 전파되고 예치금 홀드를 호출하지 않는다")
-    void testPlaceBid_lockContention_throws() {
-        // given: 락 대기시간 제어 + 예외 번역은 AuctionRepositoryImpl 책임
-        // 여기서는 AuctionService가 그 결과를 삼키지 않고 예치금 홀드 전에 그대로 전파하는지만 본다.
-        given(auctionRepository.findByIdForUpdate(1L))
-                .willThrow(new AuctionException(AuctionErrorCode.LOCK_ACQUISITION_FAILED));
-        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
-
-        // when & then
-        assertThatThrownBy(() -> auctionService.placeBid(command))
-                .isInstanceOf(AuctionException.class)
-                .extracting(e -> ((AuctionException) e).getErrorCode())
-                .isEqualTo(AuctionErrorCode.LOCK_ACQUISITION_FAILED);
-        verify(walletPort, never()).hold(any(), any(), any());
+        // placeBid()의 수동 락 호출도 @DistributedLock 애노테이션 경로(DistributedLockAspect)와
+        // 똑같이 LockPort.executeWithLockOnAuction()에 auctionId를 그대로 넘긴다는 걸 검증한다
+        // (키 조합은 LockPort 안에서 AuctionRedisKeys.lockKey()로 통일돼 있다).
+        verify(lockPort).executeWithLockOnAuction(eq(1L), anyLong(), anyLong(), any(), any());
     }
 
     @Test
@@ -981,7 +951,7 @@ class AuctionServiceTest {
         HighestBid highestBid = HighestBid.of(Money.of(13_000L), 5L, 10L);
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, 10L, BigDecimal.valueOf(87_000)));
 
@@ -1008,7 +978,7 @@ class AuctionServiceTest {
     @DisplayName("존재하지 않는 경매에 입찰하면 예외를 던지고 예치금 홀드를 호출하지 않는다")
     void testPlaceBid_auctionNotFound_throws() {
         // given
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(auctionRepository.findById(1L)).willReturn(Optional.empty());
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
 
         // when & then
@@ -1025,7 +995,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
 
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(1_000));
 
@@ -1044,7 +1014,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willThrow(new AuctionException(AuctionErrorCode.WALLET_HOLD_FAILED));
 
@@ -1066,7 +1036,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
@@ -1095,7 +1065,7 @@ class AuctionServiceTest {
         // given
         Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END);
         ReflectionTestUtils.setField(auction, "id", 1L);
-        given(auctionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(auction));
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(walletPort.hold(any(), any(), any()))
                 .willReturn(new WalletHoldInfo(100L, null, BigDecimal.valueOf(87_000)));
         given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {

@@ -7,9 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import site.auctionservice.aop.DistributedLock;
 import site.auctionservice.domain.*;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
+import site.auctionservice.application.port.LockPort;
 import site.auctionservice.application.port.MemberPort;
 import site.auctionservice.application.port.ProductPort;
 import site.auctionservice.application.port.WalletPort;
@@ -24,6 +26,7 @@ import site.auctionservice.exception.AuctionException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,10 @@ public class AuctionService {
     private final AuctionEventPublisher auctionEventPublisher;
     private final ImageUrlValidator imageUrlValidator;
     private final TransactionTemplate transactionTemplate;
+    private final LockPort lockPort;
+
+    private static final long BID_LOCK_WAIT_TIME = 3L;
+    private static final long BID_LOCK_LEASE_TIME = -1L;
 
     @Transactional
     public AuctionResult createAuction(CreateAuctionCommand command, Long sellerId) {
@@ -69,9 +76,10 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
+    @DistributedLock(key = "#command.auctionId()")
     @Transactional
     public AuctionResult modifyAuction(ModifyAuctionCommand command, Long sellerId) {
-        Auction auction = auctionRepository.findByIdForUpdate(command.auctionId())
+        Auction auction = auctionRepository.findById(command.auctionId())
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         boolean productChanged = !auction.getProductId().equals(command.productId());
 
@@ -97,9 +105,10 @@ public class AuctionService {
         return AuctionResult.from(auction);
     }
 
+    @DistributedLock(key = "#auctionId")
     @Transactional
     public void deleteAuction(Long auctionId, Long sellerId) {
-        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+        Auction auction = auctionRepository.findById(auctionId)
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         auction.cancel(sellerId, LocalDateTime.now());
         searchViewRepository.deleteById(auctionId);
@@ -232,14 +241,15 @@ public class AuctionService {
     }
 
     /**
-     * @Transactional 대신 TransactionTemplate으로 executeBid()만 좁게 감싼다 — 보상 호출(rollback)이
-     * 경매 행 락이 풀린 뒤에 실행되게 하기 위해서다(pointwallet rollback()은 holdId 기준 멱등이라 안전).
+     * @DistributedLock 애노테이션 대신 LockPort를 직접 호출해 executeBid()만 락+트랜잭션으로 좁게 감싼다 —
+     * 보상 호출(rollback)이 경매 락이 풀린 뒤에 실행되게 하기 위해서다(pointwallet rollback()은 holdId 기준 멱등이라 안전).
      * holdInfoRef는 executeBid() 실패 시에도 hold() 결과(holdId)를 catch 블록에서 쓰기 위한 다리다.
      */
     public PlaceBidResult placeBid(PlaceBidCommand command) {
         AtomicReference<WalletHoldInfo> holdInfoRef = new AtomicReference<>();
         try {
-            return transactionTemplate.execute(status -> executeBid(command, holdInfoRef));
+            return lockPort.executeWithLockOnAuction(command.auctionId(), BID_LOCK_WAIT_TIME, BID_LOCK_LEASE_TIME,
+                    TimeUnit.SECONDS, () -> transactionTemplate.execute(status -> executeBid(command, holdInfoRef)));
         } catch (RuntimeException e) {
             compensateHold(command, holdInfoRef.get(), e);
             throw e;
@@ -265,7 +275,7 @@ public class AuctionService {
     private PlaceBidResult executeBid(PlaceBidCommand command, AtomicReference<WalletHoldInfo> holdInfoRef) {
         LocalDateTime now = LocalDateTime.now();
 
-        Auction auction = auctionRepository.findByIdForUpdate(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
+        Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
         Money amount = Money.from(command.amount());
 
         // 예치금 호출 전 사전 검증
@@ -293,13 +303,12 @@ public class AuctionService {
         return PlaceBidResult.of(newBid, auction, amount, endAtAfter, extended);
     }
 
-    // TODO : #238 시작 스케줄러와 좁은 타이밍에 겹치면 강제취소가 RUNNING으로 덮어써질 수 있으므로 분산락 도입 시 시작 스케줄러도 같은 auctionId 락 스코프에 포함시켜 해결 예정.
-    // 현재는 AuctionScheduleService에서 비관적 락으로 조회하고 있어 동시성 문제가 발생하는 상황이지만 분산락 도입을 앞두고 있어서 임시 허용한 상태.
+    @DistributedLock(key = "#auctionId")
     @Transactional
     public void forceCancelAuction(Long auctionId) {
         LocalDateTime now = LocalDateTime.now();
 
-        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+        Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
 
         boolean hasBid = auction.hasBid();
