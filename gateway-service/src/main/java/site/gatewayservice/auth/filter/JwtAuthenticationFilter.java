@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -29,6 +29,8 @@ import static site.gatewayservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKE
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory {
 
+    private static final String ACCESS_TOKEN_COOKIE_NAME = "accessToken";
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SecretKey secretKey;
 
@@ -39,18 +41,14 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory {
     @Override
     public GatewayFilter apply(final Object config) {
         return (exchange, chain) -> {
-            final String authHeader = exchange.getRequest()
-                .getHeaders()
-                .getFirst(HttpHeaders.AUTHORIZATION);
+            final HttpCookie cookie = exchange.getRequest()
+                .getCookies()
+                .getFirst(ACCESS_TOKEN_COOKIE_NAME);
 
-            String token = null;
+            final String token = cookie == null ? null : cookie.getValue();
 
-            if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
-
-            if (token == null || token.isBlank()) {
-                log.info("인증 토큰이 헤더에 존재하지 않습니다.");
+            if (!StringUtils.hasText(token)) {
+                log.info("인증 토큰이 쿠키에 존재하지 않습니다.");
                 return makeErrorResponse(exchange.getResponse(), INVALID_AUTH_TOKEN);
             }
 
