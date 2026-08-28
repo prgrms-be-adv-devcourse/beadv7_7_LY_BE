@@ -2,7 +2,6 @@ package site.memberservice.member.infrastructure.repository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.repository.MemberRepository;
 
@@ -25,13 +24,18 @@ public class MemberRepositoryImpl implements MemberRepository {
     }
 
     @Override
-    public Optional<Member> findByEmail(final Email email) {
-        return memberJpaRepository.findByEmail(email);
+    public Optional<Member> findByEmailHash(final String emailHash) {
+        return memberJpaRepository.findByEmailHash(emailHash);
     }
 
     @Override
     public boolean existsByNickname(final String nickName) {
         return memberJpaRepository.existsByNickname(nickName);
+    }
+
+    @Override
+    public boolean existsByEmailHash(final String emailHash) {
+        return memberJpaRepository.existsByEmailHash(emailHash);
     }
 
     @Override

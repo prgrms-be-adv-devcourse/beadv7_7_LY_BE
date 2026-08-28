@@ -22,7 +22,7 @@ class EmailTest {
         final String input = "test@email.com";
 
         // When & Then
-        assertThatCode(() -> new Email(input))
+        assertThatCode(() -> new Email(input, "test-hash"))
             .doesNotThrowAnyException();
     }
 
@@ -31,7 +31,7 @@ class EmailTest {
     @ParameterizedTest
     void throwExceptionWhenInputNullOrEmpty(final String input) {
         // When & Then
-        assertThatThrownBy(() -> new Email(input))
+        assertThatThrownBy(() -> new Email(input, "test-hash"))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("회원 이메일은 null 혹은 공백일 수 없습니다. input : %s", input));
     }
@@ -41,8 +41,18 @@ class EmailTest {
     @ParameterizedTest
     void throwExceptionWhenInputInvalidValue(final String input) {
         // When & Then
-        assertThatThrownBy(() -> new Email(input))
+        assertThatThrownBy(() -> new Email(input, "test-hash"))
             .isInstanceOf(MemberException.class)
             .hasMessage(format("유효하지 않은 형식의 이메일입니다. input : %s", input));
+    }
+
+    @DisplayName("hash가 null 혹은 공백이면 예외가 발생한다.")
+    @NullAndBlankSource
+    @ParameterizedTest
+    void throwExceptionWhenHashNullOrEmpty(final String hash) {
+        // When & Then
+        assertThatThrownBy(() -> new Email("test@email.com", hash))
+            .isInstanceOf(MemberException.class)
+            .hasMessage("회원 이메일 해시는 null 혹은 공백일 수 없습니다.");
     }
 }

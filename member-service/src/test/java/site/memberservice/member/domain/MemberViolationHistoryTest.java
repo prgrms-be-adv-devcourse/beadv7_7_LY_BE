@@ -140,7 +140,7 @@ class MemberViolationHistoryTest {
     private Member createMember() {
         return new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",

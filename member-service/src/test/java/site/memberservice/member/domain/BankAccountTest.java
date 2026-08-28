@@ -23,7 +23,7 @@ class BankAccountTest {
         final String bankName = "켈리뱅크";
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -50,7 +50,7 @@ class BankAccountTest {
         final String bankName = "켈리뱅크";
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -81,7 +81,7 @@ class BankAccountTest {
         final String bankName = "켈리뱅크";
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -107,7 +107,7 @@ class BankAccountTest {
         final String accountNumber = "110-123-456789";
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
