@@ -978,7 +978,7 @@ class AuctionServiceTest {
     @DisplayName("제재된 회원이 입찰하면 예외를 던지고 락/경매 조회/예치금 홀드를 호출하지 않는다")
     void testPlaceBid_restrictedMember_throwsWithoutTouchingAuctionOrWallet() {
         // given
-        given(memberPort.getMemberRestriction(2L)).willReturn(true);
+        given(memberPort.isMemberRestricted(2L)).willReturn(true);
         PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
 
         // when & then

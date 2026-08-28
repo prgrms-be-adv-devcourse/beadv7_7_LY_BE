@@ -38,7 +38,7 @@ public class MemberHttpClient implements MemberPort {
     }
 
     @Override
-    public boolean getMemberRestriction(Long memberId) {
+    public boolean isMemberRestricted(Long memberId) {
         ApiResponse<RestrictionResponse> body;
         try {
             body = auctionMemberRestClient.get()
