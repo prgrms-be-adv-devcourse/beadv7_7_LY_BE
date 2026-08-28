@@ -159,13 +159,13 @@ class OrderTest {
             assertThatThrownBy(() -> order.confirmOrder(
                     defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), deadline.plusSeconds(1)))
                     .isInstanceOf(OrderException.class)
-                    .hasMessage("주문 확정 기한이 지났습니다");
+                    .hasMessage("주문 가능 기한이 지났습니다");
         }
     }
 
     @Nested
-    @DisplayName("주문 취소 (cancelOrder)")
-    class CancelOrder {
+    @DisplayName("주문 취소 (cancelByBuyer)")
+    class CancelByBuyer {
 
         @Test
         @DisplayName("PENDING 상태에서 취소하면 CANCELLED로 바뀐다")
@@ -175,25 +175,12 @@ class OrderTest {
 
             // when
             LocalDateTime now = LocalDateTime.now();
-            order.cancelOrder(CancelReason.BUYER_DECLINED, now);
+            order.cancelByBuyer(now);
 
             // then
             assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
             assertThat(order.getCancelledAt()).isEqualTo(now);
             assertThat(order.getCancelReason()).isEqualTo(CancelReason.BUYER_DECLINED);
-        }
-
-        @Test
-        @DisplayName("스케줄러에 의한 타임아웃 취소 사유도 기록할 수 있다")
-        void cancelWithConfirmationTimeout() {
-            // given
-            Order order = pendingOrder();
-
-            // when
-            order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT, LocalDateTime.now());
-
-            // then
-            assertThat(order.getCancelReason()).isEqualTo(CancelReason.CONFIRMATION_TIMEOUT);
         }
 
         @Test
@@ -204,15 +191,76 @@ class OrderTest {
             order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
 
             // when & then
-            assertThatThrownBy(() -> order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now()))
+            assertThatThrownBy(() -> order.cancelByBuyer(LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("취소할 수 없는 주문 상태입니다");
+        }
+
+        @Test
+        @DisplayName("주문 취소 가능 기한이 지나면 예외가 발생한다")
+        void cancelAfterDeadline_throwsException() {
+            // given
+            LocalDateTime deadline = LocalDateTime.now().plusHours(24);
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    deadline, defaultItemSnapshot());
+
+            // when & then
+            assertThatThrownBy(() -> order.cancelByBuyer(deadline.plusSeconds(1)))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("주문 취소 가능 기한이 지났습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("주문 자동 취소 (cancelByTimeout)")
+    class CancelByTimeout {
+
+        @Test
+        @DisplayName("PENDING 상태에서 취소하면 CONFIRMATION_TIMEOUT 사유로 CANCELLED로 바뀐다")
+        void cancelWithConfirmationTimeout() {
+            // given
+            Order order = pendingOrder();
+
+            // when
+            order.cancelByTimeout(LocalDateTime.now());
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+            assertThat(order.getCancelReason()).isEqualTo(CancelReason.CONFIRMATION_TIMEOUT);
+        }
+
+        @Test
+        @DisplayName("데드라인이 지났어도 취소할 수 있다")
+        void cancelAfterDeadline_succeeds() {
+            // given
+            LocalDateTime deadline = LocalDateTime.now().minusHours(1);
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    deadline, defaultItemSnapshot());
+
+            // when
+            order.cancelByTimeout(LocalDateTime.now());
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("ORDERED 상태에서는 취소할 수 없다")
+        void cancelAfterOrdered_throwsException() {
+            // given
+            Order order = pendingOrder();
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+
+            // when & then
+            assertThatThrownBy(() -> order.cancelByTimeout(LocalDateTime.now()))
                     .isInstanceOf(OrderException.class)
                     .hasMessage("취소할 수 없는 주문 상태입니다");
         }
     }
 
     @Nested
-    @DisplayName("거래 확정 (completeOrder)")
-    class CompleteOrder {
+    @DisplayName("거래 확정 (completeByBuyer)")
+    class CompleteByBuyer {
 
         @Test
         @DisplayName("ORDERED 상태에서 완료하면 COMPLETED로 바뀐다")
@@ -223,7 +271,7 @@ class OrderTest {
 
             // when
             LocalDateTime now = LocalDateTime.now();
-            order.completeOrder(now);
+            order.completeByBuyer(now);
 
             // then
             assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
@@ -237,7 +285,53 @@ class OrderTest {
             Order order = pendingOrder();
 
             // when & then
-            assertThatThrownBy(() -> order.completeOrder(LocalDateTime.now()))
+            assertThatThrownBy(() -> order.completeByBuyer(LocalDateTime.now()))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("ORDERED 상태의 주문만 거래 확정할 수 있습니다");
+        }
+
+        @Test
+        @DisplayName("거래 확정 가능 기한이 지나면 예외가 발생한다")
+        void completeAfterDeadline_throwsException() {
+            // given
+            Order order = pendingOrder();
+            LocalDateTime completionDeadline = LocalDateTime.now().plusDays(7);
+            order.confirmOrder(defaultDeliveryInfo(), completionDeadline, LocalDateTime.now());
+
+            // when & then
+            assertThatThrownBy(() -> order.completeByBuyer(completionDeadline.plusSeconds(1)))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("거래 확정 기한이 지났습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("거래 자동 확정 (completeByTimeout)")
+    class CompleteByTimeout {
+
+        @Test
+        @DisplayName("데드라인이 지났어도 완료할 수 있다")
+        void completeAfterDeadline_succeeds() {
+            // given
+            Order order = pendingOrder();
+            LocalDateTime completionDeadline = LocalDateTime.now().minusMinutes(1);
+            order.confirmOrder(defaultDeliveryInfo(), completionDeadline, LocalDateTime.now());
+
+            // when
+            order.completeByTimeout(LocalDateTime.now());
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        }
+
+        @Test
+        @DisplayName("ORDERED가 아니면 예외가 발생한다")
+        void completeWhenNotOrdered_throwsException() {
+            // given
+            Order order = pendingOrder();
+
+            // when & then
+            assertThatThrownBy(() -> order.completeByTimeout(LocalDateTime.now()))
                     .isInstanceOf(OrderException.class)
                     .hasMessage("ORDERED 상태의 주문만 거래 확정할 수 있습니다");
         }
@@ -291,6 +385,21 @@ class OrderTest {
             assertThatThrownBy(() -> order.requestRefund(RefundReason.DEFECTIVE, null, null, LocalDateTime.now()))
                     .isInstanceOf(OrderException.class)
                     .hasMessage("ORDERED 상태의 주문만 환불 신청할 수 있습니다");
+        }
+
+        @Test
+        @DisplayName("환불 신청 가능 기한이 지나면 예외가 발생한다")
+        void requestRefundAfterDeadline_throwsException() {
+            // given
+            Order order = pendingOrder();
+            LocalDateTime completionDeadline = LocalDateTime.now().plusDays(7);
+            order.confirmOrder(defaultDeliveryInfo(), completionDeadline, LocalDateTime.now());
+
+            // when & then
+            assertThatThrownBy(() -> order.requestRefund(
+                    RefundReason.DEFECTIVE, null, null, completionDeadline.plusSeconds(1)))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("환불 신청 가능 기한이 지났습니다");
         }
     }
 

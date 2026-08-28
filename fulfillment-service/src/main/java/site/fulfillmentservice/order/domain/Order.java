@@ -109,9 +109,17 @@ public class Order extends BaseEntity {
     }
 
 
+    public boolean isPending() {
+        return status == OrderStatus.PENDING;
+    }
+
+    public boolean isOrdered() {
+        return status == OrderStatus.ORDERED;
+    }
+
     public void confirmOrder(DeliveryInfo deliveryInfo, LocalDateTime completionDeadline, LocalDateTime now) {
         Objects.requireNonNull(now, "now는 null일 수 없습니다.");
-        if (status != OrderStatus.PENDING) {
+        if (!isPending()) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_PENDING);
         }
         if (deliveryInfo == null) {
@@ -126,20 +134,44 @@ public class Order extends BaseEntity {
         this.deliveryInfo = deliveryInfo;
     }
 
-    public void cancelOrder(CancelReason cancelReason, LocalDateTime now) {
-        Objects.requireNonNull(cancelReason, "cancelReason은 null일 수 없습니다.");
+    public void cancelByBuyer(LocalDateTime now) {
         Objects.requireNonNull(now, "now는 null일 수 없습니다.");
-        if (status != OrderStatus.PENDING) {
+        if (!isPending()) {
+            throw new OrderException(OrderErrorCode.ORDER_NOT_CANCELLABLE);
+        }
+        if (now.isAfter(orderDeadline)) {
+            throw new OrderException(OrderErrorCode.ORDER_CANCEL_DEADLINE_EXPIRED);
+        }
+        this.status = OrderStatus.CANCELLED;
+        this.cancelledAt = now;
+        this.cancelReason = CancelReason.BUYER_DECLINED;
+    }
+
+    public void cancelByTimeout(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
+        if (!isPending()) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_CANCELLABLE);
         }
         this.status = OrderStatus.CANCELLED;
         this.cancelledAt = now;
-        this.cancelReason = cancelReason;
+        this.cancelReason = CancelReason.CONFIRMATION_TIMEOUT;
     }
 
-    public void completeOrder(LocalDateTime now) {
+    public void completeByBuyer(LocalDateTime now) {
         Objects.requireNonNull(now, "now는 null일 수 없습니다.");
-        if (status != OrderStatus.ORDERED) {
+        if (!isOrdered()) {
+            throw new OrderException(OrderErrorCode.ORDER_NOT_ORDERED);
+        }
+        if (now.isAfter(completionDeadline)) {
+            throw new OrderException(OrderErrorCode.COMPLETION_DEADLINE_EXPIRED);
+        }
+        this.status = OrderStatus.COMPLETED;
+        this.completedAt = now;
+    }
+
+    public void completeByTimeout(LocalDateTime now) {
+        Objects.requireNonNull(now, "now는 null일 수 없습니다.");
+        if (!isOrdered()) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_ORDERED);
         }
         this.status = OrderStatus.COMPLETED;
@@ -148,8 +180,11 @@ public class Order extends BaseEntity {
 
     public void requestRefund(RefundReason reason, String description, List<String> imageUrls, LocalDateTime now) {
         Objects.requireNonNull(now, "now는 null일 수 없습니다.");
-        if (status != OrderStatus.ORDERED) {
+        if (!isOrdered()) {
             throw new OrderException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
+        }
+        if (now.isAfter(completionDeadline)) {
+            throw new OrderException(OrderErrorCode.REFUND_REQUEST_DEADLINE_EXPIRED);
         }
         this.status = OrderStatus.REFUND_REQUESTED;
         this.refundInfo = RefundInfo.request(reason, description, imageUrls, now);

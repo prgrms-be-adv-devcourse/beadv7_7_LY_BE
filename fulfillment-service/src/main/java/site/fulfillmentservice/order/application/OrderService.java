@@ -11,7 +11,6 @@ import site.common.event.contract.AuctionWonEvent;
 import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderSearchResult;
 import site.fulfillmentservice.order.application.dto.RefundRequestCommand;
-import site.fulfillmentservice.order.domain.CancelReason;
 import site.fulfillmentservice.order.domain.DeliveryInfo;
 import site.fulfillmentservice.order.domain.Order;
 import site.fulfillmentservice.order.domain.OrderItemSnapshot;
@@ -31,6 +30,8 @@ public class OrderService {
 
     private static final long ORDER_CONFIRMATION_HOURS = 24L;
     private static final long COMPLETION_PERIOD_DAYS = 7L;
+    // 데드라인 직후 처리 중일 수 있는 사용자 요청과 겹치지 않도록, 스케줄러 폴링 주기(1분)만큼 늦춰서 조회한다.
+    private static final long SCHEDULER_GRACE_PERIOD_MINUTES = 1L;
     private static final int MIN_SIZE = 1;
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 100;
@@ -99,24 +100,25 @@ public class OrderService {
             throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
         }
 
-        order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
+        order.cancelByBuyer(LocalDateTime.now());
         orderEventPublisher.publishCancelled(order);
     }
 
     @Transactional(readOnly = true)
     public List<Long> findExpiredOrderIds() {
-        return orderRepository.findAllByStatusAndOrderDeadlineBefore(OrderStatus.PENDING, LocalDateTime.now()).stream()
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(SCHEDULER_GRACE_PERIOD_MINUTES);
+        return orderRepository.findAllByStatusAndOrderDeadlineBefore(OrderStatus.PENDING, threshold).stream()
             .map(Order::getId)
             .toList();
     }
 
     public void cancelExpiredOrder(Long orderId) {
         Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null || order.getStatus() != OrderStatus.PENDING) {
+        if (order == null || !order.isPending()) {
             return;
         }
 
-        order.cancelOrder(CancelReason.CONFIRMATION_TIMEOUT, LocalDateTime.now());
+        order.cancelByTimeout(LocalDateTime.now());
         orderEventPublisher.publishCancelled(order);
         log.info("주문 확정 기한 초과로 자동 취소 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
     }
@@ -129,24 +131,25 @@ public class OrderService {
             throw new OrderException(OrderErrorCode.ORDER_ACCESS_DENIED);
         }
 
-        order.completeOrder(LocalDateTime.now());
+        order.completeByBuyer(LocalDateTime.now());
         orderEventPublisher.publishCompleted(order);
     }
 
     @Transactional(readOnly = true)
     public List<Long> findOrdersToAutoComplete() {
-        return orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, LocalDateTime.now()).stream()
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(SCHEDULER_GRACE_PERIOD_MINUTES);
+        return orderRepository.findAllByStatusAndCompletionDeadlineBefore(OrderStatus.ORDERED, threshold).stream()
             .map(Order::getId)
             .toList();
     }
 
     public void completeExpiredOrder(Long orderId) {
         Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null || order.getStatus() != OrderStatus.ORDERED) {
+        if (order == null || !order.isOrdered()) {
             return;
         }
 
-        order.completeOrder(LocalDateTime.now());
+        order.completeByTimeout(LocalDateTime.now());
         orderEventPublisher.publishCompleted(order);
         log.info("거래 확정 기한 초과로 자동 완료 처리: orderId={}, auctionId={}", order.getId(), order.getAuctionId());
     }

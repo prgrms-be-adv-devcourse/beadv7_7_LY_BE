@@ -29,6 +29,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import site.common.event.contract.AuctionWonEvent;
 import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderSearchResult;
+import site.fulfillmentservice.order.application.dto.RefundRequestCommand;
 import site.fulfillmentservice.order.domain.CancelReason;
 import site.fulfillmentservice.order.domain.DeliveryInfo;
 import site.fulfillmentservice.order.domain.Order;
@@ -36,6 +37,7 @@ import site.fulfillmentservice.order.domain.OrderItemSnapshot;
 import site.fulfillmentservice.order.domain.OrderRepository;
 import site.fulfillmentservice.order.domain.OrderSearchPage;
 import site.fulfillmentservice.order.domain.OrderStatus;
+import site.fulfillmentservice.order.domain.RefundReason;
 import site.fulfillmentservice.order.application.port.ProductInfo;
 import site.fulfillmentservice.order.application.port.ProductPort;
 import site.fulfillmentservice.order.exception.OrderException;
@@ -61,6 +63,16 @@ class OrderServiceTest {
 
     private AuctionWonEvent auctionWonEvent;
     private ProductInfo productInfo;
+
+    private static OrderItemSnapshot defaultItemSnapshot() {
+        return OrderItemSnapshot.of(
+                "Abbey Road", "비틀즈", 1969, "ORIGINAL",
+                "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
+    }
+
+    private static DeliveryInfo defaultDeliveryInfo() {
+        return DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호");
+    }
 
     @BeforeEach
     void setUp() {
@@ -125,14 +137,11 @@ class OrderServiceTest {
     @DisplayName("placeOrder")
     class PlaceOrder {
 
-        private final DeliveryInfo deliveryInfo = DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호");
+        private final DeliveryInfo deliveryInfo = defaultDeliveryInfo();
 
         private Order pendingOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
         }
 
         @Test
@@ -191,11 +200,8 @@ class OrderServiceTest {
     class CancelOrder {
 
         private Order pendingOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
         }
 
         @Test
@@ -244,13 +250,43 @@ class OrderServiceTest {
         void throwsWhenOrderNotCancellable() {
             // given
             Order order = pendingOrder();
-            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
-                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
 
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
                     .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        @DisplayName("주문 취소 가능 기한이 지나면 예외가 발생한다")
+        void throwsWhenCancelDeadlineExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().minusMinutes(1), defaultItemSnapshot());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("주문 취소 가능 기한이 지났습니다");
+            verify(orderEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        @DisplayName("이미 취소된 주문이면 기한도 지났더라도 상태 오류가 우선한다")
+        void throwsOrderNotCancellableEvenWhenDeadlineAlsoExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().minusMinutes(1), defaultItemSnapshot());
+            order.cancelByTimeout(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.cancelOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("취소할 수 없는 주문 상태입니다");
             verify(orderEventPublisher, never()).publishCancelled(any());
         }
     }
@@ -260,11 +296,8 @@ class OrderServiceTest {
     class FindExpiredOrderIds {
 
         private Order pendingOrder(Long id) {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().minusHours(1), itemSnapshot);
+                    LocalDateTime.now().minusHours(1), defaultItemSnapshot());
             ReflectionTestUtils.setField(order, "id", id);
             return order;
         }
@@ -296,6 +329,25 @@ class OrderServiceTest {
             // then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("현재 시각보다 1분 이전 시각을 조회 기준으로 사용한다")
+        void usesGracePeriodThreshold() {
+            // given
+            given(orderRepository.findAllByStatusAndOrderDeadlineBefore(eq(OrderStatus.PENDING), any()))
+                    .willReturn(List.of());
+            ArgumentCaptor<LocalDateTime> thresholdCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+            // when
+            LocalDateTime before = LocalDateTime.now();
+            orderService.findExpiredOrderIds();
+            LocalDateTime after = LocalDateTime.now();
+
+            // then
+            verify(orderRepository).findAllByStatusAndOrderDeadlineBefore(eq(OrderStatus.PENDING), thresholdCaptor.capture());
+            assertThat(thresholdCaptor.getValue())
+                    .isBetween(before.minusMinutes(1).minusSeconds(2), after.minusMinutes(1).plusSeconds(2));
+        }
     }
 
     @Nested
@@ -303,11 +355,8 @@ class OrderServiceTest {
     class CancelExpiredOrder {
 
         private Order pendingOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().minusHours(1), itemSnapshot);
+                    LocalDateTime.now().minusHours(1), defaultItemSnapshot());
             ReflectionTestUtils.setField(order, "id", 1L);
             return order;
         }
@@ -345,8 +394,9 @@ class OrderServiceTest {
         @DisplayName("이미 PENDING이 아닌 주문이면(레이스로 이미 처리됨) 아무 것도 하지 않는다")
         void doesNothingWhenOrderNoLongerPending() {
             // given
-            Order order = pendingOrder();
-            order.cancelOrder(CancelReason.BUYER_DECLINED, LocalDateTime.now());
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.cancelByBuyer(LocalDateTime.now());
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
 
             // when
@@ -363,13 +413,9 @@ class OrderServiceTest {
     class CompleteOrder {
 
         private Order orderedOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
-            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
-                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
             return order;
         }
 
@@ -417,16 +463,46 @@ class OrderServiceTest {
         @DisplayName("ORDERED 상태가 아니면 예외가 발생한다")
         void throwsWhenOrderNotOrdered() {
             // given
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
 
             // when & then
             assertThatThrownBy(() -> orderService.completeOrder(1L, 301L))
                     .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("거래 확정 가능 기한이 지나면 예외가 발생한다")
+        void throwsWhenCompletionDeadlineExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().minusMinutes(1), LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.completeOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("거래 확정 기한이 지났습니다");
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("이미 거래 확정된 주문이면 기한도 지났더라도 상태 오류가 우선한다")
+        void throwsOrderNotOrderedEvenWhenDeadlineAlsoExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().minusMinutes(1), LocalDateTime.now());
+            order.completeByTimeout(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.completeOrder(1L, 301L))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("ORDERED 상태의 주문만 거래 확정할 수 있습니다");
             verify(orderEventPublisher, never()).publishCompleted(any());
         }
     }
@@ -436,11 +512,8 @@ class OrderServiceTest {
     class FindOrdersToAutoComplete {
 
         private Order orderedOrder(Long id) {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
             ReflectionTestUtils.setField(order, "id", id);
             return order;
         }
@@ -472,6 +545,25 @@ class OrderServiceTest {
             // then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("현재 시각보다 1분 이전 시각을 조회 기준으로 사용한다")
+        void usesGracePeriodThreshold() {
+            // given
+            given(orderRepository.findAllByStatusAndCompletionDeadlineBefore(eq(OrderStatus.ORDERED), any()))
+                    .willReturn(List.of());
+            ArgumentCaptor<LocalDateTime> thresholdCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+            // when
+            LocalDateTime before = LocalDateTime.now();
+            orderService.findOrdersToAutoComplete();
+            LocalDateTime after = LocalDateTime.now();
+
+            // then
+            verify(orderRepository).findAllByStatusAndCompletionDeadlineBefore(eq(OrderStatus.ORDERED), thresholdCaptor.capture());
+            assertThat(thresholdCaptor.getValue())
+                    .isBetween(before.minusMinutes(1).minusSeconds(2), after.minusMinutes(1).plusSeconds(2));
+        }
     }
 
     @Nested
@@ -479,13 +571,9 @@ class OrderServiceTest {
     class CompleteExpiredOrder {
 
         private Order orderedOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
-            order.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
-                    LocalDateTime.now().plusDays(7), LocalDateTime.now());
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
             ReflectionTestUtils.setField(order, "id", 1L);
             return order;
         }
@@ -523,7 +611,7 @@ class OrderServiceTest {
         void doesNothingWhenOrderNoLongerOrdered() {
             // given
             Order order = orderedOrder();
-            order.completeOrder(LocalDateTime.now());
+            order.completeByTimeout(LocalDateTime.now());
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
 
             // when
@@ -535,15 +623,218 @@ class OrderServiceTest {
     }
 
     @Nested
+    @DisplayName("requestRefund")
+    class RequestRefund {
+
+        private final RefundRequestCommand command = new RefundRequestCommand(
+                RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다", List.of("https://cdn.example.com/refund/1.jpg"));
+
+        private Order orderedOrder() {
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            return order;
+        }
+
+        @Test
+        @DisplayName("본인 주문에 환불을 신청하면 REFUND_REQUESTED로 바뀐다")
+        void requestsRefundForOwningBuyer() {
+            // given
+            Order order = orderedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.requestRefund(1L, 301L, command);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND_REQUESTED);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.requestRefund(1L, 301L, command))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("주문의 구매자가 아니면 예외가 발생한다")
+        void throwsWhenNotOrderBuyer() {
+            // given
+            Order order = orderedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.requestRefund(1L, 999L, command))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("ORDERED 상태가 아니면 예외가 발생한다")
+        void throwsWhenOrderNotRefundable() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.requestRefund(1L, 301L, command))
+                    .isInstanceOf(OrderException.class);
+        }
+
+        @Test
+        @DisplayName("환불 신청 가능 기한이 지나면 예외가 발생한다")
+        void throwsWhenRefundRequestDeadlineExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().minusMinutes(1), LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.requestRefund(1L, 301L, command))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("환불 신청 가능 기한이 지났습니다");
+        }
+
+        @Test
+        @DisplayName("이미 거래 확정된 주문이면 기한도 지났더라도 상태 오류가 우선한다")
+        void throwsOrderNotRefundableEvenWhenDeadlineAlsoExpired() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().minusMinutes(1), LocalDateTime.now());
+            order.completeByTimeout(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.requestRefund(1L, 301L, command))
+                    .isInstanceOf(OrderException.class)
+                    .hasMessage("ORDERED 상태의 주문만 환불 신청할 수 있습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("approveRefund")
+    class ApproveRefund {
+
+        private Order refundRequestedOrder() {
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            order.requestRefund(RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다",
+                    List.of("https://cdn.example.com/refund/1.jpg"), LocalDateTime.now());
+            return order;
+        }
+
+        @Test
+        @DisplayName("환불 신청을 승인하면 REFUND로 바뀌고 이벤트를 발행한다")
+        void approvesRefundRequest() {
+            // given
+            Order order = refundRequestedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.approveRefund(1L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND);
+            verify(orderEventPublisher).publishRefunded(order);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.approveRefund(1L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishRefunded(any());
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태가 아니면 예외가 발생한다")
+        void throwsWhenRefundNotRequested() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.approveRefund(1L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishRefunded(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("rejectRefund")
+    class RejectRefund {
+
+        private Order refundRequestedOrder() {
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            order.requestRefund(RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다",
+                    List.of("https://cdn.example.com/refund/1.jpg"), LocalDateTime.now());
+            return order;
+        }
+
+        @Test
+        @DisplayName("환불 신청을 반려하면 COMPLETED로 바뀌고 거래 확정 이벤트를 발행한다")
+        void rejectsRefundRequest() {
+            // given
+            Order order = refundRequestedOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            orderService.rejectRefund(1L);
+
+            // then
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            verify(orderEventPublisher).publishCompleted(order);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.rejectRefund(1L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED 상태가 아니면 예외가 발생한다")
+        void throwsWhenRefundNotRequested() {
+            // given
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.rejectRefund(1L))
+                    .isInstanceOf(OrderException.class);
+            verify(orderEventPublisher, never()).publishCompleted(any());
+        }
+    }
+
+    @Nested
     @DisplayName("getOrderDetail")
     class GetOrderDetail {
 
         private Order pendingOrder() {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
         }
 
         @Test
@@ -604,11 +895,8 @@ class OrderServiceTest {
     class FindOrders {
 
         private Order pendingOrder(Long id) {
-            OrderItemSnapshot itemSnapshot = OrderItemSnapshot.of(
-                    "Abbey Road", "비틀즈", 1969, "ORIGINAL",
-                    "VERY_GOOD_PLUS", "https://cdn.example.com/listings/5001/photo1.jpg");
             Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
-                    LocalDateTime.now().plusHours(24), itemSnapshot);
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
             ReflectionTestUtils.setField(order, "id", id);
             return order;
         }
