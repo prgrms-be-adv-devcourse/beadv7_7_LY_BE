@@ -126,6 +126,34 @@ class MemberServiceTest {
         Mockito.verifyNoInteractions(kmsMacHasher);
     }
 
+    @DisplayName("이미 사용중인 회원 이메일을 입력하면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenRegisterInputDuplicateEmail() {
+        // Given
+        final MemberRegisterCommand request = new MemberRegisterCommand(
+            "test@email.com",
+            "testerPw1234!",
+            "tester",
+            "tester",
+            "010-1234-5678",
+            "06671",
+            "서울특별시 서초구 반포대로 45",
+            "4층(서초동, 명정빌딩)"
+        );
+
+        given(kmsMacHasher.hash(request.email()))
+            .willReturn("test-email-hash");
+        given(kmsMacHasher.hash(request.phoneNumber()))
+            .willReturn("test-phone-hash");
+        given(memberRepository.existsByEmailHash("test-email-hash"))
+            .willReturn(true);
+
+        // When & Then
+        assertThatThrownBy(() -> memberService.register(request))
+            .isInstanceOf(MemberException.class)
+            .hasMessage("이미 존재하는 회원 이메일입니다.");
+    }
+
     @Disabled("Mock 기반 테스트로 전환 예정 - #229")
     @DisplayName("회원 가입 요청에 유효하지 않은 비밀번호를 입력하면 예외가 발생한다.")
     @ValueSource(strings = {
@@ -163,7 +191,7 @@ class MemberServiceTest {
         final String duplicateNickname = "kelly";
 
         final Member oldMember = Member.create(
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testerPw1234!",
             duplicateNickname,
             "tester",
@@ -201,7 +229,7 @@ class MemberServiceTest {
         final String duplicatePhoneNumber = "010-1234-5678";
 
         final Member oldMember = Member.create(
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testerPw1234!",
             "test01",
             "tester",
@@ -238,7 +266,7 @@ class MemberServiceTest {
         // Given
         final Member savedMember = memberRepository.save(
             Member.create(
-                new Email("test@email.com"),
+                new Email("test@email.com", "test-email-hash"),
                 "testerPw1234!",
                 "tester",
                 "tester",
@@ -284,7 +312,7 @@ class MemberServiceTest {
         // Given
         final Member savedMember = memberRepository.save(
             Member.create(
-                new Email("test@email.com"),
+                new Email("test@email.com", "test-email-hash"),
                 "testerPw1234!",
                 "tester",
                 "tester",
@@ -327,7 +355,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             null,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -357,7 +385,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             null,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -383,7 +411,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -440,7 +468,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -504,7 +532,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -554,7 +582,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",
@@ -605,7 +633,7 @@ class MemberServiceTest {
         // Given
         final Member member = new Member(
             1L,
-            new Email("test@email.com"),
+            new Email("test@email.com", "test-email-hash"),
             "testPw1234!",
             "tester",
             "tester",

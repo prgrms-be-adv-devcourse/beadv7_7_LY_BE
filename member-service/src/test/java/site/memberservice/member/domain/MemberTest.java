@@ -6,10 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import site.memberservice.member.domain.Address;
-import site.memberservice.member.domain.Email;
-import site.memberservice.member.domain.Member;
-import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.exception.MemberException;
 import site.memberservice.util.NullAndBlankSource;
 
@@ -26,7 +22,7 @@ class MemberTest {
     @Test
     void createMember() {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
@@ -76,7 +72,7 @@ class MemberTest {
     @ParameterizedTest
     void throwExceptionWhenInputPasswordNullOrEmpty(final String password) {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String nickname = "tester";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
@@ -100,7 +96,7 @@ class MemberTest {
     @ParameterizedTest
     void throwExceptionWhenInputNicknameNullOrEmpty(final String nickname) {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String password = "testPw1234!";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
@@ -124,7 +120,7 @@ class MemberTest {
     @ParameterizedTest
     void throwExceptionWhenInputInvalidLengthNickname(final String nickname) {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String password = "testPw1234!";
         final String name = "tester";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
@@ -148,7 +144,7 @@ class MemberTest {
     @ParameterizedTest
     void throwExceptionWhenInputNameNullOrEmpty(final String name) {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String nickname = "tester";
         final String password = "testPw1234!";
         final PhoneNumber phoneNumber = new PhoneNumber("010-1234-5678", "test-phone-hash");
@@ -171,7 +167,7 @@ class MemberTest {
     @Test
     void throwExceptionWhenInputPhoneNumberNull() {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";
@@ -195,7 +191,7 @@ class MemberTest {
     @Test
     void throwExceptionWhenInputAddressNull() {
         // Given
-        final Email email = new Email("test@email.com");
+        final Email email = new Email("test@email.com", "test-email-hash");
         final String password = "testPw1234!";
         final String nickname = "tester";
         final String name = "tester";

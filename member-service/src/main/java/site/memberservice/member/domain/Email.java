@@ -1,11 +1,13 @@
 package site.memberservice.member.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import site.memberservice.global.crypto.EncryptedStringConverter;
 import site.memberservice.member.exception.MemberException;
 
 import java.util.Objects;
@@ -24,21 +26,37 @@ public class Email {
         "^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}$"
     );
 
-    @Column(name = "email", length = 255, nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "email", length = 500, nullable = false)
     private String value;
 
-    public Email(final String value) {
+    @Column(name = "email_hash", length = 64, nullable = false)
+    private String hash;
+
+    public Email(final String value, final String hash) {
         validateValue(value);
+        validateHash(hash);
         this.value = value;
+        this.hash = hash;
     }
 
-    private void validateValue(final String value) {
+    public static void validateFormat(final String value) {
         if (value == null || value.isBlank()) {
             throw new MemberException(INVALID_MEMBER_INFO, format("회원 이메일은 null 혹은 공백일 수 없습니다. input : %s", value));
         }
 
         if (!EMAIL_PATTERN.matcher(value).matches()) {
             throw new MemberException(INVALID_MEMBER_INFO, format("유효하지 않은 형식의 이메일입니다. input : %s", value));
+        }
+    }
+
+    private void validateValue(final String value) {
+        validateFormat(value);
+    }
+
+    private void validateHash(final String hash) {
+        if (hash == null || hash.isBlank()) {
+            throw new MemberException(INVALID_MEMBER_INFO, "회원 이메일 해시는 null 혹은 공백일 수 없습니다.");
         }
     }
 

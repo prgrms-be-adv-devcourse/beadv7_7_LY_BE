@@ -60,14 +60,18 @@ public class MemberService {
 
     @Transactional
     public void register(final MemberRegisterCommand command) {
-        final Email email = new Email(command.email());
+        Email.validateFormat(command.email());
         PhoneNumber.validateFormat(command.phoneNumber());
+        validatePassword(command.password());
+
+        final String emailHash = kmsMacHasher.hash(command.email());
         final String phoneNumberHash = kmsMacHasher.hash(command.phoneNumber());
+        final Email email = new Email(command.email(), emailHash);
         final PhoneNumber phoneNumber = new PhoneNumber(command.phoneNumber(), phoneNumberHash);
         final Address address = new Address(command.zipcode(), command.baseAddress(), command.detailAddress());
 
-        validatePassword(command.password());
         validateDuplicateNickName(command.nickName());
+        validateDuplicateEmail(emailHash);
         validateDuplicatePhoneNumber(phoneNumberHash);
 
         final String hashedPassword = passwordEncoder.encode(command.password());
@@ -95,6 +99,12 @@ public class MemberService {
         }
     }
 
+    private void validateDuplicateEmail(final String emailHash) {
+        if (memberRepository.existsByEmailHash(emailHash)) {
+            throw new MemberException(INVALID_MEMBER_INFO, "이미 존재하는 회원 이메일입니다.");
+        }
+    }
+
     private void validateDuplicatePhoneNumber(final String phoneNumberHash) {
         if (memberRepository.existsByPhoneNumberHash(phoneNumberHash)) {
             throw new MemberException(INVALID_MEMBER_INFO, "이미 존재하는 회원 전화번호입니다.");
@@ -111,8 +121,9 @@ public class MemberService {
             .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
     }
 
-    public Optional<Member> findMember(final Email email) {
-        return memberRepository.findByEmail(email);
+    public Optional<Member> findMember(final String email) {
+        final String emailHash = kmsMacHasher.hash(email);
+        return memberRepository.findByEmailHash(emailHash);
     }
 
     public MemberProfileDto getMemberProfile(final Long memberId) {

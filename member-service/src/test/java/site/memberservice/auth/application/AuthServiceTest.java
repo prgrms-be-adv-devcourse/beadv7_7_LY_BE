@@ -61,7 +61,7 @@ class AuthServiceTest {
         // Given
         final Member member = new Member(
             1727L,
-            new Email("tester@email.com"),
+            new Email("tester@email.com", "test-email-hash"),
             passwordEncoder.encode("testPw1234!"),
             "tester",
             "tester",
@@ -76,7 +76,7 @@ class AuthServiceTest {
             .willReturn(refreshToken);
 
         final LoginCommand command = new LoginCommand(
-            new Email("tester@email.com"),
+            "tester@email.com",
             "testPw1234!"
         );
 
@@ -97,7 +97,7 @@ class AuthServiceTest {
         // Given
         final Member member = new Member(
             1727L,
-            new Email("tester@email.com"),
+            new Email("tester@email.com", "test-email-hash"),
             passwordEncoder.encode("testPw1234!"),
             "tester",
             "tester",
@@ -114,7 +114,7 @@ class AuthServiceTest {
             .willAnswer(invocation -> invocation.getArgument(0));
 
         final LoginCommand command = new LoginCommand(
-            new Email("tester@email.com"),
+            "tester@email.com",
             "testPw1234!"
         );
 
@@ -138,7 +138,7 @@ class AuthServiceTest {
             .willReturn(Optional.empty());
 
         final LoginCommand command = new LoginCommand(
-            new Email("no-member@email.com"),
+            "no-member@email.com",
             "testPw1234!"
         );
 
@@ -154,7 +154,7 @@ class AuthServiceTest {
         // Given
         final Member member = new Member(
             1727L,
-            new Email("tester@email.com"),
+            new Email("tester@email.com", "test-email-hash"),
             passwordEncoder.encode("testPw1234!"),
             "tester",
             "tester",
@@ -166,7 +166,7 @@ class AuthServiceTest {
             .willReturn(Optional.of(member));
 
         final LoginCommand command = new LoginCommand(
-            new Email("tester@email.com"),
+            "tester@email.com",
             "noMemberPw1234"
         );
 
