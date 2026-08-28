@@ -246,6 +246,10 @@ public class AuctionService {
      * holdInfoRef는 executeBid() 실패 시에도 hold() 결과(holdId)를 catch 블록에서 쓰기 위한 다리다.
      */
     public PlaceBidResult placeBid(PlaceBidCommand command) {
+        if (memberPort.isMemberRestricted(command.bidderId())) {
+            throw new AuctionException(AuctionErrorCode.BID_MEMBER_RESTRICTED);
+        }
+
         AtomicReference<WalletHoldInfo> holdInfoRef = new AtomicReference<>();
         try {
             return lockPort.executeWithLockOnAuction(command.auctionId(), BID_LOCK_WAIT_TIME, BID_LOCK_LEASE_TIME,
