@@ -16,6 +16,8 @@ public interface PriceHistoryJpaRepository extends JpaRepository<PriceHistory, L
 
     List<PriceHistory> findByProductIdAndOutlierFalseOrderByTradedAtDescIdDesc(Long productId, Limit limit);
 
+    List<PriceHistory> findByOutlierFalseOrderByTradedAtDescIdDesc(Limit limit);
+
     // 상품당 "낙찰시각 내림차순, 같으면 id 내림차순" 기준 1위만 남긴다 — 더 최신인 행이 존재하면 탈락
     @Query("""
             select ph from PriceHistory ph
