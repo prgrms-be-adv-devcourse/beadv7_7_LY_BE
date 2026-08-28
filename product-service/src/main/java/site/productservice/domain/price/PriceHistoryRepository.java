@@ -22,6 +22,12 @@ public interface PriceHistoryRepository {
     List<PriceHistory> findRecentTrades(Long productId, int limit);
 
     /**
+     * 전체 상품을 통틀어 최근 거래를 최신순(낙찰시각 내림차순, 같으면 id 내림차순)으로 최대 limit건 조회한다.
+     * 집계에서 빼기로 표시된 거래(outlier)는 제외한다. 홈의 최근 낙찰 목록이 쓴다.
+     */
+    List<PriceHistory> findRecent(int limit);
+
+    /**
      * 여러 상품의 가장 최근 거래를 상품당 1건씩 조회한다. 최신 기준은 findRecentTrades와 동일
      * (낙찰시각 내림차순, 같으면 id 내림차순)이고, 집계에서 빼기로 표시된 거래(outlier)는 제외한다.
      * 거래가 없는 상품은 결과에 나타나지 않는다.

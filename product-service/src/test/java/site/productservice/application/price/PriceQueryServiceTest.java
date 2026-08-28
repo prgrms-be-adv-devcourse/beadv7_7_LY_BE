@@ -2,7 +2,9 @@ package site.productservice.application.price;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,8 +16,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import site.productservice.application.dto.price.PriceSummaryResult;
 import site.productservice.application.dto.price.PriceTradesResult;
+import site.productservice.application.dto.price.RecentTradesResult;
+import site.productservice.domain.Artist;
+import site.productservice.domain.ArtistRepository;
 import site.productservice.domain.price.ClosedAuction;
 import site.productservice.domain.price.MediaCondition;
 import site.productservice.domain.PressType;
@@ -33,6 +39,9 @@ class PriceQueryServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private ArtistRepository artistRepository;
 
     @Mock
     private PriceHistoryRepository priceHistoryRepository;
@@ -150,5 +159,84 @@ class PriceQueryServiceTest {
         // when & then
         assertThatThrownBy(() -> priceQueryService.getPriceTrades(55L))
                 .isInstanceOf(ProductNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("전역 최근 낙찰은 상품·아티스트 정보를 조합해 최신순 그대로 반환한다")
+    void getRecentTrades_상품_아티스트_조합() {
+        // given
+        Product first = productWithId(55L, 3L, "Abbey Road");
+        Product second = productWithId(56L, 4L, "Kind Of Blue");
+        given(priceHistoryRepository.findRecent(4)).willReturn(List.of(
+                tradeOf(1L, 55L, 70_000), tradeOf(2L, 56L, 45_000)));
+        given(productRepository.findAllByIds(List.of(55L, 56L))).willReturn(List.of(first, second));
+        given(artistRepository.findAllByIds(anyList()))
+                .willReturn(List.of(artistWithId(3L, "The Beatles"), artistWithId(4L, "Miles Davis")));
+
+        // when
+        RecentTradesResult result = priceQueryService.getRecentTrades(2);
+
+        // then
+        assertThat(result.trades()).hasSize(2);
+        assertThat(result.trades().get(0).productId()).isEqualTo(55L);
+        assertThat(result.trades().get(0).artistName()).isEqualTo("The Beatles");
+        assertThat(result.trades().get(0).price()).isEqualTo(70_000);
+        assertThat(result.trades().get(1).title()).isEqualTo("Kind Of Blue");
+    }
+
+    @Test
+    @DisplayName("표시할 상품이 없는 거래(비활성·삭제)는 건너뛴다")
+    void getRecentTrades_상품_없는_거래_제외() {
+        // given — 55는 활성, 56은 비활성, 57은 조회 결과에 없음(삭제)
+        Product active = productWithId(55L, 3L, "Abbey Road");
+        Product inactive = productWithId(56L, 4L, "지워진 판");
+        ReflectionTestUtils.setField(inactive, "active", false);
+        given(priceHistoryRepository.findRecent(4)).willReturn(List.of(
+                tradeOf(1L, 56L, 90_000), tradeOf(2L, 57L, 80_000), tradeOf(3L, 55L, 70_000)));
+        given(productRepository.findAllByIds(List.of(56L, 57L, 55L))).willReturn(List.of(active, inactive));
+        given(artistRepository.findAllByIds(anyList())).willReturn(List.of(artistWithId(3L, "The Beatles")));
+
+        // when
+        RecentTradesResult result = priceQueryService.getRecentTrades(2);
+
+        // then
+        assertThat(result.trades()).hasSize(1);
+        assertThat(result.trades().get(0).productId()).isEqualTo(55L);
+    }
+
+    @Test
+    @DisplayName("요청 개수가 상한을 넘으면 20으로 자르고, 0 이하면 1로 올린다")
+    void getRecentTrades_개수_경계() {
+        // given — 여유분 2배를 읽는 계약까지 함께 고정한다
+        given(priceHistoryRepository.findRecent(40)).willReturn(List.of());
+        given(priceHistoryRepository.findRecent(2)).willReturn(List.of());
+
+        // when
+        priceQueryService.getRecentTrades(100);
+        priceQueryService.getRecentTrades(0);
+
+        // then
+        then(priceHistoryRepository).should().findRecent(40);
+        then(priceHistoryRepository).should().findRecent(2);
+    }
+
+    private Product productWithId(long id, long artistId, String title) {
+        Product created = Product.of("CAT-" + id, artistId, title, "UK", 1996,
+                PressType.ORIGINAL, "LP", "Label", "Rock", null, null);
+        ReflectionTestUtils.setField(created, "id", id);
+        return created;
+    }
+
+    private Artist artistWithId(long id, String name) {
+        Artist created = Artist.of(name);
+        ReflectionTestUtils.setField(created, "id", id);
+        return created;
+    }
+
+    private PriceHistory tradeOf(long auctionId, long productId, long finalPrice) {
+        return PriceHistory.of(
+                new ClosedAuction(auctionId, productId, MediaCondition.NEAR_MINT, finalPrice, 5, CLOSED_AT,
+                        "ENDED_WON"),
+                CONFIRMED_AT);
     }
 }
