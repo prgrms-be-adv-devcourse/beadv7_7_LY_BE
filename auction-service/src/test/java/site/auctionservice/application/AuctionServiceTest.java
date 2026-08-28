@@ -884,7 +884,7 @@ class AuctionServiceTest {
     @DisplayName("경매 목록 조회 시 서치 뷰 조회 결과를 애플리케이션 타입으로 변환해 반환한다")
     void testGetAuctions_mapsSearchViewResultToApplicationType() {
         // given
-        AuctionListQuery query = new AuctionListQuery(null, "Rock", "ORIGINAL", "RUNNING", "price_asc");
+        AuctionListQuery query = new AuctionListQuery(null, null, "Rock", "ORIGINAL", "RUNNING", "price_asc");
         Pageable pageable = PageRequest.of(0, 20);
         AuctionListSummary summary = new AuctionListSummary(
                 1L, 100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", "1.png",
