@@ -50,7 +50,7 @@ class ProductSearchControllerTest {
         final ProductSearchHit hit = new ProductSearchHit(42L, "별일 없이 산다", "장기하와 얼굴들",
             "https://img.example.com/42.jpg", 2009, "ORIGINAL");
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
-            .willReturn(new ProductSearchResult(List.of(hit), 0, 20, 45L, true));
+            .willReturn(new ProductSearchResult(List.of(hit), 0, 20, 45L, true, "0f2c-search-id"));
 
         // when & then
         mockMvc.perform(get("/api/v1/search/products").param("q", "장기하"))
@@ -65,7 +65,8 @@ class ProductSearchControllerTest {
             .andExpect(jsonPath("$.data.page").value(0))
             .andExpect(jsonPath("$.data.size").value(20))
             .andExpect(jsonPath("$.data.totalElements").value(45))
-            .andExpect(jsonPath("$.data.hasNext").value(true));
+            .andExpect(jsonPath("$.data.hasNext").value(true))
+            .andExpect(jsonPath("$.data.searchId").value("0f2c-search-id"));
     }
 
     @Test
@@ -73,7 +74,7 @@ class ProductSearchControllerTest {
     void 페이지_기본값() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
-            .willReturn(new ProductSearchResult(List.of(), 0, 20, 0L, false));
+            .willReturn(new ProductSearchResult(List.of(), 0, 20, 0L, false, "0f2c-search-id"));
         final ArgumentCaptor<Integer> pageCaptor = ArgumentCaptor.forClass(Integer.class);
         final ArgumentCaptor<Integer> sizeCaptor = ArgumentCaptor.forClass(Integer.class);
 
@@ -109,7 +110,7 @@ class ProductSearchControllerTest {
     void 대상_전달() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
-                .willReturn(ProductSearchResult.empty(0, 20));
+                .willReturn(new ProductSearchResult(List.of(), 0, 20, 0L, false, "0f2c-search-id"));
         final ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
 
         // when
@@ -127,7 +128,7 @@ class ProductSearchControllerTest {
     void 대상_미지정() throws Exception {
         // given
         given(productSearchService.searchProducts(anyString(), any(), anyInt(), anyInt()))
-                .willReturn(ProductSearchResult.empty(0, 20));
+                .willReturn(new ProductSearchResult(List.of(), 0, 20, 0L, false, "0f2c-search-id"));
 
         // when
         mockMvc.perform(get("/api/v1/search/products").param("q", "장기하"))

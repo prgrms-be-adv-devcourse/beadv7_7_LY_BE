@@ -25,6 +25,8 @@ import site.explorationservice.search.domain.ProductSearchRepository;
 import site.explorationservice.search.domain.SearchKeyword;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
 import site.explorationservice.search.exception.UnsupportedSearchTargetException;
+import site.explorationservice.searchlog.application.SearchLogService;
+import site.explorationservice.searchlog.application.dto.SearchLogCommand;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("상품 검색")
@@ -32,6 +34,9 @@ class ProductSearchServiceTest {
 
     @Mock
     private ProductSearchRepository productSearchRepository;
+
+    @Mock
+    private SearchLogService searchLogService;
 
     @InjectMocks
     private ProductSearchService productSearchService;
@@ -125,7 +130,7 @@ class ProductSearchServiceTest {
     void 다음_페이지_있음() {
         // given
         given(productSearchRepository.search(any(), anyInt(), anyInt()))
-            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L, 0L));
 
         // when
         final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 0, 20);
@@ -139,7 +144,7 @@ class ProductSearchServiceTest {
     void 마지막_페이지() {
         // given
         given(productSearchRepository.search(any(), anyInt(), anyInt()))
-            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L));
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L, 0L));
 
         // when
         final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 2, 20);
@@ -209,7 +214,7 @@ class ProductSearchServiceTest {
     void 대상_미지정_이름검색() {
         // given
         given(productSearchRepository.search(any(SearchKeyword.class), anyInt(), anyInt()))
-                .willReturn(new ProductSearchPage(List.of(), 0L));
+                .willReturn(new ProductSearchPage(List.of(), 0L, 0L));
 
         // when
         productSearchService.searchProducts("장기하", null, 0, 20);
@@ -226,7 +231,7 @@ class ProductSearchServiceTest {
     void 카탈로그_대상_번호조회() {
         // given
         given(productSearchRepository.searchByCatalogNumber(any(SearchKeyword.class), anyInt(), anyInt()))
-                .willReturn(new ProductSearchPage(List.of(), 0L));
+                .willReturn(new ProductSearchPage(List.of(), 0L, 0L));
 
         // when
         productSearchService.searchProducts("BLP-1567", "catalog", 0, 20);
@@ -273,5 +278,84 @@ class ProductSearchServiceTest {
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isZero();
         then(productSearchRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("결과가 0건인 검색도 기록한다")
+    void 결과가_0건이어도_기록한다() {
+        // given
+        final String tooShortKeyword = "a";
+
+        // when
+        productSearchService.searchProducts(tooShortKeyword, null, 0, 20);
+
+        // then
+        // 결과가 없는 검색어야말로 가장 알고 싶은 기록이다. 조회를 건너뛰는 경로도 남아야 한다
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
+        then(searchLogService).should().saveSearchLog(captor.capture());
+        assertThat(captor.getValue().resultCount()).isZero();
+        assertThat(captor.getValue().keyword()).isEqualTo(tooShortKeyword);
+    }
+
+    @Test
+    @DisplayName("범위를 넘어선 페이지 요청도 기록한다")
+    void 범위_밖_페이지도_기록한다() {
+        // given
+        final int page = 500;
+
+        // when
+        productSearchService.searchProducts("장기하", null, page, 20);
+
+        // then
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
+        then(searchLogService).should().saveSearchLog(captor.capture());
+        assertThat(captor.getValue().page()).isEqualTo(page);
+        assertThat(captor.getValue().resultCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("응답에 실리는 식별자와 기록에 남는 식별자가 같다")
+    void 응답과_기록의_식별자가_같다() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L, 7L));
+
+        // when
+        final ProductSearchResult result = productSearchService.searchProducts("장기하", null, 0, 20);
+
+        // then
+        // 이 값이 어긋나면 클릭 기록을 검색 기록에 이어 붙일 수 없다
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
+        then(searchLogService).should().saveSearchLog(captor.capture());
+        assertThat(result.searchId()).isNotBlank();
+        assertThat(captor.getValue().searchId()).isEqualTo(result.searchId());
+    }
+
+    @Test
+    @DisplayName("검색 엔진이 알려준 처리 시간을 기록에 담는다")
+    void 엔진_처리시간을_기록한다() {
+        // given
+        given(productSearchRepository.search(any(), anyInt(), anyInt()))
+            .willReturn(new ProductSearchPage(List.of(hit(1L)), 45L, 7L));
+
+        // when
+        productSearchService.searchProducts("장기하", null, 0, 20);
+
+        // then
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
+        then(searchLogService).should().saveSearchLog(captor.capture());
+        assertThat(captor.getValue().engineMillis()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("검색어가 없어 예외를 던질 때는 기록하지 않는다")
+    void 예외를_던지면_기록하지_않는다() {
+        // given
+        final String keyword = null;
+
+        // when & then
+        assertThatThrownBy(() -> productSearchService.searchProducts(keyword, null, 0, 20))
+            .isInstanceOf(SearchKeywordRequiredException.class);
+        then(searchLogService).shouldHaveNoInteractions();
     }
 }

@@ -18,7 +18,7 @@ class ProductSearchResponseTest {
         final ProductSearchHit hit = new ProductSearchHit(42L, "별일 없이 산다", "장기하와 얼굴들",
             "https://img.example.com/42.jpg", 2009, "ORIGINAL");
         final ProductSearchResult result =
-            new ProductSearchResult(List.of(hit), 0, 20, 1L, false);
+            new ProductSearchResult(List.of(hit), 0, 20, 1L, false, "0f2c-search-id");
 
         // when
         final ProductSearchResponse response = ProductSearchResponse.from(result);
@@ -42,7 +42,7 @@ class ProductSearchResponseTest {
         final ProductSearchHit hit =
             new ProductSearchHit(42L, "별일 없이 산다", "장기하와 얼굴들", null, null, null);
         final ProductSearchResult result =
-            new ProductSearchResult(List.of(hit), 0, 20, 1L, false);
+            new ProductSearchResult(List.of(hit), 0, 20, 1L, false, "0f2c-search-id");
 
         // when
         final ProductSearchResponse response = ProductSearchResponse.from(result);
@@ -57,7 +57,7 @@ class ProductSearchResponseTest {
     @DisplayName("페이지 정보를 그대로 옮긴다")
     void 페이지_정보_전달() {
         // given
-        final ProductSearchResult result = new ProductSearchResult(List.of(), 2, 20, 45L, false);
+        final ProductSearchResult result = new ProductSearchResult(List.of(), 2, 20, 45L, false, "0f2c-search-id");
 
         // when
         final ProductSearchResponse response = ProductSearchResponse.from(result);
@@ -68,5 +68,20 @@ class ProductSearchResponseTest {
         assertThat(response.totalElements()).isEqualTo(45L);
         assertThat(response.hasNext()).isFalse();
         assertThat(response.content()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("검색 식별자를 응답에 그대로 싣는다")
+    void 검색_식별자를_싣는다() {
+        // given
+        final ProductSearchResult result =
+            new ProductSearchResult(List.of(), 0, 20, 0L, false, "0f2c-search-id");
+
+        // when
+        final ProductSearchResponse response = ProductSearchResponse.from(result);
+
+        // then
+        // 프론트가 이 값을 클릭 기록 요청에 그대로 돌려보낸다
+        assertThat(response.searchId()).isEqualTo("0f2c-search-id");
     }
 }
