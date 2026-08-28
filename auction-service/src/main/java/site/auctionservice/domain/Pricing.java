@@ -45,6 +45,13 @@ public class Pricing {
             throw new IllegalArgumentException(
                 "입찰 단위는 %s원 이상이어야 합니다.".formatted(AuctionPolicy.MIN_BID_UNIT.getValue()));
         }
+        if (!bidUnit.isMultipleOf(AuctionPolicy.MIN_BID_UNIT)) {
+            throw new IllegalArgumentException(
+                "입찰 단위는 %s원의 배수여야 합니다.".formatted(AuctionPolicy.MIN_BID_UNIT.getValue()));
+        }
+        if (bidUnit.isGreaterThanOrEqual(startPrice)) {
+            throw new IllegalArgumentException("입찰 단위는 시작가보다 작아야 합니다.");
+        }
         return new Pricing(startPrice, bidUnit, shippingFee);
     }
 
@@ -54,6 +61,15 @@ public class Pricing {
 
     public Money nextMinBidAmount(HighestBid highestBid) {
         return (highestBid == null) ? startBidAmount() : highestBid.getAmount().plus(bidUnit);
+    }
+
+    /* 입찰 금액이 시작 입찰가를 기준으로 입찰 단위의 배수인지 검증 */
+    public boolean isAlignedToBidUnit(Money amount) {
+        Money startBidAmount = startBidAmount();
+        if (amount.isLessThan(startBidAmount)) {
+            return false;
+        }
+        return amount.minus(startBidAmount).isMultipleOf(bidUnit);
     }
 
     @Override

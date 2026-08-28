@@ -214,6 +214,9 @@ public class Auction extends BaseEntity {
         if (amount.isLessThan(minimum)) {
             throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
         }
+        if (!this.pricing.isAlignedToBidUnit(amount)) {
+            throw new AuctionException(AuctionErrorCode.BID_AMOUNT_NOT_ALIGNED_TO_UNIT);
+        }
     }
 
     public void forceCancel(LocalDateTime now) {

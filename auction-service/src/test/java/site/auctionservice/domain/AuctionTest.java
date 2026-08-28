@@ -567,4 +567,17 @@ class AuctionTest {
                 .extracting(e -> ((AuctionException) e).getErrorCode())
                 .isEqualTo(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
     }
+
+    @Test
+    @DisplayName("최소 입찰가 이상이어도 입찰 단위의 배수가 아니면 입찰할 수 없다")
+    void testValidateBiddable_notAlignedToBidUnit_throws() {
+        // given: bidUnit = 100, 최소 입찰가는 1_000. 1_050은 그 이상이지만 100의 배수가 아니다
+        Auction auction = auctionWith(AuctionStatus.RUNNING);
+
+        // when & then
+        assertThatThrownBy(() -> auction.validateBiddable(2L, Money.of(1_050L), afterStart))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_AMOUNT_NOT_ALIGNED_TO_UNIT);
+    }
 }

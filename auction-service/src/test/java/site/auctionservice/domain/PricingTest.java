@@ -43,6 +43,29 @@ class PricingTest {
     }
 
     @Test
+    @DisplayName("입찰 단위가 최소 입찰 단위의 배수가 아니면 예외가 발생한다")
+    void testOf_bidUnitNotMultipleOfMinimum_throws() {
+        // given
+        Money notMultipleOf100 = Money.of(150L);
+
+        // when & then
+        assertThatThrownBy(() -> Pricing.of(Money.of(10_000L), notMultipleOf100, Money.of(0L)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("입찰 단위가 시작가 이상이면 예외가 발생한다")
+    void testOf_bidUnitNotLessThanStartPrice_throws() {
+        // given
+        Money startPrice = Money.of(1_000L);
+        Money bidUnitEqualToStartPrice = Money.of(1_000L);
+
+        // when & then
+        assertThatThrownBy(() -> Pricing.of(startPrice, bidUnitEqualToStartPrice, Money.of(0L)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("필수 값이 null이면 예외가 발생한다")
     void testOf_nullFields_throws() {
         // when & then
@@ -76,5 +99,37 @@ class PricingTest {
 
         // then
         assertThat(nextMinBid).isEqualTo(Money.of(12_500L));
+    }
+
+    @Test
+    @DisplayName("시작 입찰가 기준 입찰 단위의 배수인 금액은 정렬된 것으로 판단한다")
+    void testIsAlignedToBidUnit_multipleOfUnit_returnsTrue() {
+        // given: 시작 입찰가 13_000(시작가 10_000 + 배송비 3_000), 입찰단위 500
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+
+        // when & then
+        assertThat(pricing.isAlignedToBidUnit(Money.of(13_000L))).isTrue();
+        assertThat(pricing.isAlignedToBidUnit(Money.of(13_500L))).isTrue();
+        assertThat(pricing.isAlignedToBidUnit(Money.of(14_000L))).isTrue();
+    }
+
+    @Test
+    @DisplayName("시작 입찰가 기준 입찰 단위의 배수가 아닌 금액은 정렬되지 않은 것으로 판단한다")
+    void testIsAlignedToBidUnit_notMultipleOfUnit_returnsFalse() {
+        // given
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+
+        // when & then
+        assertThat(pricing.isAlignedToBidUnit(Money.of(13_100L))).isFalse();
+    }
+
+    @Test
+    @DisplayName("시작 입찰가 미만인 금액은 정렬되지 않은 것으로 판단한다")
+    void testIsAlignedToBidUnit_belowStartBidAmount_returnsFalse() {
+        // given
+        Pricing pricing = Pricing.of(Money.of(10_000L), Money.of(500L), Money.of(3_000L));
+
+        // when & then
+        assertThat(pricing.isAlignedToBidUnit(Money.of(12_999L))).isFalse();
     }
 }

@@ -46,6 +46,16 @@ class AuctionScheduleTest {
     }
 
     @Test
+    @DisplayName("연장 시간이 최대값을 초과하면 예외가 발생한다")
+    void testOf_extensionTimeAboveMaximum_throws() {
+        // given
+        int aboveMaxExtensionTime = AuctionPolicy.MAX_EXTENSION_MINUTES + 1;
+
+        // when & then
+        assertThatThrownBy(() -> AuctionSchedule.of(period, true, aboveMaxExtensionTime)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("경매 기간이 null이면 예외가 발생한다")
     void testOf_nullPeriod_throws() {
         // when & then
@@ -114,5 +124,22 @@ class AuctionScheduleTest {
         // then
         assertThat(result.getPeriod().getEndAt()).isEqualTo(period.getEndAt().plusMinutes(10));
         assertThat(result.getPeriod().getStartAt()).isEqualTo(period.getStartAt());
+    }
+
+    @Test
+    @DisplayName("연장 횟수가 최대치에 도달하면 마감 임박이어도 더 이상 연장하지 않는다")
+    void testExtendIfNeeded_maxExtensionCountReached_stopsExtending() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(period, true, 10);
+        for (int i = 0; i < AuctionPolicy.MAX_EXTENSION_COUNT; i++) {
+            schedule = schedule.extendIfNeeded(schedule.getPeriod().getEndAt().minusMinutes(1));
+        }
+        LocalDateTime endAtAfterMaxExtensions = schedule.getPeriod().getEndAt();
+
+        // when
+        AuctionSchedule result = schedule.extendIfNeeded(schedule.getPeriod().getEndAt().minusMinutes(1));
+
+        // then
+        assertThat(result.getPeriod().getEndAt()).isEqualTo(endAtAfterMaxExtensions);
     }
 }
