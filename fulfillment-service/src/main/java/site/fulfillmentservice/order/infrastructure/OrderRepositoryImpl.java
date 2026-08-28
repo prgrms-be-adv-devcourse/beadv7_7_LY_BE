@@ -55,4 +55,10 @@ public class OrderRepositoryImpl implements OrderRepository {
         Page<Order> result = orderJpaRepository.searchBySellerId(sellerId, status, PageRequest.of(page, size));
         return new OrderSearchPage(result.getContent(), result.getTotalElements());
     }
+
+    @Override
+    public OrderSearchPage findAllByStatus(OrderStatus status, int page, int size) {
+        Page<Order> result = orderJpaRepository.searchByStatus(status, PageRequest.of(page, size));
+        return new OrderSearchPage(result.getContent(), result.getTotalElements());
+    }
 }

@@ -441,7 +441,7 @@ class OrderTest {
     class RejectRefund {
 
         @Test
-        @DisplayName("REFUND_REQUESTED 상태에서 반려하면 COMPLETED로 바뀐다")
+        @DisplayName("REFUND_REQUESTED 상태에서 반려하면 REFUND_REJECTED로 바뀐다")
         void rejectFromRefundRequested() {
             // given
             Order order = orderedOrder();
@@ -452,7 +452,7 @@ class OrderTest {
             order.rejectRefund(now);
 
             // then
-            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND_REJECTED);
             assertThat(order.getCompletedAt()).isEqualTo(now);
             assertThat(order.getRefundInfo().getRefundedAt()).isNull();
         }

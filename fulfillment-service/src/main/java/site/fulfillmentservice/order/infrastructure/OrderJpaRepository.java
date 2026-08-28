@@ -33,4 +33,11 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
             order by o.createdAt desc, o.id desc
             """)
     Page<Order> searchBySellerId(@Param("sellerId") Long sellerId, @Param("status") OrderStatus status, Pageable pageable);
+
+    @Query("""
+            select o from Order o
+            where (:status is null or o.status = :status)
+            order by o.createdAt desc, o.id desc
+            """)
+    Page<Order> searchByStatus(@Param("status") OrderStatus status, Pageable pageable);
 }
