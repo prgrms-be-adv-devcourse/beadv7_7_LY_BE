@@ -17,6 +17,8 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
+import site.auctionservice.application.port.BidOutbidMarkPort;
+import site.auctionservice.application.port.BidReactionPort;
 import site.auctionservice.application.port.LockPort;
 import site.auctionservice.application.port.MemberPort;
 import site.auctionservice.application.port.ProductPort;
@@ -75,6 +77,12 @@ class AuctionServiceTest {
 
     @Mock
     private LockPort lockPort;
+
+    @Mock
+    private BidOutbidMarkPort bidOutbidMarker;
+
+    @Mock
+    private BidReactionPort bidReactionTracker;
 
     @InjectMocks
     private AuctionService auctionService;
@@ -971,6 +979,10 @@ class AuctionServiceTest {
         // 똑같이 LockPort.executeWithLockOnAuction()에 auctionId를 그대로 넘긴다는 걸 검증한다
         // (키 조합은 LockPort 안에서 AuctionRedisKeys.lockKey()로 통일돼 있다).
         verify(lockPort).executeWithLockOnAuction(eq(1L), anyLong(), anyLong(), any(), any());
+        // BidReactionTracker(반응속도 추적)는 락/트랜잭션과 무관하게 placeBid() 진입 시 항상 호출된다.
+        verify(bidReactionTracker).recordReactionIfApplicable(1L, 2L);
+        // 기존 활성 입찰이 없었으므로 outbid 마킹은 호출되지 않는다.
+        verify(bidOutbidMarker, never()).markOutbid(any(), any());
     }
 
     @Test
@@ -1001,6 +1013,10 @@ class AuctionServiceTest {
 
         // then
         assertThat(previousBid.getOutcome()).isEqualTo(BidOutcome.OUTBID);
+
+        // 이전 최고입찰자(5L)에 대해 outbid 마킹이 호출된다 — 락 해제 + 트랜잭션 커밋 성공을
+        // placeBid()가 확인한 뒤에 호출되므로, 여기까지 실행됐다는 것 자체가 그 보장의 증거다.
+        verify(bidOutbidMarker).markOutbid(1L, 5L);
     }
 
     @Test

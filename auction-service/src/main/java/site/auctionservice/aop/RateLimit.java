@@ -8,9 +8,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RateLimit {
-    int limit();                 // 윈도우 내 최대 허용 요청 수 (위험 점수에 따라 더 좁게 적용될 수 있음)
-    long windowMs();             // 윈도우 크기(밀리초)
-    String keyPrefix();          // 도메인, 최종 키: "{keyPrefix}:{resourceId}:{userId}"
+    int limit();                 // 위험 점수에 따라 더 좁게 적용될 수 있음
+    long windowMs();
+    String keyPrefix();          // 최종 키 조합은 AuctionRedisKeys.rateLimitKey() 참고
     String resourceIdKey();      // 대상 리소스 ID SpEL, 예: "#command.auctionId()"
     String userIdKey();          // 요청 유저 ID SpEL, 예: "#command.bidderId()"
 }

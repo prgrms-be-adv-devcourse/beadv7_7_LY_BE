@@ -1,5 +1,6 @@
 package site.auctionservice.infrastructure.ratelimit;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,6 +18,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SlidingWindowLogLimiter {
 
     // KEYS[1]=key, ARGV[1]=now(ms), ARGV[2]=window(ms), ARGV[3]=limit, ARGV[4]=member
@@ -41,10 +43,6 @@ public class SlidingWindowLogLimiter {
             """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
-
-    public SlidingWindowLogLimiter(StringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
 
     /**
      * @param key      제한 대상 (예: "auction:antibot:ratelimit:bid:{auctionId}:{bidderId}")

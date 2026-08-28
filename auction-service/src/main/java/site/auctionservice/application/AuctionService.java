@@ -12,6 +12,8 @@ import site.auctionservice.aop.RateLimit;
 import site.auctionservice.domain.*;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
+import site.auctionservice.application.port.BidOutbidMarkPort;
+import site.auctionservice.application.port.BidReactionPort;
 import site.auctionservice.application.port.LockPort;
 import site.auctionservice.application.port.MemberPort;
 import site.auctionservice.application.port.ProductPort;
@@ -27,6 +29,7 @@ import site.auctionservice.exception.AuctionException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -49,6 +52,8 @@ public class AuctionService {
     private final ImageUrlValidator imageUrlValidator;
     private final TransactionTemplate transactionTemplate;
     private final LockPort lockPort;
+    private final BidOutbidMarkPort bidOutbidMarker;
+    private final BidReactionPort bidReactionTracker;
 
     private static final long BID_LOCK_WAIT_TIME = 3L;
     private static final long BID_LOCK_LEASE_TIME = -1L;
@@ -242,21 +247,31 @@ public class AuctionService {
     }
 
     /**
-     * @DistributedLock 애노테이션 대신 LockPort를 직접 호출해 executeBid()만 락+트랜잭션으로 좁게 감싼다 —
+     * @DistributedLock 애노테이션 대신 LockPort를 직접 호출해 executeBid()만 락+트랜잭션으로 좁게 감싼다
      * 보상 호출(rollback)이 경매 락이 풀린 뒤에 실행되게 하기 위해서다(pointwallet rollback()은 holdId 기준 멱등이라 안전).
-     * holdInfoRef는 executeBid() 실패 시에도 hold() 결과(holdId)를 catch 블록에서 쓰기 위한 다리다.
      */
     @RateLimit(limit = 3, windowMs = 2000, keyPrefix = "bid",
             resourceIdKey = "#command.auctionId()", userIdKey = "#command.bidderId()")
     public PlaceBidResult placeBid(PlaceBidCommand command) {
+        bidReactionTracker.recordReactionIfApplicable(command.auctionId(), command.bidderId());
+
         if (memberPort.isMemberRestricted(command.bidderId())) {
             throw new AuctionException(AuctionErrorCode.BID_MEMBER_RESTRICTED);
         }
 
         AtomicReference<WalletHoldInfo> holdInfoRef = new AtomicReference<>();
+        AtomicReference<Long> outbidBidderIdRef = new AtomicReference<>();
         try {
-            return lockPort.executeWithLockOnAuction(command.auctionId(), BID_LOCK_WAIT_TIME, BID_LOCK_LEASE_TIME,
-                    TimeUnit.SECONDS, () -> transactionTemplate.execute(status -> executeBid(command, holdInfoRef)));
+            PlaceBidResult result = lockPort.executeWithLockOnAuction(command.auctionId(), BID_LOCK_WAIT_TIME,
+                    BID_LOCK_LEASE_TIME, TimeUnit.SECONDS,
+                    () -> transactionTemplate.execute(status -> executeBid(command, holdInfoRef, outbidBidderIdRef)));
+
+            // 여기 도달했다는 것 자체가 트랜잭션 커밋 성공 + 락 해제를 이미 뜻한다.
+            Long outbidBidderId = outbidBidderIdRef.get();
+            if (outbidBidderId != null) {
+                bidOutbidMarker.markOutbid(command.auctionId(), outbidBidderId);
+            }
+            return result;
         } catch (RuntimeException e) {
             compensateHold(command, holdInfoRef.get(), e);
             throw e;
@@ -279,7 +294,7 @@ public class AuctionService {
         }
     }
 
-    private PlaceBidResult executeBid(PlaceBidCommand command, AtomicReference<WalletHoldInfo> holdInfoRef) {
+    private PlaceBidResult executeBid(PlaceBidCommand command, AtomicReference<WalletHoldInfo> holdInfoRef, AtomicReference<Long> outbidBidderIdRef) {
         LocalDateTime now = LocalDateTime.now();
 
         Auction auction = auctionRepository.findById(command.auctionId()).orElseThrow(() -> new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND));
@@ -294,7 +309,11 @@ public class AuctionService {
 
         // 기존 ACTIVE Bid → OUTBID (Bid는 IDENTITY 채번이라 save() 시 즉시 flush되므로,
         // 새 Bid 저장 전에 처리해야 findActiveBid가 항상 최대 1건만 조회함)
-        bidRepository.findActiveBid(command.auctionId()).ifPresent(Bid::markOutbid);
+        Optional<Bid> previousActiveBid = bidRepository.findActiveBid(command.auctionId());
+        previousActiveBid.ifPresent(Bid::markOutbid);
+        // outbid Redis 마킹은 여기서 바로 하지 않고 이전 최고입찰자만 캡처해둔다
+        // placeBid()가 락 해제 + 트랜잭션 커밋 성공을 확인한 뒤에 마킹해야 롤백된 입찰에 대한 가짜 마킹이 안 남고 락 보유 시간도 늘리지 않는다.
+        previousActiveBid.ifPresent(bid -> outbidBidderIdRef.set(bid.getBidderId()));
         // 새 Bid 저장 (ACTIVE)
         Bid newBid = bidRepository.save(Bid.place(command.auctionId(), command.bidderId(), amount, now));
         // 최고입찰 갱신 + 마감 연장

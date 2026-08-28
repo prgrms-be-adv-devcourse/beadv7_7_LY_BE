@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import site.auctionservice.application.dto.PlaceBidCommand;
 import site.auctionservice.exception.AuctionErrorCode;
 import site.auctionservice.exception.AuctionException;
+import site.auctionservice.infrastructure.macro.BidRiskScoreManager;
 import site.auctionservice.infrastructure.ratelimit.SlidingWindowLogLimiter;
 
 import java.lang.reflect.Method;
@@ -28,6 +29,9 @@ class RateLimitAspectTest {
 
     @Mock
     private SlidingWindowLogLimiter logLimiter;
+
+    @Mock
+    private BidRiskScoreManager riskScoreManager;
 
     @InjectMocks
     private RateLimitAspect aspect;
@@ -58,6 +62,7 @@ class RateLimitAspectTest {
         RateLimit annotation = method.getAnnotation(RateLimit.class);
         ProceedingJoinPoint joinPoint = joinPointFor(method, command);
         given(joinPoint.proceed()).willReturn("raw");
+        given(riskScoreManager.adjustLimit(3, 2L)).willReturn(3);
         given(logLimiter.isAllowed("auction:antibot:ratelimit:bid:1:2", 3, 2000L)).willReturn(true);
 
         Object result = aspect.around(joinPoint, annotation);
@@ -73,6 +78,7 @@ class RateLimitAspectTest {
         Method method = TestTarget.class.getMethod("placeBid", PlaceBidCommand.class);
         RateLimit annotation = method.getAnnotation(RateLimit.class);
         ProceedingJoinPoint joinPoint = joinPointFor(method, command);
+        given(riskScoreManager.adjustLimit(3, 2L)).willReturn(3);
         given(logLimiter.isAllowed("auction:antibot:ratelimit:bid:1:2", 3, 2000L)).willReturn(false);
 
         assertThatThrownBy(() -> aspect.around(joinPoint, annotation))
@@ -81,5 +87,21 @@ class RateLimitAspectTest {
                 .isEqualTo(AuctionErrorCode.TOO_MANY_BID_REQUESTS);
 
         verify(joinPoint, never()).proceed();
+    }
+
+    @Test
+    @DisplayName("BidRiskScoreManager가 조정한 limit을 그대로 SlidingWindowLogLimiter에 전달한다")
+    void around_riskAdjustedLimit_passedToLimiter() throws Throwable {
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_000));
+        Method method = TestTarget.class.getMethod("placeBid", PlaceBidCommand.class);
+        RateLimit annotation = method.getAnnotation(RateLimit.class);
+        ProceedingJoinPoint joinPoint = joinPointFor(method, command);
+        given(joinPoint.proceed()).willReturn("raw");
+        given(riskScoreManager.adjustLimit(3, 2L)).willReturn(1);
+        given(logLimiter.isAllowed("auction:antibot:ratelimit:bid:1:2", 1, 2000L)).willReturn(true);
+
+        aspect.around(joinPoint, annotation);
+
+        verify(logLimiter).isAllowed("auction:antibot:ratelimit:bid:1:2", 1, 2000L);
     }
 }
