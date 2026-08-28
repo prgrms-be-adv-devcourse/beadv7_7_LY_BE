@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import site.explorationservice.searchlog.application.dto.SearchLogCommand;
 import site.explorationservice.searchlog.domain.SearchClickLog;
 import site.explorationservice.searchlog.domain.SearchLog;
 import site.explorationservice.searchlog.domain.SearchLogRepository;
@@ -27,11 +28,13 @@ public class SearchLogService {
     private final SearchLogRepository searchLogRepository;
 
     @Async("searchLogExecutor")
-    public void saveSearchLog(final SearchLog searchLog) {
+    public void saveSearchLog(final SearchLogCommand command) {
         try {
-            searchLogRepository.saveSearchLog(searchLog);
+            searchLogRepository.saveSearchLog(SearchLog.of(command.searchId(), command.keyword(),
+                    command.normalizedKeyword(), command.searchBy(), command.page(), command.size(),
+                    command.resultCount(), command.engineMillis(), command.elapsedMillis()));
         } catch (final Exception e) {
-            log.warn("검색 기록을 저장하지 못했습니다 — 검색 식별자 {}", searchLog.searchId(), e);
+            log.warn("검색 기록을 저장하지 못했습니다 — 검색 식별자 {}", command.searchId(), e);
         }
     }
 

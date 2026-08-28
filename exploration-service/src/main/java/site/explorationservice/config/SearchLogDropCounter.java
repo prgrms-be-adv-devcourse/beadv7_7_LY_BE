@@ -19,12 +19,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class SearchLogDropCounter implements RejectedExecutionHandler {
 
+    /** 버릴 때마다 쓰면 트래픽이 몰린 순간에 검색 요청 스레드가 매번 파일 쓰기를 하게 된다. */
+    private static final long LOG_INTERVAL = 100L;
+
     private final AtomicLong dropped = new AtomicLong();
 
     @Override
     public void rejectedExecution(final Runnable runnable, final ThreadPoolExecutor executor) {
         final long total = dropped.incrementAndGet();
-        log.warn("검색 로그 저장 작업을 버렸습니다 — 누적 {}건. 대기 큐가 가득 찼습니다", total);
+        if (total % LOG_INTERVAL == 1) {
+            log.warn("검색 로그 저장 작업을 버렸습니다 — 누적 {}건. 대기 큐가 가득 찼습니다", total);
+        }
     }
 
     public long getDroppedCount() {

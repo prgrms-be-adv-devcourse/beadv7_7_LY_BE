@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.stereotype.Component;
@@ -20,10 +19,13 @@ import org.springframework.stereotype.Component;
  * <p>
  * 상품 인덱스와 달리 별칭을 쓰지 않는다. 별칭은 매핑을 바꿀 때 기존 문서를 새 인덱스로 옮기기 위한 장치인데,
  * 이 기록은 옮길 만한 가치가 없어서 매핑을 바꿔야 하면 새 인덱스를 만들고 옛것은 두면 된다.
+ * <p>
+ * 프로파일을 가리지 않고 동작한다. 인덱스를 사람이 손으로 만드는 절차에 기대면 그 단계를 빠뜨렸을 때
+ * 검색 엔진이 값을 보고 타입을 추측해 인덱스를 만들어 버리는데, 저장이 성공하기 때문에 틀어진 사실을
+ * 알아챌 계기가 없다. 생성은 이미 있으면 매핑만 갱신하는 방식이라 여러 번 돌아도 안전하다.
  */
 @Slf4j
 @Component
-@Profile("local")
 @RequiredArgsConstructor
 public class SearchLogIndexInitializer implements ApplicationRunner {
 

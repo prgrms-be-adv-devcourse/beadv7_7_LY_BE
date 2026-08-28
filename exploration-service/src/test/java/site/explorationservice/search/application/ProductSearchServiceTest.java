@@ -26,7 +26,7 @@ import site.explorationservice.search.domain.SearchKeyword;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
 import site.explorationservice.search.exception.UnsupportedSearchTargetException;
 import site.explorationservice.searchlog.application.SearchLogService;
-import site.explorationservice.searchlog.domain.SearchLog;
+import site.explorationservice.searchlog.application.dto.SearchLogCommand;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("상품 검색")
@@ -291,7 +291,7 @@ class ProductSearchServiceTest {
 
         // then
         // 결과가 없는 검색어야말로 가장 알고 싶은 기록이다. 조회를 건너뛰는 경로도 남아야 한다
-        final ArgumentCaptor<SearchLog> captor = ArgumentCaptor.forClass(SearchLog.class);
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
         then(searchLogService).should().saveSearchLog(captor.capture());
         assertThat(captor.getValue().resultCount()).isZero();
         assertThat(captor.getValue().keyword()).isEqualTo(tooShortKeyword);
@@ -307,7 +307,7 @@ class ProductSearchServiceTest {
         productSearchService.searchProducts("장기하", null, page, 20);
 
         // then
-        final ArgumentCaptor<SearchLog> captor = ArgumentCaptor.forClass(SearchLog.class);
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
         then(searchLogService).should().saveSearchLog(captor.capture());
         assertThat(captor.getValue().page()).isEqualTo(page);
         assertThat(captor.getValue().resultCount()).isZero();
@@ -325,7 +325,7 @@ class ProductSearchServiceTest {
 
         // then
         // 이 값이 어긋나면 클릭 기록을 검색 기록에 이어 붙일 수 없다
-        final ArgumentCaptor<SearchLog> captor = ArgumentCaptor.forClass(SearchLog.class);
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
         then(searchLogService).should().saveSearchLog(captor.capture());
         assertThat(result.searchId()).isNotBlank();
         assertThat(captor.getValue().searchId()).isEqualTo(result.searchId());
@@ -342,7 +342,7 @@ class ProductSearchServiceTest {
         productSearchService.searchProducts("장기하", null, 0, 20);
 
         // then
-        final ArgumentCaptor<SearchLog> captor = ArgumentCaptor.forClass(SearchLog.class);
+        final ArgumentCaptor<SearchLogCommand> captor = ArgumentCaptor.forClass(SearchLogCommand.class);
         then(searchLogService).should().saveSearchLog(captor.capture());
         assertThat(captor.getValue().engineMillis()).isEqualTo(7L);
     }

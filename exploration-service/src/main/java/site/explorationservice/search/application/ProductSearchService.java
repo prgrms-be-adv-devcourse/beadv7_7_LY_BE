@@ -11,7 +11,7 @@ import site.explorationservice.search.domain.SearchKeyword;
 import site.explorationservice.search.domain.SearchTarget;
 import site.explorationservice.search.exception.SearchKeywordRequiredException;
 import site.explorationservice.searchlog.application.SearchLogService;
-import site.explorationservice.searchlog.domain.SearchLog;
+import site.explorationservice.searchlog.application.dto.SearchLogCommand;
 
 /**
  * 검색어 검증과 페이지 보정만 하고 조회는 리포지토리에 맡긴다.
@@ -86,7 +86,7 @@ public class ProductSearchService {
     private void saveSearchLog(final String searchId, final SearchKeyword keyword, final SearchTarget searchTarget,
             final int page, final int size, final ProductSearchPage searchPage, final long startedNanos) {
         final long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedNanos).toMillis();
-        searchLogService.saveSearchLog(SearchLog.of(searchId, keyword.getValue(), keyword.getNormalized(),
+        searchLogService.saveSearchLog(new SearchLogCommand(searchId, keyword.getValue(), keyword.getNormalized(),
                 searchTarget.name(), page, size, searchPage.totalElements(), searchPage.engineMillis(),
                 elapsedMillis));
     }
