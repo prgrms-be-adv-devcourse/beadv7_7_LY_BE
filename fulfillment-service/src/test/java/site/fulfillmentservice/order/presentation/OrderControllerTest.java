@@ -26,6 +26,7 @@ import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderSearchResult;
 import site.fulfillmentservice.order.application.dto.OrderSummaryResult;
 import site.fulfillmentservice.order.application.dto.OrderItemSnapshotResult;
+import site.fulfillmentservice.order.application.dto.RefundInfoResult;
 import site.fulfillmentservice.order.domain.RefundReason;
 import site.fulfillmentservice.order.exception.OrderErrorCode;
 import site.fulfillmentservice.order.exception.OrderException;
@@ -263,7 +264,7 @@ class OrderControllerTest {
             OrderDetailResult result = new OrderDetailResult(
                     1L, 5001L, 301L, 302L, BigDecimal.valueOf(85_000), "ORDERED", null,
                     LocalDateTime.now().plusHours(24), LocalDateTime.now().plusDays(7),
-                    LocalDateTime.now(), null, null, product, deliveryAddress);
+                    LocalDateTime.now(), null, null, product, deliveryAddress, null);
             given(orderService.getOrderDetail(1L, 301L)).willReturn(result);
 
             mockMvc.perform(get("/api/v1/orders/{orderId}", 1L)
@@ -274,7 +275,30 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.data.status").value("ORDERED"))
                     .andExpect(jsonPath("$.data.product.productId").value(1201))
                     .andExpect(jsonPath("$.data.product.albumTitle").value("Abbey Road"))
-                    .andExpect(jsonPath("$.data.deliveryAddress.recipientName").value("홍길동"));
+                    .andExpect(jsonPath("$.data.deliveryAddress.recipientName").value("홍길동"))
+                    .andExpect(jsonPath("$.data.refundInfo").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("환불 신청 중이면 환불 정보를 함께 반환한다")
+        void getOrder_withRefundInfo() throws Exception {
+            RefundInfoResult refundInfo = new RefundInfoResult(
+                    "DEFECTIVE", "박스가 파손되어 도착했습니다",
+                    List.of("https://cdn.example.com/refund/1.jpg"),
+                    LocalDateTime.now(), null);
+            OrderDetailResult result = new OrderDetailResult(
+                    1L, 5001L, 301L, 302L, BigDecimal.valueOf(85_000), "REFUND_REQUESTED", null,
+                    LocalDateTime.now().plusHours(24), LocalDateTime.now().plusDays(7),
+                    LocalDateTime.now(), null, null, product, deliveryAddress, refundInfo);
+            given(orderService.getOrderDetail(1L, 301L)).willReturn(result);
+
+            mockMvc.perform(get("/api/v1/orders/{orderId}", 1L)
+                            .header(MEMBER_ID_HEADER, "301"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("REFUND_REQUESTED"))
+                    .andExpect(jsonPath("$.data.refundInfo.reason").value("DEFECTIVE"))
+                    .andExpect(jsonPath("$.data.refundInfo.description").value("박스가 파손되어 도착했습니다"))
+                    .andExpect(jsonPath("$.data.refundInfo.refundedAt").doesNotExist());
         }
 
         @Test

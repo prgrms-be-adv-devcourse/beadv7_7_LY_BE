@@ -18,7 +18,8 @@ public record OrderDetailResult(
         LocalDateTime completedAt,
         LocalDateTime cancelledAt,
         OrderItemSnapshotResult product,
-        DeliveryAddressResult deliveryAddress
+        DeliveryAddressResult deliveryAddress,
+        RefundInfoResult refundInfo
 ) {
 
     public static OrderDetailResult from(Order order) {
@@ -36,7 +37,8 @@ public record OrderDetailResult(
                 order.getCompletedAt(),
                 order.getCancelledAt(),
                 OrderItemSnapshotResult.from(order.getProductId(), order.getItemSnapshot()),
-                DeliveryAddressResult.from(order.getDeliveryInfo())
+                DeliveryAddressResult.from(order.getDeliveryInfo()),
+                RefundInfoResult.from(order.getRefundInfo())
         );
     }
 }

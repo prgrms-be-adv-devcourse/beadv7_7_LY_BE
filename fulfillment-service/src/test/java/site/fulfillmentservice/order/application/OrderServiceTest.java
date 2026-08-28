@@ -787,7 +787,7 @@ class OrderServiceTest {
         }
 
         @Test
-        @DisplayName("환불 신청을 반려하면 COMPLETED로 바뀌고 거래 확정 이벤트를 발행한다")
+        @DisplayName("환불 신청을 반려하면 REFUND_REJECTED로 바뀌고 거래 확정 이벤트를 발행한다")
         void rejectsRefundRequest() {
             // given
             Order order = refundRequestedOrder();
@@ -797,7 +797,7 @@ class OrderServiceTest {
             orderService.rejectRefund(1L);
 
             // then
-            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUND_REJECTED);
             verify(orderEventPublisher).publishCompleted(order);
         }
 
@@ -835,6 +835,79 @@ class OrderServiceTest {
         private Order pendingOrder() {
             return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
                     LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+        }
+
+        private Order orderedOrder() {
+            Order order = pendingOrder();
+            order.confirmOrder(defaultDeliveryInfo(), LocalDateTime.now().plusDays(7), LocalDateTime.now());
+            return order;
+        }
+
+        @Test
+        @DisplayName("환불 이력이 없으면 refundInfo는 null이다")
+        void returnsNullRefundInfoWhenNoRefundHistory() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 301L);
+
+            // then
+            assertThat(result.refundInfo()).isNull();
+        }
+
+        @Test
+        @DisplayName("환불 신청 중이면 refundInfo를 포함해 반환한다")
+        void returnsRefundInfoWhenRequested() {
+            // given
+            Order order = orderedOrder();
+            order.requestRefund(RefundReason.DEFECTIVE, "박스가 파손되어 도착했습니다",
+                    List.of("https://cdn.example.com/refund/1.jpg"), LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 301L);
+
+            // then
+            assertThat(result.status()).isEqualTo("REFUND_REQUESTED");
+            assertThat(result.refundInfo().reason()).isEqualTo("DEFECTIVE");
+            assertThat(result.refundInfo().description()).isEqualTo("박스가 파손되어 도착했습니다");
+            assertThat(result.refundInfo().refundedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("환불이 승인되면 refundedAt이 채워진 refundInfo를 반환한다")
+        void returnsRefundInfoWhenApproved() {
+            // given
+            Order order = orderedOrder();
+            order.requestRefund(RefundReason.DEFECTIVE, null, null, LocalDateTime.now());
+            order.approveRefund(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 301L);
+
+            // then
+            assertThat(result.status()).isEqualTo("REFUND");
+            assertThat(result.refundInfo().refundedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("환불이 반려되면 상태는 REFUND_REJECTED이고 refundedAt은 비어있다")
+        void returnsRefundInfoWhenRejected() {
+            // given
+            Order order = orderedOrder();
+            order.requestRefund(RefundReason.DEFECTIVE, null, null, LocalDateTime.now());
+            order.rejectRefund(LocalDateTime.now());
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetail(1L, 301L);
+
+            // then
+            assertThat(result.status()).isEqualTo("REFUND_REJECTED");
+            assertThat(result.refundInfo().refundedAt()).isNull();
         }
 
         @Test

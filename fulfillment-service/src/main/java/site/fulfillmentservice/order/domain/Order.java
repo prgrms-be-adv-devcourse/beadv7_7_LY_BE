@@ -204,7 +204,7 @@ public class Order extends BaseEntity {
         if (status != OrderStatus.REFUND_REQUESTED) {
             throw new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED);
         }
-        this.status = OrderStatus.COMPLETED;
+        this.status = OrderStatus.REFUND_REJECTED;
         this.completedAt = now;
     }
 }

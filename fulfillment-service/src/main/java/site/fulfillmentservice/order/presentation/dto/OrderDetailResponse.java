@@ -2,9 +2,11 @@ package site.fulfillmentservice.order.presentation.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import site.fulfillmentservice.order.application.dto.DeliveryAddressResult;
 import site.fulfillmentservice.order.application.dto.OrderDetailResult;
 import site.fulfillmentservice.order.application.dto.OrderItemSnapshotResult;
+import site.fulfillmentservice.order.application.dto.RefundInfoResult;
 
 public record OrderDetailResponse(
         Long orderId,
@@ -20,7 +22,8 @@ public record OrderDetailResponse(
         LocalDateTime completedAt,
         LocalDateTime cancelledAt,
         Product product,
-        DeliveryAddress deliveryAddress
+        DeliveryAddress deliveryAddress,
+        RefundInfo refundInfo
 ) {
 
     public static OrderDetailResponse from(OrderDetailResult result) {
@@ -38,7 +41,8 @@ public record OrderDetailResponse(
                 result.completedAt(),
                 result.cancelledAt(),
                 Product.from(result.product()),
-                DeliveryAddress.from(result.deliveryAddress())
+                DeliveryAddress.from(result.deliveryAddress()),
+                RefundInfo.from(result.refundInfo())
         );
     }
 
@@ -81,6 +85,28 @@ public record OrderDetailResponse(
                     result.phoneNumber(),
                     result.baseAddress(),
                     result.detailAddress()
+            );
+        }
+    }
+
+    public record RefundInfo(
+            String reason,
+            String description,
+            List<String> imageUrls,
+            LocalDateTime requestedAt,
+            LocalDateTime refundedAt
+    ) {
+
+        public static RefundInfo from(RefundInfoResult result) {
+            if (result == null) {
+                return null;
+            }
+            return new RefundInfo(
+                    result.reason(),
+                    result.description(),
+                    result.imageUrls(),
+                    result.requestedAt(),
+                    result.refundedAt()
             );
         }
     }
