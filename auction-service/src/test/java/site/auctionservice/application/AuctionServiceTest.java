@@ -858,6 +858,34 @@ class AuctionServiceTest {
         assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
         assertThat(item.myBidAmount()).isEqualTo(Money.of(6_000L));
         assertThat(item.myOutcome()).isEqualTo(BidOutcome.ACTIVE);
+        assertThat(item.thumbnail()).isNull();
+        assertThat(item.highestBidAmount()).isNull();
+    }
+
+    @Test
+    @DisplayName("참여 이력 조회 시 썸네일과 현재 최고 입찰가를 함께 반환한다")
+    void testGetParticipatedAuctions_returnsThumbnailAndHighestBidAmount() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(Period.of(PAST_START, FUTURE_END), false, null);
+        ItemInfo itemInfoWithImage = ItemInfo.of(ItemCondition.MINT, DESCRIPTION, List.of("cover.png"));
+        HighestBid highestBid = HighestBid.of(Money.of(8_000L), 9L, 10L);
+        Auction auction = Auction.of(1L, 100L, itemInfoWithImage, pricing, schedule, AuctionStatus.RUNNING, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        Bid bid = Bid.place(1L, 5L, Money.of(6_000L), LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, 20);
+        given(bidRepository.findLatestBidsByBidder(5L, pageable))
+                .willReturn(new PageImpl<>(List.of(bid), pageable, 1));
+        given(auctionRepository.findAllByIds(List.of(1L))).willReturn(List.of(auction));
+        given(searchViewRepository.findAllSummaryByIds(List.of(1L)))
+                .willReturn(List.of(new AuctionProductSummary(1L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<ParticipatedAuctionResult> result = auctionService.getParticipatedAuctions(5L, pageable);
+
+        // then
+        ParticipatedAuctionResult item = result.items().get(0);
+        assertThat(item.thumbnail()).isEqualTo("cover.png");
+        assertThat(item.highestBidAmount()).isEqualTo(Money.of(8_000L));
     }
 
     @Test
