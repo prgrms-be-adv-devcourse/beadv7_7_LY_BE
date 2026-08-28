@@ -163,6 +163,13 @@ spring:
               predicates:
                 - Path=/api/v*/search/products
                 - Method=GET
+            # 위 라우트가 경로와 메서드를 한정하고 있어 클릭 기록 요청은 걸리지 않는다.
+            # 검색과 마찬가지로 인증을 걸지 않는다 — 비로그인 사용자의 클릭도 남아야 한다.
+            - id: exploration-service-search-click-no-auth
+              uri: ${EXPLORATION_SERVICE_URI}
+              predicates:
+                - Path=/api/v*/search/clicks
+                - Method=POST
 
 app:
   jwt:
