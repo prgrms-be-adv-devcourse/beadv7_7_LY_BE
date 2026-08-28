@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.auctionservice.aop.DistributedLock;
+import site.auctionservice.aop.RateLimit;
 import site.auctionservice.domain.*;
 import site.auctionservice.application.dto.*;
 import site.auctionservice.application.port.AuctionSearchViewRepository;
@@ -245,6 +246,8 @@ public class AuctionService {
      * 보상 호출(rollback)이 경매 락이 풀린 뒤에 실행되게 하기 위해서다(pointwallet rollback()은 holdId 기준 멱등이라 안전).
      * holdInfoRef는 executeBid() 실패 시에도 hold() 결과(holdId)를 catch 블록에서 쓰기 위한 다리다.
      */
+    @RateLimit(limit = 3, windowMs = 2000, keyPrefix = "bid",
+            resourceIdKey = "#command.auctionId()", userIdKey = "#command.bidderId()")
     public PlaceBidResult placeBid(PlaceBidCommand command) {
         if (memberPort.isMemberRestricted(command.bidderId())) {
             throw new AuctionException(AuctionErrorCode.BID_MEMBER_RESTRICTED);

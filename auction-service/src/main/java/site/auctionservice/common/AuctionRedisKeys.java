@@ -8,6 +8,7 @@ public final class AuctionRedisKeys {
 
     private static final String PREFIX = "auction";
     private static final String LOCK_TYPE = "lock";
+    private static final String RATE_LIMIT_TYPE = "antibot:ratelimit";
 
     private AuctionRedisKeys() {
     }
@@ -18,5 +19,9 @@ public final class AuctionRedisKeys {
 
     public static String lockKey(Object identifier) {
         return of(LOCK_TYPE, identifier);
+    }
+
+    public static String rateLimitKey(String keyPrefix, Object resourceId, Object userId) {
+        return of(RATE_LIMIT_TYPE, keyPrefix + ":" + resourceId + ":" + userId);
     }
 }
