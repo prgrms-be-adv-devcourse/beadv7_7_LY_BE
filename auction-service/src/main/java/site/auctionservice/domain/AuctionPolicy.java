@@ -12,6 +12,12 @@ public final class AuctionPolicy {
     // 경매 연장 최소 시간 단위
     public static final int MIN_EXTENSION_MINUTES = 1;
 
+    // 경매 연장 최대 시간 단위
+    public static final int MAX_EXTENSION_MINUTES = 60;
+
+    // 경매 연장 최대 횟수(무한 연장 방지)
+    public static final int MAX_EXTENSION_COUNT = 3;
+
     // 경매 최소 지속 시간
     public static final int MIN_DURATION_HOURS = 1;
 

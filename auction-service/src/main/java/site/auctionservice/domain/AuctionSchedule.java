@@ -24,10 +24,14 @@ public class AuctionSchedule {
     @Column(name = "extension_time")
     private Integer extensionTime;
 
-    private AuctionSchedule(Period period, boolean extensionEnabled, Integer extensionTime) {
+    @Column(name = "extension_count", nullable = false)
+    private int extensionCount;
+
+    private AuctionSchedule(Period period, boolean extensionEnabled, Integer extensionTime, int extensionCount) {
         this.period = period;
         this.extensionEnabled = extensionEnabled;
         this.extensionTime = extensionTime;
+        this.extensionCount = extensionCount;
     }
 
     public static AuctionSchedule of(Period period, boolean extensionEnabled,
@@ -38,10 +42,14 @@ public class AuctionSchedule {
                 throw new IllegalArgumentException(
                     "연장 시간은 %d분 이상이어야 합니다.".formatted(AuctionPolicy.MIN_EXTENSION_MINUTES));
             }
+            if (extensionTime > AuctionPolicy.MAX_EXTENSION_MINUTES) {
+                throw new IllegalArgumentException(
+                    "연장 시간은 %d분 이하여야 합니다.".formatted(AuctionPolicy.MAX_EXTENSION_MINUTES));
+            }
         } else {
             extensionTime = null;
         }
-        return new AuctionSchedule(period, extensionEnabled, extensionTime);
+        return new AuctionSchedule(period, extensionEnabled, extensionTime, 0);
     }
 
     public boolean isBiddableAt(LocalDateTime at) {
@@ -60,10 +68,13 @@ public class AuctionSchedule {
         if (!extensionEnabled || extensionTime == null) {
             return this;
         }
+        if (extensionCount >= AuctionPolicy.MAX_EXTENSION_COUNT) {
+            return this;
+        }
         if (!period.isNearEnd(now, extensionTime)) {
             return this;
         }
-        return new AuctionSchedule(period.extendEnd(extensionTime), extensionEnabled, extensionTime);
+        return new AuctionSchedule(period.extendEnd(extensionTime), extensionEnabled, extensionTime, extensionCount + 1);
     }
 
     @Override
@@ -75,13 +86,14 @@ public class AuctionSchedule {
             return false;
         }
         return extensionEnabled == that.extensionEnabled
+            && extensionCount == that.extensionCount
             && Objects.equals(period, that.period)
             && Objects.equals(extensionTime, that.extensionTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(period, extensionEnabled, extensionTime);
+        return Objects.hash(period, extensionEnabled, extensionTime, extensionCount);
     }
 
 }
