@@ -95,7 +95,8 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
 
         return new ProductSearchPage(
             hits.getSearchHits().stream().map(hit -> toSearchHit(hit.getContent())).toList(),
-            hits.getTotalHits());
+            hits.getTotalHits(),
+            hits.getExecutionDuration().toMillis());
     }
 
     @Override
@@ -112,7 +113,8 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
 
         return new ProductSearchPage(
             hits.getSearchHits().stream().map(hit -> toSearchHit(hit.getContent())).toList(),
-            hits.getTotalHits());
+            hits.getTotalHits(),
+            hits.getExecutionDuration().toMillis());
     }
 
     /**

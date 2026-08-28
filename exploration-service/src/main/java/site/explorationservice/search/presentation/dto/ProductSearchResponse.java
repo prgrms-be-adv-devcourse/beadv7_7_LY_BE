@@ -7,14 +7,15 @@ import site.explorationservice.search.domain.ProductSearchHit;
 /**
  * 상품 서비스의 검색 응답과 형식이 같다.
  */
-public record ProductSearchResponse(List<Card> content, int page, int size, long totalElements, boolean hasNext) {
+public record ProductSearchResponse(List<Card> content, int page, int size, long totalElements, boolean hasNext,
+                                    String searchId) {
 
     public static ProductSearchResponse from(final ProductSearchResult result) {
         final List<Card> cards = result.content().stream()
                 .map(Card::from)
                 .toList();
         return new ProductSearchResponse(cards, result.page(), result.size(), result.totalElements(),
-                result.hasNext());
+                result.hasNext(), result.searchId());
     }
 
     /**
