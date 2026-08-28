@@ -16,20 +16,22 @@ public record SearchClickLog(String searchId, Long productId, int rank, Instant 
 
     private static final int MIN_RANK = 1;
 
-    public static SearchClickLog of(final String searchId, final Long productId, final Integer rank) {
-        validate(searchId, productId, rank);
-        return new SearchClickLog(searchId, productId, rank, Instant.now());
-    }
-
-    private static void validate(final String searchId, final Long productId, final Integer rank) {
+    public SearchClickLog {
         if (searchId == null || searchId.isBlank()) {
             throw new InvalidSearchClickException();
         }
         if (productId == null) {
             throw new InvalidSearchClickException();
         }
-        if (rank == null || rank < MIN_RANK) {
+        if (rank < MIN_RANK) {
             throw new InvalidSearchClickException();
         }
+    }
+
+    public static SearchClickLog of(final String searchId, final Long productId, final Integer rank) {
+        if (rank == null) {
+            throw new InvalidSearchClickException();
+        }
+        return new SearchClickLog(searchId, productId, rank, Instant.now());
     }
 }

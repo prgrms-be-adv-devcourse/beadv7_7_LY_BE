@@ -3,6 +3,7 @@ package site.explorationservice.searchlog.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.explorationservice.searchlog.exception.InvalidSearchClickException;
@@ -81,5 +82,17 @@ class SearchClickLogTest {
 
         // then
         assertThat(clickLog.rank()).isEqualTo(firstRank);
+    }
+
+    @Test
+    @DisplayName("정식 생성자로 만들어도 값을 검증한다")
+    void 생성자로_만들어도_검증한다() {
+        // given
+        final Instant now = Instant.now();
+
+        // when & then
+        // 정적 팩토리만 막으면 생성 경로가 둘로 갈려 한쪽으로 잘못된 기록이 들어온다
+        assertThatThrownBy(() -> new SearchClickLog(null, 12345L, 1, now))
+            .isInstanceOf(InvalidSearchClickException.class);
     }
 }

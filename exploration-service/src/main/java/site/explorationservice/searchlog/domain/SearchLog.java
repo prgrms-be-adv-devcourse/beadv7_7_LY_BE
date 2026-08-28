@@ -19,7 +19,7 @@ import java.time.Instant;
  * 서버와 조회 도구의 시간대가 다를 때 값이 어긋나지 않는다.
  */
 public record SearchLog(String searchId, String keyword, String normalizedKeyword, String searchBy,
-    int page, int size, long resultCount, long engineMillis, long elapsedMillis, Instant searchedAt) {
+        int page, int size, long resultCount, long engineMillis, long elapsedMillis, Instant searchedAt) {
 
     public static SearchLog of(final String searchId, final String keyword, final String normalizedKeyword,
             final String searchBy, final int page, final int size, final long resultCount,
