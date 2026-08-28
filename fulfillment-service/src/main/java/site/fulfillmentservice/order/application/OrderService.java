@@ -194,6 +194,14 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public OrderDetailResult getOrderDetailForAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        return OrderDetailResult.from(order);
+    }
+
+    @Transactional(readOnly = true)
     public OrderSearchResult findOrders(Long memberId, String perspective, String rawStatus, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = clampSize(size);
@@ -204,6 +212,17 @@ public class OrderService {
             case "seller" -> orderRepository.findAllBySellerId(memberId, status, safePage, safeSize);
             default -> throw new OrderException(OrderErrorCode.INVALID_PERSPECTIVE);
         };
+
+        return OrderSearchResult.of(searchPage, safePage, safeSize);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderSearchResult findOrdersForAdmin(String rawStatus, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = clampSize(size);
+        OrderStatus status = parseStatus(rawStatus);
+
+        OrderSearchPage searchPage = orderRepository.findAllByStatus(status, safePage, safeSize);
 
         return OrderSearchResult.of(searchPage, safePage, safeSize);
     }

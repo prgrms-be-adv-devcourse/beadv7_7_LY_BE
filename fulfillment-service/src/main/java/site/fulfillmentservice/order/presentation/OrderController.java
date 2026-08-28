@@ -49,20 +49,6 @@ public class OrderController {
         return ApiResponse.success();
     }
 
-    // TODO : #209 관리자 인증 없이 우선 열어둠. 관리자 인증 도입 시 보호 추가
-    @PostMapping("/{orderId}/refund-approve")
-    public ApiResponse<Void> approveRefund(@PathVariable Long orderId) {
-        orderService.approveRefund(orderId);
-        return ApiResponse.success();
-    }
-
-    // TODO : #209 관리자 인증 없이 우선 열어둠. 관리자 인증 도입 시 보호 추가
-    @PostMapping("/{orderId}/refund-reject")
-    public ApiResponse<Void> rejectRefund(@PathVariable Long orderId) {
-        orderService.rejectRefund(orderId);
-        return ApiResponse.success();
-    }
-
     @GetMapping("/{orderId}")
     public ApiResponse<OrderDetailResponse> getOrder(@MemberId Long memberId, @PathVariable Long orderId) {
         return ApiResponse.success(OrderDetailResponse.from(orderService.getOrderDetail(orderId, memberId)));

@@ -194,60 +194,6 @@ class OrderControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/orders/{orderId}/refund-approve")
-    class ApproveRefund {
-
-        @Test
-        @DisplayName("성공하면 200과 성공 응답을 반환한다")
-        void approveRefund_success() throws Exception {
-            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-approve", 1L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true));
-
-            verify(orderService).approveRefund(1L);
-        }
-
-        @Test
-        @DisplayName("REFUND_REQUESTED 상태가 아니면 409와 실패 응답을 반환한다")
-        void approveRefund_notRequested() throws Exception {
-            willThrow(new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED))
-                    .given(orderService).approveRefund(1L);
-
-            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-approve", 1L))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.success").value(false))
-                    .andExpect(jsonPath("$.error.code").value("OERR-2011"));
-        }
-    }
-
-    @Nested
-    @DisplayName("POST /api/v1/orders/{orderId}/refund-reject")
-    class RejectRefund {
-
-        @Test
-        @DisplayName("성공하면 200과 성공 응답을 반환한다")
-        void rejectRefund_success() throws Exception {
-            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-reject", 1L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true));
-
-            verify(orderService).rejectRefund(1L);
-        }
-
-        @Test
-        @DisplayName("REFUND_REQUESTED 상태가 아니면 409와 실패 응답을 반환한다")
-        void rejectRefund_notRequested() throws Exception {
-            willThrow(new OrderException(OrderErrorCode.REFUND_NOT_REQUESTED))
-                    .given(orderService).rejectRefund(1L);
-
-            mockMvc.perform(post("/api/v1/orders/{orderId}/refund-reject", 1L))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.success").value(false))
-                    .andExpect(jsonPath("$.error.code").value("OERR-2011"));
-        }
-    }
-
-    @Nested
     @DisplayName("GET /api/v1/orders/{orderId}")
     class GetOrder {
 

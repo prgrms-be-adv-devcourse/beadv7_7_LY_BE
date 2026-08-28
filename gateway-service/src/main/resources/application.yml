@@ -119,6 +119,12 @@ spring:
                 - Path=/api/v*/orders, /api/v*/orders/**
               filters:
                 - JwtAuthenticationFilter
+            - id: order-admin-service
+              uri: ${FULFILLMENT_SERVICE_URI}
+              predicates:
+                - Path=/api/admin/v*/orders, /api/admin/v*/orders/**
+              filters:
+                - JwtAuthenticationFilter
             - id: settlement-service
               uri: ${FULFILLMENT_SERVICE_URI}
               predicates:

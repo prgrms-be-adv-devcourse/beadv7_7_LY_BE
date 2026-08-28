@@ -964,6 +964,42 @@ class OrderServiceTest {
     }
 
     @Nested
+    @DisplayName("getOrderDetailForAdmin")
+    class GetOrderDetailForAdmin {
+
+        private Order pendingOrder() {
+            return Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+        }
+
+        @Test
+        @DisplayName("주문 상세를 반환한다")
+        void returnsDetail() {
+            // given
+            Order order = pendingOrder();
+            given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+            // when
+            OrderDetailResult result = orderService.getOrderDetailForAdmin(1L);
+
+            // then
+            assertThat(result.buyerId()).isEqualTo(301L);
+            assertThat(result.sellerId()).isEqualTo(302L);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 주문이면 예외가 발생한다")
+        void throwsWhenOrderNotFound() {
+            // given
+            given(orderRepository.findById(1L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> orderService.getOrderDetailForAdmin(1L))
+                    .isInstanceOf(OrderException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("findOrders")
     class FindOrders {
 
@@ -1047,6 +1083,55 @@ class OrderServiceTest {
 
             // then
             assertThat(result.page()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("findOrdersForAdmin")
+    class FindOrdersForAdmin {
+
+        private Order pendingOrder(Long id) {
+            Order order = Order.of(5001L, 1201L, 301L, 302L, BigDecimal.valueOf(85_000),
+                    LocalDateTime.now().plusHours(24), defaultItemSnapshot());
+            ReflectionTestUtils.setField(order, "id", id);
+            return order;
+        }
+
+        @Test
+        @DisplayName("status로 필터링해서 조회한다")
+        void findsByStatus() {
+            // given
+            given(orderRepository.findAllByStatus(OrderStatus.REFUND_REQUESTED, 0, 20))
+                    .willReturn(new OrderSearchPage(List.of(pendingOrder(1L)), 1L));
+
+            // when
+            OrderSearchResult result = orderService.findOrdersForAdmin("REFUND_REQUESTED", 0, 20);
+
+            // then
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.totalElements()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("status가 없으면 전체를 조회한다")
+        void findsAllWhenStatusIsNull() {
+            // given
+            given(orderRepository.findAllByStatus(isNull(), eq(0), eq(20)))
+                    .willReturn(new OrderSearchPage(List.of(pendingOrder(1L)), 1L));
+
+            // when
+            OrderSearchResult result = orderService.findOrdersForAdmin(null, 0, 20);
+
+            // then
+            assertThat(result.content()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("status 문자열이 유효하지 않으면 예외가 발생한다")
+        void throwsWhenStatusInvalid() {
+            // when & then
+            assertThatThrownBy(() -> orderService.findOrdersForAdmin("NOT_A_STATUS", 0, 20))
+                    .isInstanceOf(OrderException.class);
         }
     }
 }

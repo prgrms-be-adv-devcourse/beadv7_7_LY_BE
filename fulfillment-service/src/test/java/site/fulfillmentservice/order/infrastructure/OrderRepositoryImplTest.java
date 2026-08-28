@@ -154,4 +154,30 @@ class OrderRepositoryImplTest {
         assertThat(secondPage.content()).hasSize(1);
         assertThat(firstPage.totalElements()).isEqualTo(3L);
     }
+
+    @Test
+    @DisplayName("findAllByStatus는 status로 필터링한다")
+    void findAllByStatus_filtersByStatus() {
+        Order ordered = orderFor(5001L, 301L, 302L);
+        ordered.confirmOrder(DeliveryInfo.of("홍길동", "010-1234-5678", "서울시 강남구", "101동 202호"),
+                LocalDateTime.now().plusDays(7), LocalDateTime.now());
+        orderRepository.save(ordered);
+        orderRepository.save(orderFor(5002L, 999L, 888L));
+
+        OrderSearchPage result = orderRepository.findAllByStatus(OrderStatus.ORDERED, 0, 20);
+
+        assertThat(result.content()).extracting(Order::getAuctionId).containsExactly(5001L);
+        assertThat(result.totalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("findAllByStatus는 status가 null이면 전체를 조회한다")
+    void findAllByStatus_returnsAllWhenStatusIsNull() {
+        orderRepository.save(orderFor(5001L, 301L, 302L));
+        orderRepository.save(orderFor(5002L, 999L, 888L));
+
+        OrderSearchPage result = orderRepository.findAllByStatus(null, 0, 20);
+
+        assertThat(result.totalElements()).isEqualTo(2L);
+    }
 }
