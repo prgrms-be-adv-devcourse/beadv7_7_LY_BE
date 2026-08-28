@@ -234,7 +234,8 @@ class AuctionSearchRepositoryImplTest {
             view.getAuctionId(), view.getProductId(), view.getTitle(), view.getArtistName(),
             view.getReleaseYear(), view.getGenre(), view.getPressType(), view.getThumbnail(),
             view.getSellerId(), view.getSellerNickname(), AuctionStatus.SCHEDULED,
-            view.getHighestBidAmount(), view.getBidCount(), view.getStartAt(), view.getEndAt()
+            view.getItemCondition().name(), view.getHighestBidAmount(), view.getStartPrice(),
+            view.getBidCount(), view.getStartAt(), view.getEndAt()
         ));
     }
 

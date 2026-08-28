@@ -17,7 +17,9 @@ public record AuctionListItemResponse(
         Long sellerId,
         String sellerNickname,
         String status,
+        String itemCondition,
         BigDecimal finalPrice,
+        BigDecimal startPrice,
         long bidCount,
         LocalDateTime startAt,
         LocalDateTime endAt
@@ -35,7 +37,9 @@ public record AuctionListItemResponse(
                 result.sellerId(),
                 result.sellerNickname(),
                 result.status().name(),
+                result.itemCondition(),
                 result.finalPrice().getValue(),
+                result.startPrice().getValue(),
                 result.bidCount(),
                 result.startAt(),
                 result.endAt()

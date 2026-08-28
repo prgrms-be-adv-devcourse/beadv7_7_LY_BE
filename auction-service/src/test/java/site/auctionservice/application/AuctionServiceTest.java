@@ -888,7 +888,8 @@ class AuctionServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         AuctionListSummary summary = new AuctionListSummary(
                 1L, 100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", "1.png",
-                2L, "vinyl_king", AuctionStatus.RUNNING, BigDecimal.valueOf(10_000), 3L,
+                2L, "vinyl_king", AuctionStatus.RUNNING, ItemCondition.MINT.name(),
+                BigDecimal.valueOf(10_000), BigDecimal.valueOf(8_000), 3L,
                 PAST_START, FUTURE_END);
         given(searchViewRepository.search(query, pageable))
                 .willReturn(new PageImpl<>(List.of(summary), pageable, 1));

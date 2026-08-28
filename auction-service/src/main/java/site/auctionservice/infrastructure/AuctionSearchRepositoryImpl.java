@@ -136,8 +136,8 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     private AuctionListSummary toSummary(AuctionSearchView v, AuctionStatus status) {
         return new AuctionListSummary(v.getAuctionId(), v.getProductId(), v.getTitle(),
                 v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
-                v.getSellerId(), v.getSellerNickname(), status, v.getHighestBidAmount(),
-                v.getBidCount(), v.getStartAt(), v.getEndAt());
+                v.getSellerId(), v.getSellerNickname(), status, v.getItemCondition().name(),
+                v.getHighestBidAmount(), v.getStartPrice(), v.getBidCount(), v.getStartAt(), v.getEndAt());
     }
 
     private Sort resolveSort(AuctionSortType sortType) {

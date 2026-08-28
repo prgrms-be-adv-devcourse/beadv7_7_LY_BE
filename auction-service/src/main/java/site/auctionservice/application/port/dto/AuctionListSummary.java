@@ -17,7 +17,9 @@ public record AuctionListSummary(
         Long sellerId,
         String sellerNickname,
         AuctionStatus status,
+        String itemCondition,
         BigDecimal highestBidAmount,
+        BigDecimal startPrice,
         long bidCount,
         LocalDateTime startAt,
         LocalDateTime endAt

@@ -63,6 +63,9 @@ public class AuctionSearchView {
     @Column(name = "highest_bid_amount")
     private BigDecimal highestBidAmount;
 
+    @Column(name = "start_price", nullable = false)
+    private BigDecimal startPrice;
+
     @Column(name = "bid_count", nullable = false)
     private Integer bidCount;
 
@@ -72,7 +75,7 @@ public class AuctionSearchView {
     @Column(name = "end_at", nullable = false)
     private LocalDateTime endAt;
 
-    private AuctionSearchView(Long id, Long productId, String title, String artistName, Integer releaseYear, String genre, String pressType, ItemCondition itemCondition, String thumbnail, Long sellerId, String sellerNickname, BigDecimal highestBidAmount, Integer bidCount, LocalDateTime startAt, LocalDateTime endAt) {
+    private AuctionSearchView(Long id, Long productId, String title, String artistName, Integer releaseYear, String genre, String pressType, ItemCondition itemCondition, String thumbnail, Long sellerId, String sellerNickname, BigDecimal highestBidAmount, BigDecimal startPrice, Integer bidCount, LocalDateTime startAt, LocalDateTime endAt) {
         this.auctionId = id;
         this.productId = productId;
         this.title = title;
@@ -85,6 +88,7 @@ public class AuctionSearchView {
         this.sellerId = sellerId;
         this.sellerNickname = sellerNickname;
         this.highestBidAmount = highestBidAmount;
+        this.startPrice = startPrice;
         this.bidCount = bidCount;
         this.startAt = startAt;
         this.endAt = endAt;
@@ -107,6 +111,7 @@ public class AuctionSearchView {
                 auction.getSellerId(),
                 sellerNickname,
                 currentPrice.getValue(),
+                auction.getPricing().getStartPrice().getValue(),
                 0,
                 auction.getStartAt(),
                 auction.getEndAt()
@@ -118,6 +123,7 @@ public class AuctionSearchView {
         this.itemCondition = auction.getItemInfo().getCondition();
         Money currentPrice = auction.getPricing().getStartPrice().plus(auction.getPricing().getShippingFee());
         this.highestBidAmount = currentPrice.getValue();
+        this.startPrice = auction.getPricing().getStartPrice().getValue();
         this.startAt = auction.getStartAt();
         this.endAt = auction.getEndAt();
 
