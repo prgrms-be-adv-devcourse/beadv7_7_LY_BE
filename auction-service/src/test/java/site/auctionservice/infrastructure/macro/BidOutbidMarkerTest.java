@@ -52,4 +52,14 @@ class BidOutbidMarkerTest {
 
         marker.markOutbid(1L, 5L);
     }
+
+    @Test
+    @DisplayName("DataAccessException이 아닌 RuntimeException이 나도 예외를 전파하지 않는다")
+    void markOutbid_unexpectedRuntimeException_doesNotThrow() {
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        willThrow(new IllegalStateException("unexpected"))
+                .given(valueOperations).set(eq(KEY), anyString(), any(Duration.class));
+
+        marker.markOutbid(1L, 5L);
+    }
 }

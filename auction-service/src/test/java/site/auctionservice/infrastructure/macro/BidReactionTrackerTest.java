@@ -120,4 +120,15 @@ class BidReactionTrackerTest {
 
         tracker.recordReactionIfApplicable(1L, 2L);
     }
+
+    @Test
+    @DisplayName("마킹 값이 손상돼 파싱에 실패해도(NumberFormatException) 예외를 전파하지 않는다")
+    void recordReactionIfApplicable_corruptedMark_doesNotThrow() {
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.getAndDelete(MARK_KEY)).willReturn("not-a-number");
+
+        tracker.recordReactionIfApplicable(1L, 2L);
+
+        verifyNoInteractions(riskScoreManager);
+    }
 }

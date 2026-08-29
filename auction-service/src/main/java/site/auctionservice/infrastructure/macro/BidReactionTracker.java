@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.auctionservice.application.port.BidReactionPort;
@@ -51,7 +50,7 @@ public class BidReactionTracker implements BidReactionPort {
                     riskScoreManager.addScore(bidderId, SUSPICIOUS_REACTION_SCORE);
                 }
             }
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("반응속도 분석 실패 (입찰 자체엔 영향 없음): auctionId={}, bidderId={}", auctionId, bidderId, e);
         }
     }

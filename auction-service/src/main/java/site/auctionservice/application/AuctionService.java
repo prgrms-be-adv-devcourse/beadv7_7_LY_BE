@@ -269,12 +269,23 @@ public class AuctionService {
             // 여기 도달했다는 것 자체가 트랜잭션 커밋 성공 + 락 해제를 이미 뜻한다.
             Long outbidBidderId = outbidBidderIdRef.get();
             if (outbidBidderId != null) {
-                bidOutbidMarker.markOutbid(command.auctionId(), outbidBidderId);
+                markOutbidBestEffort(command.auctionId(), outbidBidderId);
             }
             return result;
         } catch (RuntimeException e) {
             compensateHold(command, holdInfoRef.get(), e);
             throw e;
+        }
+    }
+
+    // BidOutbidMarker 자체도 fail-open이지만, 이미 성공한 입찰이 이 예외 때문에 placeBid()의
+    // catch로 빠져 예치금 롤백까지 되는 걸 막기 위해 호출부에서도 한 번 더 막는다.
+    private void markOutbidBestEffort(Long auctionId, Long outbidBidderId) {
+        try {
+            bidOutbidMarker.markOutbid(auctionId, outbidBidderId);
+        } catch (RuntimeException markFailure) {
+            log.warn("outbid 마킹 실패 - 입찰 자체는 이미 성공했으므로 영향 없음: auctionId={}, bidderId={}",
+                    auctionId, outbidBidderId, markFailure);
         }
     }
 

@@ -1020,6 +1020,39 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("outbid 마킹이 실패해도 이미 성공한 입찰 결과를 그대로 반환하고 예치금을 롤백하지 않는다")
+    void testPlaceBid_outbidMarkingFails_stillReturnsSuccessWithoutRollback() {
+        // given
+        HighestBid highestBid = HighestBid.of(Money.of(13_000L), 5L, 10L);
+        Auction auction = auctionWith(AuctionStatus.RUNNING, PAST_START, FUTURE_END, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
+        given(walletPort.hold(any(), any(), any()))
+                .willReturn(new WalletHoldInfo(100L, 10L, BigDecimal.valueOf(87_000)));
+
+        Bid previousBid = Bid.place(1L, 5L, Money.of(13_000L), PAST_START.plusMinutes(1));
+        ReflectionTestUtils.setField(previousBid, "id", 10L);
+        given(bidRepository.findActiveBid(1L)).willReturn(Optional.of(previousBid));
+        given(bidRepository.save(any(Bid.class))).willAnswer(invocation -> {
+            Bid bid = invocation.getArgument(0);
+            ReflectionTestUtils.setField(bid, "id", 20L);
+            return bid;
+        });
+        given(bidRepository.countByAuctionId(1L)).willReturn(2L);
+        willThrow(new IllegalStateException("markOutbid 내부 버그 가정"))
+                .given(bidOutbidMarker).markOutbid(1L, 5L);
+
+        PlaceBidCommand command = new PlaceBidCommand(1L, 2L, BigDecimal.valueOf(13_500));
+
+        // when
+        PlaceBidResult result = auctionService.placeBid(command);
+
+        // then
+        assertThat(result.bidId()).isEqualTo(20L);
+        verify(walletPort, never()).rollback(any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("제재된 회원이 입찰하면 예외를 던지고 락/경매 조회/예치금 홀드를 호출하지 않는다")
     void testPlaceBid_restrictedMember_throwsWithoutTouchingAuctionOrWallet() {
         // given

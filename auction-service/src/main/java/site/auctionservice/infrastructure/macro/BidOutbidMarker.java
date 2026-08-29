@@ -3,7 +3,6 @@ package site.auctionservice.infrastructure.macro;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.auctionservice.application.port.BidOutbidMarkPort;
@@ -28,7 +27,7 @@ public class BidOutbidMarker implements BidOutbidMarkPort {
         String key = AuctionRedisKeys.outbidMarkKey(auctionId, previousBidderId);
         try {
             redisTemplate.opsForValue().set(key, String.valueOf(System.currentTimeMillis()), MARK_TTL);
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("outbid 기록 실패 (매크로 탐지 신호 손실, 입찰 자체엔 영향 없음): key={}", key, e);
         }
     }
