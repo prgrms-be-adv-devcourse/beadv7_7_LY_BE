@@ -42,6 +42,7 @@ class AuctionSearchViewTest {
         assertThat(view.getSellerId()).isEqualTo(1L);
         assertThat(view.getSellerNickname()).isEqualTo("vinyl_king");
         assertThat(view.getHighestBidAmount()).isEqualTo(BigDecimal.valueOf(13_000L));
+        assertThat(view.getStartPrice()).isEqualTo(BigDecimal.valueOf(10_000L));
         assertThat(view.getBidCount()).isZero();
     }
 

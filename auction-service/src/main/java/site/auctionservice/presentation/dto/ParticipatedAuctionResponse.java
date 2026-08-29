@@ -9,9 +9,11 @@ public record ParticipatedAuctionResponse(
         Long productId,
         String title,
         String artistName,
+        String thumbnail,
         String status,
         BigDecimal myBidAmount,
-        String myOutcome
+        String myOutcome,
+        BigDecimal highestBidAmount
 ) {
     public static ParticipatedAuctionResponse from(ParticipatedAuctionResult result) {
         return new ParticipatedAuctionResponse(
@@ -19,9 +21,11 @@ public record ParticipatedAuctionResponse(
                 result.productId(),
                 result.title(),
                 result.artistName(),
+                result.thumbnail(),
                 result.status().name(),
                 result.myBidAmount().getValue(),
-                result.myOutcome().name()
+                result.myOutcome().name(),
+                result.highestBidAmount() == null ? null : result.highestBidAmount().getValue()
         );
     }
 }

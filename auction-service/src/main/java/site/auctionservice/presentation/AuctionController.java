@@ -60,6 +60,7 @@ public class AuctionController {
 
     @GetMapping
     public ApiResponse<PageResponse<AuctionListItemResponse>> list(
+            @RequestParam(required = false) Long sellerId,
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String genre,
             @RequestParam(required = false) String pressType,
@@ -67,7 +68,7 @@ public class AuctionController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        AuctionListQuery query = new AuctionListQuery(productId, genre, pressType, status, sort);
+        AuctionListQuery query = new AuctionListQuery(sellerId, productId, genre, pressType, status, sort);
         Pageable pageable = PageRequest.of(page, size);
         return ApiResponse.success(PageResponse.from(auctionService.getAuctions(query, pageable), AuctionListItemResponse::from));
     }

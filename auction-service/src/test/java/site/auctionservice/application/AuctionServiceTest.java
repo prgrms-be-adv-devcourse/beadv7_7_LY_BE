@@ -858,6 +858,34 @@ class AuctionServiceTest {
         assertThat(item.status()).isEqualTo(AuctionStatus.RUNNING);
         assertThat(item.myBidAmount()).isEqualTo(Money.of(6_000L));
         assertThat(item.myOutcome()).isEqualTo(BidOutcome.ACTIVE);
+        assertThat(item.thumbnail()).isNull();
+        assertThat(item.highestBidAmount()).isNull();
+    }
+
+    @Test
+    @DisplayName("참여 이력 조회 시 썸네일과 현재 최고 입찰가를 함께 반환한다")
+    void testGetParticipatedAuctions_returnsThumbnailAndHighestBidAmount() {
+        // given
+        AuctionSchedule schedule = AuctionSchedule.of(Period.of(PAST_START, FUTURE_END), false, null);
+        ItemInfo itemInfoWithImage = ItemInfo.of(ItemCondition.MINT, DESCRIPTION, List.of("cover.png"));
+        HighestBid highestBid = HighestBid.of(Money.of(8_000L), 9L, 10L);
+        Auction auction = Auction.of(1L, 100L, itemInfoWithImage, pricing, schedule, AuctionStatus.RUNNING, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
+        Bid bid = Bid.place(1L, 5L, Money.of(6_000L), LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, 20);
+        given(bidRepository.findLatestBidsByBidder(5L, pageable))
+                .willReturn(new PageImpl<>(List.of(bid), pageable, 1));
+        given(auctionRepository.findAllByIds(List.of(1L))).willReturn(List.of(auction));
+        given(searchViewRepository.findAllSummaryByIds(List.of(1L)))
+                .willReturn(List.of(new AuctionProductSummary(1L, "Abbey Road", "The Beatles")));
+
+        // when
+        PageResult<ParticipatedAuctionResult> result = auctionService.getParticipatedAuctions(5L, pageable);
+
+        // then
+        ParticipatedAuctionResult item = result.items().get(0);
+        assertThat(item.thumbnail()).isEqualTo("cover.png");
+        assertThat(item.highestBidAmount()).isEqualTo(Money.of(8_000L));
     }
 
     @Test
@@ -884,11 +912,12 @@ class AuctionServiceTest {
     @DisplayName("경매 목록 조회 시 서치 뷰 조회 결과를 애플리케이션 타입으로 변환해 반환한다")
     void testGetAuctions_mapsSearchViewResultToApplicationType() {
         // given
-        AuctionListQuery query = new AuctionListQuery(null, "Rock", "ORIGINAL", "RUNNING", "price_asc");
+        AuctionListQuery query = new AuctionListQuery(null, null, "Rock", "ORIGINAL", "RUNNING", "price_asc");
         Pageable pageable = PageRequest.of(0, 20);
         AuctionListSummary summary = new AuctionListSummary(
                 1L, 100L, "Abbey Road", "The Beatles", 1969, "Rock", "ORIGINAL", "1.png",
-                2L, "vinyl_king", AuctionStatus.RUNNING, BigDecimal.valueOf(10_000), 3L,
+                2L, "vinyl_king", AuctionStatus.RUNNING, ItemCondition.MINT.name(),
+                BigDecimal.valueOf(10_000), BigDecimal.valueOf(8_000), 3L,
                 PAST_START, FUTURE_END);
         given(searchViewRepository.search(query, pageable))
                 .willReturn(new PageImpl<>(List.of(summary), pageable, 1));

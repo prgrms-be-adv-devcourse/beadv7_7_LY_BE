@@ -18,7 +18,9 @@ public record AuctionListItemResult(
         Long sellerId,
         String sellerNickname,
         AuctionStatus status,
+        String itemCondition,
         Money finalPrice,
+        Money startPrice,
         long bidCount,
         LocalDateTime startAt,
         LocalDateTime endAt
@@ -37,7 +39,9 @@ public record AuctionListItemResult(
                 summary.sellerId(),
                 summary.sellerNickname(),
                 summary.status(),
+                summary.itemCondition(),
                 Money.from(summary.highestBidAmount()),
+                Money.from(summary.startPrice()),
                 summary.bidCount(),
                 summary.startAt(),
                 summary.endAt()

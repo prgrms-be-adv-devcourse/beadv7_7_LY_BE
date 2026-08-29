@@ -43,10 +43,15 @@ class AuctionSearchRepositoryImplTest {
 
     private void saveSearchView(Long auctionId, Long productId, String genre, String pressType,
         long price, int bidCount, LocalDateTime startAt, LocalDateTime endAt) {
+        saveSearchView(auctionId, 1L, productId, genre, pressType, price, bidCount, startAt, endAt);
+    }
+
+    private void saveSearchView(Long auctionId, Long sellerId, Long productId, String genre, String pressType,
+        long price, int bidCount, LocalDateTime startAt, LocalDateTime endAt) {
         ItemInfo itemInfo = ItemInfo.of(ItemCondition.MINT, "충분히 긴 상품 설명입니다.", List.of("1.png"));
         Pricing pricing = Pricing.of(Money.of(price), Money.of(500L), Money.of(0L));
         AuctionSchedule schedule = AuctionSchedule.of(Period.of(startAt, endAt), false, null);
-        Auction auction = Auction.register(1L, productId, itemInfo, pricing, schedule,
+        Auction auction = Auction.register(sellerId, productId, itemInfo, pricing, schedule,
             startAt.minusHours(1));
         ReflectionTestUtils.setField(auction, "id", auctionId);
         ProductSnapshot productSnapshot = new ProductSnapshot(productId, "Title" + auctionId,
@@ -94,7 +99,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "RUNNING", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, "RUNNING", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -114,7 +119,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "SCHEDULED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, "SCHEDULED", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -134,7 +139,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "ENDED_WON", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, "ENDED_WON", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -154,7 +159,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "ENDED_FAILED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, "ENDED_FAILED", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -172,7 +177,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "CANCELED", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, "CANCELED", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).isEmpty();
@@ -183,7 +188,7 @@ class AuctionSearchRepositoryImplTest {
     @DisplayName("유효하지 않은 status 값으로 조회하면 예외를 던진다")
     void testSearch_invalidStatus_throws() {
         assertThatThrownBy(() -> auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, "NOT_A_STATUS", null), PageRequest.of(0, 20)))
+            new AuctionListQuery(null,null, null, null, "NOT_A_STATUS", null), PageRequest.of(0, 20)))
             .isInstanceOf(AuctionException.class)
             .extracting(e -> ((AuctionException) e).getErrorCode())
             .isEqualTo(AuctionErrorCode.AUCTION_STATUS_INVALID);
@@ -204,7 +209,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getTotalElements()).isEqualTo(4);
@@ -227,15 +232,33 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).containsExactly(new AuctionListSummary(
             view.getAuctionId(), view.getProductId(), view.getTitle(), view.getArtistName(),
             view.getReleaseYear(), view.getGenre(), view.getPressType(), view.getThumbnail(),
             view.getSellerId(), view.getSellerNickname(), AuctionStatus.SCHEDULED,
-            view.getHighestBidAmount(), view.getBidCount(), view.getStartAt(), view.getEndAt()
+            view.getItemCondition().name(), view.getHighestBidAmount(), view.getStartPrice(),
+            view.getBidCount(), view.getStartAt(), view.getEndAt()
         ));
+    }
+
+    @Test
+    @DisplayName("sellerId로 필터링해 경매 목록을 조회한다")
+    void testSearch_filtersBySellerId() {
+        // given
+        saveSearchView(1L, 1L, 100L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+        saveSearchView(2L, 2L, 200L, "Rock", "ORIGINAL", 10_000L, 0, FUTURE_START, FUTURE_START.plusDays(1));
+
+        // when
+        Page<AuctionListSummary> result = auctionSearchViewRepository.search(
+            new AuctionListQuery(1L, null, null, null, null, null), PageRequest.of(0, 20));
+
+        // then
+        assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
+            .containsExactly(1L);
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test
@@ -247,7 +270,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(100L, null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,100L, null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -266,7 +289,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(100L, null, null, "RUNNING", null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,100L, null, null, "RUNNING", null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -282,7 +305,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, "Rock", null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, "Rock", null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -299,7 +322,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, "REISSUE", null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, "REISSUE", null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -315,7 +338,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, "price_asc"), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, null, "price_asc"), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -331,7 +354,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, "most_bids"), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, null, "most_bids"), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)
@@ -342,7 +365,7 @@ class AuctionSearchRepositoryImplTest {
     @DisplayName("유효하지 않은 sort 값으로 조회하면 예외를 던진다")
     void testSearch_invalidSort_throws() {
         assertThatThrownBy(() -> auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, "not_a_sort"), PageRequest.of(0, 20)))
+            new AuctionListQuery(null,null, null, null, null, "not_a_sort"), PageRequest.of(0, 20)))
             .isInstanceOf(AuctionException.class)
             .extracting(e -> ((AuctionException) e).getErrorCode())
             .isEqualTo(AuctionErrorCode.AUCTION_SORT_INVALID);
@@ -357,7 +380,7 @@ class AuctionSearchRepositoryImplTest {
 
         // when
         Page<AuctionListSummary> result = auctionSearchViewRepository.search(
-            new AuctionListQuery(null, null, null, null, null), PageRequest.of(0, 20));
+            new AuctionListQuery(null,null, null, null, null, null), PageRequest.of(0, 20));
 
         // then
         assertThat(result.getContent()).extracting(AuctionListSummary::auctionId)

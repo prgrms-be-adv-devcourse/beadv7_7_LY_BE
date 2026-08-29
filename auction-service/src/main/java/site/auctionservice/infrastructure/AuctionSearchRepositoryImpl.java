@@ -72,6 +72,7 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         LocalDateTime now = LocalDateTime.now();
         Specification<AuctionSearchView> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            addIfPresent(predicates, sellerIdEq(query.sellerId(), root, cb));
             addIfPresent(predicates, productIdEq(query.productId(), root, cb));
             addIfPresent(predicates, genreEq(query.genre(), root, cb));
             addIfPresent(predicates, pressTypeEq(query.pressType(), root, cb));
@@ -88,6 +89,10 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
         if (predicate != null) {
             predicates.add(predicate);
         }
+    }
+
+    private Predicate sellerIdEq(Long sellerId, Root<AuctionSearchView> root, CriteriaBuilder cb) {
+        return sellerId == null ? null : cb.equal(root.get("sellerId"), sellerId);
     }
 
     private Predicate productIdEq(Long productId, Root<AuctionSearchView> root, CriteriaBuilder cb) {
@@ -136,8 +141,8 @@ public class AuctionSearchRepositoryImpl implements AuctionSearchViewRepository 
     private AuctionListSummary toSummary(AuctionSearchView v, AuctionStatus status) {
         return new AuctionListSummary(v.getAuctionId(), v.getProductId(), v.getTitle(),
                 v.getArtistName(), v.getReleaseYear(), v.getGenre(), v.getPressType(), v.getThumbnail(),
-                v.getSellerId(), v.getSellerNickname(), status, v.getHighestBidAmount(),
-                v.getBidCount(), v.getStartAt(), v.getEndAt());
+                v.getSellerId(), v.getSellerNickname(), status, v.getItemCondition().name(),
+                v.getHighestBidAmount(), v.getStartPrice(), v.getBidCount(), v.getStartAt(), v.getEndAt());
     }
 
     private Sort resolveSort(AuctionSortType sortType) {
