@@ -86,8 +86,8 @@ class BidReactionTrackerTest {
     }
 
     @Test
-    @DisplayName("표본이 충분하고 평균 반응속도가 300ms 미만이면 위험 점수를 추가한다")
-    void recordReactionIfApplicable_fastAndRegular_addsScore() {
+    @DisplayName("평균이 150ms 미만이면 편차와 무관하게 위험 점수를 추가한다 (사람 반응시간 물리적 하한 아래)")
+    void recordReactionIfApplicable_absolutelyTooFast_addsScore() {
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(redisTemplate.opsForList()).willReturn(listOperations);
         given(valueOperations.getAndDelete(MARK_KEY)).willReturn(String.valueOf(System.currentTimeMillis() - 50));
@@ -99,12 +99,38 @@ class BidReactionTrackerTest {
     }
 
     @Test
-    @DisplayName("표본이 충분해도 평균 반응속도가 300ms 이상이면 위험 점수를 추가하지 않는다")
-    void recordReactionIfApplicable_slowReaction_doesNotAddScore() {
+    @DisplayName("평균은 사람도 낼 수 있는 수준이어도 편차(CV)가 기계적으로 일정하면 위험 점수를 추가한다")
+    void recordReactionIfApplicable_slowButMechanicallyRegular_addsScore() {
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(redisTemplate.opsForList()).willReturn(listOperations);
-        given(valueOperations.getAndDelete(MARK_KEY)).willReturn(String.valueOf(System.currentTimeMillis() - 1000));
-        given(listOperations.range(HISTORY_KEY, 0, -1)).willReturn(List.of("1000", "1200", "900", "1100", "950"));
+        given(valueOperations.getAndDelete(MARK_KEY)).willReturn(String.valueOf(System.currentTimeMillis() - 500));
+        given(listOperations.range(HISTORY_KEY, 0, -1)).willReturn(List.of("500", "510", "495", "505", "498"));
+
+        tracker.recordReactionIfApplicable(1L, 2L);
+
+        verify(riskScoreManager).addScore(2L, 30);
+    }
+
+    @Test
+    @DisplayName("평균이 사람 범위이고 편차도 사람처럼 들쭉날쭉하면 위험 점수를 추가하지 않는다")
+    void recordReactionIfApplicable_humanLikeVariance_doesNotAddScore() {
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForList()).willReturn(listOperations);
+        given(valueOperations.getAndDelete(MARK_KEY)).willReturn(String.valueOf(System.currentTimeMillis() - 500));
+        given(listOperations.range(HISTORY_KEY, 0, -1)).willReturn(List.of("500", "1200", "300", "900", "700"));
+
+        tracker.recordReactionIfApplicable(1L, 2L);
+
+        verify(riskScoreManager, never()).addScore(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("평균이 2초 이상이면 아무리 일정해도 위험 점수를 추가하지 않는다 (느리지만 습관적인 사람 배제)")
+    void recordReactionIfApplicable_slowButRegular_doesNotAddScore() {
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForList()).willReturn(listOperations);
+        given(valueOperations.getAndDelete(MARK_KEY)).willReturn(String.valueOf(System.currentTimeMillis() - 2000));
+        given(listOperations.range(HISTORY_KEY, 0, -1)).willReturn(List.of("2000", "2010", "1995", "2005", "1998"));
 
         tracker.recordReactionIfApplicable(1L, 2L);
 
