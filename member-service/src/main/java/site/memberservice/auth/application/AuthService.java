@@ -26,12 +26,13 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthTokenProvider authTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenIssuer refreshTokenIssuer;
 
-    @Transactional
     public LoginResult login(final LoginCommand command) {
         final MemberCredentials credentials = memberService.findMemberCredentials(command.email())
             .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS, format("존재하지 않는 회원의 이메일입니다. input: %s", command.email())));
 
+        // Argon2id 연산 수행
         if (!passwordEncoder.matches(command.password(), credentials.password())) {
             throw new AuthException(INVALID_CREDENTIALS, "유효하지 않는 회원 비밀번호입니다.");
         }
@@ -40,13 +41,7 @@ public class AuthService {
         final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
         final String refreshTokenValue = authTokenProvider.createRefreshToken(memberId).getValue();
 
-        final RefreshToken refreshToken = refreshTokenRepository.findByMemberId(memberId)
-            .map(existing -> {
-                existing.updateValue(refreshTokenValue);
-                return existing;
-            })
-            .orElseGet(() -> RefreshToken.create(refreshTokenValue, memberId));
-        refreshTokenRepository.save(refreshToken);
+        final RefreshToken refreshToken = refreshTokenIssuer.upsert(memberId, refreshTokenValue);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());
     }
