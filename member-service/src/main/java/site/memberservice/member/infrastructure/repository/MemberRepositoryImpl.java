@@ -3,6 +3,9 @@ package site.memberservice.member.infrastructure.repository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import site.memberservice.member.domain.Member;
+import site.memberservice.member.domain.repository.MemberAddressView;
+import site.memberservice.member.domain.repository.MemberCredentials;
+import site.memberservice.member.domain.repository.MemberProfileView;
 import site.memberservice.member.domain.repository.MemberRepository;
 
 import java.util.Optional;
@@ -29,6 +32,11 @@ public class MemberRepositoryImpl implements MemberRepository {
     }
 
     @Override
+    public boolean existsById(final Long memberId) {
+        return memberJpaRepository.existsById(memberId);
+    }
+
+    @Override
     public boolean existsByNickname(final String nickName) {
         return memberJpaRepository.existsByNickname(nickName);
     }
@@ -41,5 +49,35 @@ public class MemberRepositoryImpl implements MemberRepository {
     @Override
     public boolean existsByPhoneNumberHash(final String phoneNumberHash) {
         return memberJpaRepository.existsByPhoneNumberHash(phoneNumberHash);
+    }
+
+    @Override
+    public Optional<MemberCredentials> findCredentialsByEmailHash(final String emailHash) {
+        return memberJpaRepository.findCredentialsByEmailHash(emailHash);
+    }
+
+    @Override
+    public Optional<String> findNicknameById(final Long memberId) {
+        return memberJpaRepository.findNicknameById(memberId);
+    }
+
+    @Override
+    public Optional<MemberProfileView> findProfileById(final Long memberId) {
+        return memberJpaRepository.findProfileById(memberId);
+    }
+
+    @Override
+    public Optional<MemberAddressView> findAddressViewById(final Long memberId) {
+        return memberJpaRepository.findAddressViewById(memberId);
+    }
+
+    @Override
+    public Optional<String> findNameById(final Long memberId) {
+        return memberJpaRepository.findNameById(memberId);
+    }
+
+    @Override
+    public Member getReferenceById(final Long memberId) {
+        return memberJpaRepository.getReferenceById(memberId);
     }
 }
