@@ -12,6 +12,7 @@ import site.memberservice.member.application.dto.AddressDto;
 import site.memberservice.member.application.dto.BankAccountDto;
 import site.memberservice.member.application.dto.MemberProfileDto;
 import site.memberservice.member.application.dto.MemberRestrictionDto;
+import site.memberservice.member.presentation.response.NicknameResponse;
 import site.memberservice.member.presentation.response.RestrictionsResponse;
 
 import java.util.List;
@@ -22,6 +23,13 @@ import java.util.List;
 public class MemberInternalController {
 
     private final MemberService memberService;
+
+    @GetMapping("/members/{memberId}/nickname")
+    public ResponseEntity<ApiResponse<NicknameResponse>> getMemberNickname(@PathVariable final Long memberId) {
+        final String nickname = memberService.getMemberNickname(memberId);
+
+        return ResponseEntity.ok(ApiResponse.success(new NicknameResponse(nickname)));
+    }
 
     @GetMapping("/members/{memberId}/address")
     public ResponseEntity<ApiResponse<AddressDto>> getMemberAddress(@PathVariable final Long memberId) {

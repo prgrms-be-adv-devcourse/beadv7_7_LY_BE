@@ -12,9 +12,23 @@ public interface MemberRepository {
 
     Optional<Member> findByEmailHash(String emailHash);
 
+    boolean existsById(Long memberId);
+
     boolean existsByNickname(String nickName);
 
     boolean existsByEmailHash(String emailHash);
 
     boolean existsByPhoneNumberHash(String phoneNumberHash);
+
+    Optional<MemberCredentials> findCredentialsByEmailHash(String emailHash);
+
+    Optional<String> findNicknameById(Long memberId);
+
+    Optional<MemberProfileView> findProfileById(Long memberId);
+
+    Optional<MemberAddressView> findAddressViewById(Long memberId);
+
+    Optional<String> findNameById(Long memberId);
+
+    Member getReferenceById(Long memberId);
 }

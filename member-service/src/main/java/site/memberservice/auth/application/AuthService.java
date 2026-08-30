@@ -12,7 +12,7 @@ import site.memberservice.auth.domain.RefreshToken;
 import site.memberservice.auth.domain.repository.RefreshTokenRepository;
 import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
-import site.memberservice.member.domain.Member;
+import site.memberservice.member.domain.repository.MemberCredentials;
 
 import static java.lang.String.format;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN;
@@ -29,22 +29,23 @@ public class AuthService {
 
     @Transactional
     public LoginResult login(final LoginCommand command) {
-        final Member member = memberService.findMember(command.email())
+        final MemberCredentials credentials = memberService.findMemberCredentials(command.email())
             .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS, format("존재하지 않는 회원의 이메일입니다. input: %s", command.email())));
 
-        if (!passwordEncoder.matches(command.password(), member.getPassword())) {
+        if (!passwordEncoder.matches(command.password(), credentials.password())) {
             throw new AuthException(INVALID_CREDENTIALS, "유효하지 않는 회원 비밀번호입니다.");
         }
 
-        final AuthToken accessToken = authTokenProvider.createAccessToken(member.getId());
-        final String refreshTokenValue = authTokenProvider.createRefreshToken(member.getId()).getValue();
+        final Long memberId = credentials.id();
+        final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
+        final String refreshTokenValue = authTokenProvider.createRefreshToken(memberId).getValue();
 
-        final RefreshToken refreshToken = refreshTokenRepository.findByMemberId(member.getId())
+        final RefreshToken refreshToken = refreshTokenRepository.findByMemberId(memberId)
             .map(existing -> {
                 existing.updateValue(refreshTokenValue);
                 return existing;
             })
-            .orElseGet(() -> RefreshToken.create(refreshTokenValue, member.getId()));
+            .orElseGet(() -> RefreshToken.create(refreshTokenValue, memberId));
         refreshTokenRepository.save(refreshToken);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());

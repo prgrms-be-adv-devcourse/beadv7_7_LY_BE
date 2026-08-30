@@ -20,6 +20,7 @@ import site.memberservice.member.domain.Address;
 import site.memberservice.member.domain.Email;
 import site.memberservice.member.domain.Member;
 import site.memberservice.member.domain.PhoneNumber;
+import site.memberservice.member.domain.repository.MemberCredentials;
 
 import java.util.Optional;
 
@@ -70,8 +71,8 @@ class AuthServiceTest {
         );
         final RefreshToken refreshToken = new RefreshToken(1L, "REFRESH_TOKEN_VALUE", member.getId());
 
-        given(memberService.findMember(any()))
-            .willReturn(Optional.of(member));
+        given(memberService.findMemberCredentials(any()))
+            .willReturn(Optional.of(new MemberCredentials(member.getId(), member.getPassword())));
         given(refreshTokenRepository.save(any()))
             .willReturn(refreshToken);
 
@@ -106,8 +107,8 @@ class AuthServiceTest {
         );
         final RefreshToken existingRefreshToken = new RefreshToken(1L, "OLD_REFRESH_TOKEN_VALUE", member.getId());
 
-        given(memberService.findMember(any()))
-            .willReturn(Optional.of(member));
+        given(memberService.findMemberCredentials(any()))
+            .willReturn(Optional.of(new MemberCredentials(member.getId(), member.getPassword())));
         given(refreshTokenRepository.findByMemberId(member.getId()))
             .willReturn(Optional.of(existingRefreshToken));
         given(refreshTokenRepository.save(any()))
@@ -134,7 +135,7 @@ class AuthServiceTest {
     @Test
     void throwExceptionWhenLoginWithNotFoundMemberEmail() {
         // Given
-        given(memberService.findMember(any()))
+        given(memberService.findMemberCredentials(any()))
             .willReturn(Optional.empty());
 
         final LoginCommand command = new LoginCommand(
@@ -162,8 +163,8 @@ class AuthServiceTest {
             new Address("06671", "서울특별시 서초구 반포대로 45", "4층(서초동, 명정빌딩)")
         );
 
-        given(memberService.findMember(any()))
-            .willReturn(Optional.of(member));
+        given(memberService.findMemberCredentials(any()))
+            .willReturn(Optional.of(new MemberCredentials(member.getId(), member.getPassword())));
 
         final LoginCommand command = new LoginCommand(
             "tester@email.com",

@@ -31,7 +31,7 @@ class MemberHttpClientTest {
     @Test
     @DisplayName("member 서버 응답을 파싱해 닉네임을 반환한다")
     void testGetNickname_success_returnsNickname() {
-        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/profile"))
+        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/nickname"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {"success":true,"data":{"nickname":"testUser"},"error":{"code":null,"message":null}}
@@ -46,7 +46,7 @@ class MemberHttpClientTest {
     @Test
     @DisplayName("member 서버가 404를 반환하면 계약 위반 예외를 던진다")
     void testGetNickname_notFound_throwsContractViolation() {
-        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/profile"))
+        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/nickname"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withResourceNotFound());
 
@@ -58,7 +58,7 @@ class MemberHttpClientTest {
     @Test
     @DisplayName("member 서버 응답이 성공인데 data가 없으면 계약 위반 예외를 던진다")
     void testGetNickname_emptyData_throwsContractViolation() {
-        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/profile"))
+        server.expect(requestTo("http://localhost:8080/internal/v1/members/10/nickname"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {"success":true,"data":null,"error":{"code":null,"message":null}}

@@ -23,7 +23,7 @@ public class MemberHttpClient implements MemberPort {
         ApiResponse<NicknameResponse> body;
         try {
             body = auctionMemberRestClient.get()
-                    .uri("/internal/v1/members/{memberId}/profile", memberId)
+                    .uri("/internal/v1/members/{memberId}/nickname", memberId)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
         } catch (HttpClientErrorException e) {
@@ -59,5 +59,4 @@ public class MemberHttpClient implements MemberPort {
     private record NicknameResponse(String nickname) {}
 
     private record RestrictionResponse(boolean isRestricted) {}
-
 }
