@@ -36,6 +36,7 @@ public enum AuctionErrorCode implements ErrorCode {
 
     AUCTION_NOT_FORCE_CANCELABLE(HttpStatus.CONFLICT, "AERR-5025", "이미 종료된 경매는 강제 종료할 수 없습니다."),
     WALLET_ROLLBACK_FAILED(HttpStatus.BAD_GATEWAY, "AERR-5026", "예치금 홀드 롤백(보상 트랜잭션) 처리 중 오류가 발생했습니다."),
+    TOO_MANY_BID_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "AERR-5027", "입찰 요청이 너무 잦습니다. 잠시 후 다시 시도해주세요."),
     LOCK_INFRASTRUCTURE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AERR-5028", "일시적으로 서비스 이용이 어렵습니다. 잠시 후 다시 시도해주세요."),
     BID_MEMBER_RESTRICTED(HttpStatus.FORBIDDEN, "AERR-5029", "제재된 회원은 입찰할 수 없습니다."),
     BID_AMOUNT_NOT_ALIGNED_TO_UNIT(HttpStatus.BAD_REQUEST, "AERR-5030", "입찰 금액은 입찰 단위의 배수여야 합니다."),
