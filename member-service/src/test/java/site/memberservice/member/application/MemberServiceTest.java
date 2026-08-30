@@ -37,7 +37,6 @@ import site.memberservice.member.exception.MemberException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -430,8 +429,10 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 20, 0, 0)
         );
 
-        given(memberRepository.findById(member.getId()))
-            .willReturn(Optional.of(member));
+        given(memberRepository.existsById(member.getId()))
+            .willReturn(true);
+        given(memberRepository.getReferenceById(member.getId()))
+            .willReturn(member);
 
         // When
         memberService.restrictMember(command);
@@ -453,8 +454,8 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 20, 0, 0)
         );
 
-        given(memberRepository.findById(notFoundMemberId))
-            .willReturn(Optional.empty());
+        given(memberRepository.existsById(notFoundMemberId))
+            .willReturn(false);
 
         // When & Then
         assertThatThrownBy(() -> memberService.restrictMember(command))
@@ -494,8 +495,10 @@ class MemberServiceTest {
             member
         );
 
-        given(memberRepository.findById(member.getId()))
-            .willReturn(Optional.of(member));
+        given(memberRepository.existsById(member.getId()))
+            .willReturn(true);
+        given(memberRepository.getReferenceById(member.getId()))
+            .willReturn(member);
         given(memberRestrictionRepository.findActiveByMember(any(Member.class), any(LocalDateTime.class)))
             .willReturn(List.of(laterRestriction, earlierRestriction));
 
@@ -517,8 +520,8 @@ class MemberServiceTest {
         // Given
         final Long notFoundMemberId = -99999L;
 
-        given(memberRepository.findById(notFoundMemberId))
-            .willReturn(Optional.empty());
+        given(memberRepository.existsById(notFoundMemberId))
+            .willReturn(false);
 
         // When & Then
         assertThatThrownBy(() -> memberService.getMemberRestrictions(notFoundMemberId))
@@ -550,8 +553,10 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 13, 0, 0)
         );
 
-        given(memberRepository.findById(member.getId()))
-            .willReturn(Optional.of(member));
+        given(memberRepository.existsById(member.getId()))
+            .willReturn(true);
+        given(memberRepository.getReferenceById(member.getId()))
+            .willReturn(member);
         given(memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
             member,
             ViolationType.WINNING_BID_ORDER_CANCELED,
@@ -600,8 +605,10 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 13, 0, 0)
         );
 
-        given(memberRepository.findById(member.getId()))
-            .willReturn(Optional.of(member));
+        given(memberRepository.existsById(member.getId()))
+            .willReturn(true);
+        given(memberRepository.getReferenceById(member.getId()))
+            .willReturn(member);
         given(memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
             member,
             ViolationType.WINNING_BID_ORDER_CANCELED,
@@ -651,8 +658,10 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 13, 0, 0)
         );
 
-        given(memberRepository.findById(member.getId()))
-            .willReturn(Optional.of(member));
+        given(memberRepository.existsById(member.getId()))
+            .willReturn(true);
+        given(memberRepository.getReferenceById(member.getId()))
+            .willReturn(member);
         given(memberViolationHistoryRepository.hasWinningBidOrderCancellationRecord(
             member,
             ViolationType.WINNING_BID_ORDER_CANCELED,
@@ -682,8 +691,8 @@ class MemberServiceTest {
             LocalDateTime.of(2026, 8, 13, 0, 0)
         );
 
-        given(memberRepository.findById(notFoundMemberId))
-            .willReturn(Optional.empty());
+        given(memberRepository.existsById(notFoundMemberId))
+            .willReturn(false);
 
         // When & Then
         assertThatThrownBy(() -> memberService.recordWinningBidOrderCancellation(command))

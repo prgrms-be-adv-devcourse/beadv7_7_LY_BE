@@ -21,6 +21,7 @@ import site.memberservice.member.domain.MemberViolationHistory;
 import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.RestrictionType;
 import site.memberservice.member.domain.repository.BankAccountRepository;
+import site.memberservice.member.domain.repository.MemberCredentials;
 import site.memberservice.member.domain.repository.MemberRepository;
 import site.memberservice.member.domain.repository.MemberRestrictionRepository;
 import site.memberservice.member.domain.repository.MemberViolationHistoryRepository;
@@ -112,23 +113,31 @@ public class MemberService {
     }
 
     public AddressDto getMemberAddress(final Long memberId) {
-        final Member member = getMember(memberId);
-        return AddressDto.from(member.getAddress());
-    }
-
-    private Member getMember(final Long memberId) {
-        return memberRepository.findById(memberId)
+        return memberRepository.findAddressViewById(memberId)
+            .map(AddressDto::from)
             .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
     }
 
-    public Optional<Member> findMember(final String email) {
+    private void requireMemberExists(final Long memberId) {
+        if (!memberRepository.existsById(memberId)) {
+            throw new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId));
+        }
+    }
+
+    public Optional<MemberCredentials> findMemberCredentials(final String email) {
         final String emailHash = kmsMacHasher.hash(email);
-        return memberRepository.findByEmailHash(emailHash);
+        return memberRepository.findCredentialsByEmailHash(emailHash);
+    }
+
+    public String getMemberNickname(final Long memberId) {
+        return memberRepository.findNicknameById(memberId)
+            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
     }
 
     public MemberProfileDto getMemberProfile(final Long memberId) {
-        final Member member = getMember(memberId);
-        return MemberProfileDto.from(member);
+        return memberRepository.findProfileById(memberId)
+            .map(MemberProfileDto::from)
+            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
     }
 
     // TODO : #102 파이널에서 은행 계좌 실명 조회 Open API를 적용해 구현할 예정
@@ -136,30 +145,34 @@ public class MemberService {
 //    }
 
     public BankAccountDto getMemberBankAccount(final Long memberId) {
-        final Member member = getMember(memberId);
-        final BankAccount bankAccount = bankAccountRepository.findByMember(member)
+        final String depositorName = memberRepository.findNameById(memberId)
+            .orElseThrow(() -> new MemberException(MEMBER_NOT_FOUND, format("해당 id의 회원 정보가 존재하지 않습니다. input: %s", memberId)));
+        final Member memberReference = memberRepository.getReferenceById(memberId);
+        final BankAccount bankAccount = bankAccountRepository.findByMember(memberReference)
             .orElseThrow(() -> new MemberException(MEMBER_BANK_ACCOUNT_NOT_FOUND, format("회원 은행 계좌 정보가 존재하지 않습니다. memberId: %s", memberId)));
 
-        return BankAccountDto.of(member, bankAccount);
+        return BankAccountDto.of(depositorName, bankAccount);
     }
 
     @Transactional
     public void restrictMember(final RestrictMemberCommand command) {
-        final Member member = getMember(command.memberId());
+        requireMemberExists(command.memberId());
+        final Member memberReference = memberRepository.getReferenceById(command.memberId());
         final MemberRestriction memberRestriction = MemberRestriction.create(
             command.restrictionType(),
             command.reason(),
             command.restrictedAt(),
             command.restrictedUntil(),
-            member
+            memberReference
         );
 
         memberRestrictionRepository.save(memberRestriction);
     }
 
     public List<MemberRestrictionDto> getMemberRestrictions(final Long memberId) {
-        final Member member = getMember(memberId);
-        final List<MemberRestriction> activeRestrictions = memberRestrictionRepository.findActiveByMember(member, LocalDateTime.now());
+        requireMemberExists(memberId);
+        final Member memberReference = memberRepository.getReferenceById(memberId);
+        final List<MemberRestriction> activeRestrictions = memberRestrictionRepository.findActiveByMember(memberReference, LocalDateTime.now());
 
         return activeRestrictions.stream()
             .collect(Collectors.toMap(
@@ -174,15 +187,16 @@ public class MemberService {
 
     @Transactional
     public void recordWinningBidOrderCancellation(final RecordWinningBidOrderCancellationCommand command) {
-        final Member member = getMember(command.memberId());
+        requireMemberExists(command.memberId());
+        final Member memberReference = memberRepository.getReferenceById(command.memberId());
         final LocalDateTime since = command.occurredAt().minusDays(VIOLATION_HISTORY_LOOKBACK_DAYS);
 
-        if (memberViolationHistoryRepository.hasWinningBidOrderCancellationRecord(member, WINNING_BID_ORDER_CANCELED, command.orderId())) {
+        if (memberViolationHistoryRepository.hasWinningBidOrderCancellationRecord(memberReference, WINNING_BID_ORDER_CANCELED, command.orderId())) {
             throw new MemberException(INVALID_VIOLATION_HISTORY_REQUEST, String.format("이미 해당 주문에 대한 취소 행위 기록 요청이 들어왔습니다. input: %d", command.orderId()));
         }
 
         final long recentViolationCount = memberViolationHistoryRepository.countByMemberAndViolationTypeSince(
-            member,
+            memberReference,
             WINNING_BID_ORDER_CANCELED,
             since
         );
@@ -193,7 +207,7 @@ public class MemberService {
                 AUCTION_BIDDING_RESTRICTION_REASON,
                 command.occurredAt(),
                 command.occurredAt().plusDays(AUCTION_BIDDING_RESTRICTION_PERIOD_DAYS),
-                member
+                memberReference
             );
 
             memberRestrictionRepository.save(memberRestriction);
@@ -203,7 +217,7 @@ public class MemberService {
             WINNING_BID_ORDER_CANCELED,
             command.occurredAt(),
             Map.of("orderId", command.orderId(), "auctionId", command.auctionId()),
-            member
+            memberReference
         );
 
         memberViolationHistoryRepository.save(memberViolationHistory);
