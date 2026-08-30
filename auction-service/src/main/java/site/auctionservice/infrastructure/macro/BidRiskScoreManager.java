@@ -3,7 +3,6 @@ package site.auctionservice.infrastructure.macro;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.auctionservice.common.AuctionRedisKeys;
@@ -30,7 +29,7 @@ public class BidRiskScoreManager {
             if (newScore != null && newScore == delta) {
                 redisTemplate.expire(key, SCORE_TTL); // 최초 생성 시에만 TTL 설정
             }
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("위험 점수 갱신 실패 (매크로 탐지 신호 손실, 입찰 자체엔 영향 없음): bidderId={}", bidderId, e);
         }
     }
@@ -52,7 +51,7 @@ public class BidRiskScoreManager {
         try {
             String value = redisTemplate.opsForValue().get(key);
             return value == null ? 0 : Integer.parseInt(value);
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("위험 점수 조회 실패로 fail-open(0점) 처리: bidderId={}", bidderId, e);
             return 0;
         }

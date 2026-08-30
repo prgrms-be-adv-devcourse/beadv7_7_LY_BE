@@ -18,10 +18,6 @@ import site.auctionservice.exception.AuctionException;
 import site.auctionservice.infrastructure.macro.BidRiskScoreManager;
 import site.auctionservice.infrastructure.ratelimit.SlidingWindowLogLimiter;
 
-// rate limiting은 락(DistributedLockAspect, @Order(1))보다도 바깥쪽이다.
-// 한도를 이미 초과한 요청이 굳이 락 경합/대기 비용까지 치르는 건 불필요하기 때문이다.
-// SlidingWindowLogLimiter/BidRiskScoreManager는 이 애스펙트 하나만 쓰는 infra-adjacent 협력자라
-// (application 레이어 소비자가 따로 없음) 포트로 감싸지 않고 구체 클래스를 직접 참조한다.
 @Aspect
 @Component
 @Order(0)

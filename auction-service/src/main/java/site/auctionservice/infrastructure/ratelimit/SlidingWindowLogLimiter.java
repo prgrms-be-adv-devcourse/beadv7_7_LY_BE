@@ -2,7 +2,6 @@ package site.auctionservice.infrastructure.ratelimit;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -59,7 +58,7 @@ public class SlidingWindowLogLimiter {
             Long result = redisTemplate.execute(SCRIPT, Collections.singletonList(key),
                     String.valueOf(now), String.valueOf(windowMs), String.valueOf(limit), member);
             return result != null && result == 1L;
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("Rate limit 확인 중 Redis 오류로 fail-open 처리: key={}", key, e);
             return true;
         }
