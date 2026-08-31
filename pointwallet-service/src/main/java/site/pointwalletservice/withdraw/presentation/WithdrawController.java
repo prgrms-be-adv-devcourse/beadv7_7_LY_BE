@@ -6,8 +6,6 @@ import site.common.web.MemberId;
 import site.pointwalletservice.shared.Money;
 import site.pointwalletservice.withdraw.application.WithdrawService;
 import site.pointwalletservice.withdraw.domain.Withdraw;
-import site.pointwalletservice.withdraw.exception.WithdrawErrorCode;
-import site.pointwalletservice.withdraw.exception.WithdrawException;
 import site.pointwalletservice.withdraw.presentation.dto.WithdrawRequest;
 import site.pointwalletservice.withdraw.presentation.dto.WithdrawRequestResponse;
 import site.pointwalletservice.withdraw.presentation.dto.WithdrawStatusResponse;
@@ -22,11 +20,10 @@ public class WithdrawController {
     @PostMapping("/request")
     public ApiResponse<WithdrawRequestResponse> requestWithdraw(
             @MemberId Long memberId,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestBody WithdrawRequest request) {
-        Withdraw.validateIdempotencyKey(idempotencyKey);
+        Withdraw.validateIdempotencyKey(request.idempotencyKey());
         return ApiResponse.success(WithdrawRequestResponse.from(
-                withdrawService.requestWithdraw(memberId, Money.of(request.amount()), idempotencyKey)));
+                withdrawService.requestWithdraw(memberId, Money.of(request.amount()), request.idempotencyKey())));
     }
 
     @GetMapping("/{withdrawRequestId}")
