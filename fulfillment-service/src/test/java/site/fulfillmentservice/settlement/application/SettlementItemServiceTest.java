@@ -47,15 +47,22 @@ class SettlementItemServiceTest {
 
     private OrderCompletedEvent orderCompletedEvent;
 
+    private LocalDateTime orderedAt;
+
+    private LocalDateTime completedAt;
+
     @BeforeEach
     void setUp() {
+        orderedAt = LocalDateTime.now().minusDays(3);
+        completedAt = LocalDateTime.now();
         orderCompletedEvent = OrderCompletedEvent.builder()
                 .orderId(1001L)
                 .auctionId(5001L)
                 .buyerId(301L)
                 .sellerId(302L)
                 .finalBidPrice(BigDecimal.valueOf(85_000))
-                .completedAt(LocalDateTime.now())
+                .orderedAt(orderedAt)
+                .completedAt(completedAt)
                 .build();
     }
 
@@ -68,9 +75,11 @@ class SettlementItemServiceTest {
         void createsSettlementItemWithPolicyRate() {
             // given
             CommissionPolicy policy = CommissionPolicy.of(
-                    BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(1), null);
+                    BigDecimal.valueOf(0.1000), LocalDateTime.now().minusDays(10), null);
+            ArgumentCaptor<LocalDateTime> effectiveAtCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
             given(settlementItemRepository.existsByOrderId(1001L)).willReturn(false);
-            given(commissionPolicyRepository.findEffectiveAt(any())).willReturn(Optional.of(policy));
+            given(commissionPolicyRepository.findEffectiveAt(effectiveAtCaptor.capture()))
+                    .willReturn(Optional.of(policy));
             given(settlementItemRepository.save(settlementItemCaptor.capture()))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -78,6 +87,8 @@ class SettlementItemServiceTest {
             settlementItemService.createSettlementItem(orderCompletedEvent);
 
             // then
+            assertThat(effectiveAtCaptor.getValue()).isEqualTo(orderedAt);
+
             SettlementItem saved = settlementItemCaptor.getValue();
             assertThat(saved.getOrderId()).isEqualTo(1001L);
             assertThat(saved.getSellerId()).isEqualTo(302L);
@@ -85,6 +96,7 @@ class SettlementItemServiceTest {
             assertThat(saved.getCommissionRate()).isEqualByComparingTo(BigDecimal.valueOf(0.1000));
             assertThat(saved.getCommissionAmount().getValue()).isEqualByComparingTo(BigDecimal.valueOf(8_500));
             assertThat(saved.getNetAmount().getValue()).isEqualByComparingTo(BigDecimal.valueOf(76_500));
+            assertThat(saved.getCompletedAt()).isEqualTo(completedAt);
         }
 
         @Test

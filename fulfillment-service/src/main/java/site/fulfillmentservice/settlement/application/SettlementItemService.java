@@ -31,7 +31,7 @@ public class SettlementItemService {
             return;
         }
 
-        BigDecimal commissionRate = findEffectiveCommissionRate(event.getCompletedAt());
+        BigDecimal commissionRate = findEffectiveCommissionRate(event.getOrderedAt());
 
         SettlementItem settlementItem = SettlementItem.of(
             event.getOrderId(),
@@ -48,8 +48,8 @@ public class SettlementItemService {
         }
     }
 
-    private BigDecimal findEffectiveCommissionRate(LocalDateTime completedAt) {
-        return commissionPolicyRepository.findEffectiveAt(completedAt)
+    private BigDecimal findEffectiveCommissionRate(LocalDateTime orderedAt) {
+        return commissionPolicyRepository.findEffectiveAt(orderedAt)
             .map(CommissionPolicy::getCommissionRate)
             .orElseThrow(() -> new SettlementException(SettlementErrorCode.EFFECTIVE_COMMISSION_POLICY_NOT_FOUND));
     }
