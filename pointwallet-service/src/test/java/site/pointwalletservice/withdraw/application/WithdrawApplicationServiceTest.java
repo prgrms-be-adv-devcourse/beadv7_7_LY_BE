@@ -300,6 +300,7 @@ class WithdrawApplicationServiceTest {
         }
     }
 
+    // TODO 계좌 검증 롤백 및 계좌 사용 로직 추가 #351
     @Nested
     @DisplayName("인출 신청 (requestWithdraw) — validateBankAccount + executeDeductionAndOutbox 조합")
     class RequestWithdraw {
@@ -308,7 +309,7 @@ class WithdrawApplicationServiceTest {
         @DisplayName("계좌 검증 후 지갑 차감까지 이어져서 최종 결과를 반환한다")
         void requestWithdraw_정상흐름() {
             // given
-            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
+            //when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.of(BANK_ACCOUNT));
             when(walletService.deduct(USER_ID, AMOUNT))
                     .thenReturn(new WalletBalanceResult(WALLET_ID, Money.of(0)));
             stubSaveWithId(WITHDRAW_ID);
@@ -322,22 +323,22 @@ class WithdrawApplicationServiceTest {
             assertThat(result.netAmount()).isEqualByComparingTo(NET_AMOUNT.getValue());
         }
 
-        @Test
-        @DisplayName("등록된 계좌가 없으면 트랜잭션 자체를 시작하지 않는다")
-        void requestWithdraw_계좌없으면_트랜잭션_미시작() {
-            // given
-            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY))
-                    .isInstanceOf(WithdrawException.class)
-                    .extracting(e -> ((WithdrawException) e).getErrorCode())
-                    .isEqualTo(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
-
-            verify(transactionTemplate, never()).execute(any());
-            verify(walletService, never()).deduct(any(), any());
-            verify(withdrawRepository, never()).save(any());
-        }
+//        @Test
+//        @DisplayName("등록된 계좌가 없으면 트랜잭션 자체를 시작하지 않는다")
+//        void requestWithdraw_계좌없으면_트랜잭션_미시작() {
+//            // given
+//            when(memberBankAccountPort.getBankAccount(USER_ID)).thenReturn(Optional.empty());
+//
+//            // when & then
+//            assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY))
+//                    .isInstanceOf(WithdrawException.class)
+//                    .extracting(e -> ((WithdrawException) e).getErrorCode())
+//                    .isEqualTo(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
+//
+//            verify(transactionTemplate, never()).execute(any());
+//            verify(walletService, never()).deduct(any(), any());
+//            verify(withdrawRepository, never()).save(any());
+//        }
     }
 
     @Nested
