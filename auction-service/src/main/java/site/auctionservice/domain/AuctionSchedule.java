@@ -6,6 +6,8 @@ import jakarta.persistence.Embedded;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -39,12 +41,10 @@ public class AuctionSchedule {
         Objects.requireNonNull(period, "경매 기간은 null일 수 없습니다.");
         if (extensionEnabled) {
             if (extensionTime == null || extensionTime < AuctionPolicy.MIN_EXTENSION_MINUTES) {
-                throw new IllegalArgumentException(
-                    "연장 시간은 %d분 이상이어야 합니다.".formatted(AuctionPolicy.MIN_EXTENSION_MINUTES));
+                throw new AuctionException(AuctionErrorCode.EXTENSION_TIME_TOO_SHORT);
             }
             if (extensionTime > AuctionPolicy.MAX_EXTENSION_MINUTES) {
-                throw new IllegalArgumentException(
-                    "연장 시간은 %d분 이하여야 합니다.".formatted(AuctionPolicy.MAX_EXTENSION_MINUTES));
+                throw new AuctionException(AuctionErrorCode.EXTENSION_TIME_TOO_LONG);
             }
         } else {
             extensionTime = null;

@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,14 +41,11 @@ public class ItemInfo {
         Objects.requireNonNull(condition, "경매 상품 상태는 null일 수 없습니다.");
         if (description != null && (description.length() < AuctionPolicy.MIN_DESC_LENGTH
             || description.length() > AuctionPolicy.MAX_DESC_LENGTH)) {
-            throw new IllegalArgumentException(
-                "상품 설명은 %d~%d자여야 합니다.".formatted(AuctionPolicy.MIN_DESC_LENGTH,
-                    AuctionPolicy.MAX_DESC_LENGTH));
+            throw new AuctionException(AuctionErrorCode.ITEM_DESCRIPTION_LENGTH_INVALID);
         }
         List<String> images = (imageUrls == null) ? null : List.copyOf(imageUrls);
         if (images != null && images.size() > AuctionPolicy.MAX_IMAGE_COUNT) {
-            throw new IllegalArgumentException(
-                "이미지는 최대 %d장까지 등록할 수 있습니다.".formatted(AuctionPolicy.MAX_IMAGE_COUNT));
+            throw new AuctionException(AuctionErrorCode.ITEM_IMAGE_COUNT_EXCEEDED);
         }
         return new ItemInfo(condition, description, images);
     }

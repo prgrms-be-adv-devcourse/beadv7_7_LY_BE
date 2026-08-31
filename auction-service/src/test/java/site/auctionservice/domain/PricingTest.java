@@ -2,6 +2,8 @@ package site.auctionservice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,7 +17,10 @@ class PricingTest {
         Money belowMinStartPrice = Money.of(999L);
 
         // when & then
-        assertThatThrownBy(() -> Pricing.of(belowMinStartPrice, Money.of(10L), Money.of(0L))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Pricing.of(belowMinStartPrice, Money.of(10L), Money.of(0L)))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.START_PRICE_TOO_LOW);
     }
 
     @Test
@@ -25,7 +30,10 @@ class PricingTest {
         Money belowMinBidUnit = Money.of(9L);
 
         // when & then
-        assertThatThrownBy(() -> Pricing.of(Money.of(1_000L), belowMinBidUnit, Money.of(0L))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Pricing.of(Money.of(1_000L), belowMinBidUnit, Money.of(0L)))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_UNIT_TOO_LOW);
     }
 
     @Test
@@ -50,7 +58,9 @@ class PricingTest {
 
         // when & then
         assertThatThrownBy(() -> Pricing.of(Money.of(10_000L), notMultipleOf100, Money.of(0L)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_UNIT_NOT_MULTIPLE_OF_MIN_UNIT);
     }
 
     @Test
@@ -62,7 +72,9 @@ class PricingTest {
 
         // when & then
         assertThatThrownBy(() -> Pricing.of(startPrice, bidUnitEqualToStartPrice, Money.of(0L)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.BID_UNIT_NOT_LESS_THAN_START_PRICE);
     }
 
     @Test

@@ -2,6 +2,8 @@ package site.auctionservice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.time.LocalDateTime;
 
@@ -32,7 +34,10 @@ class AuctionScheduleTest {
     @DisplayName("연장이 활성화되었는데 연장 시간이 없으면 예외가 발생한다")
     void testOf_extensionEnabledWithoutTime_throws() {
         // when & then
-        assertThatThrownBy(() -> AuctionSchedule.of(period, true, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> AuctionSchedule.of(period, true, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.EXTENSION_TIME_TOO_SHORT);
     }
 
     @Test
@@ -42,7 +47,10 @@ class AuctionScheduleTest {
         int belowMinExtensionTime = 0;
 
         // when & then
-        assertThatThrownBy(() -> AuctionSchedule.of(period, true, belowMinExtensionTime)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> AuctionSchedule.of(period, true, belowMinExtensionTime))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.EXTENSION_TIME_TOO_SHORT);
     }
 
     @Test
@@ -52,7 +60,10 @@ class AuctionScheduleTest {
         int aboveMaxExtensionTime = AuctionPolicy.MAX_EXTENSION_MINUTES + 1;
 
         // when & then
-        assertThatThrownBy(() -> AuctionSchedule.of(period, true, aboveMaxExtensionTime)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> AuctionSchedule.of(period, true, aboveMaxExtensionTime))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.EXTENSION_TIME_TOO_LONG);
     }
 
     @Test

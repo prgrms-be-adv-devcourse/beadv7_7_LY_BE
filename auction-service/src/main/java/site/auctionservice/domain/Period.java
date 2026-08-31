@@ -5,6 +5,8 @@ import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -29,8 +31,7 @@ public class Period {
         Objects.requireNonNull(startAt, "시작 시각은 null일 수 없습니다.");
         Objects.requireNonNull(endAt, "종료 시각은 null일 수 없습니다.");
         if (startAt.plusHours(AuctionPolicy.MIN_DURATION_HOURS).isAfter(endAt)) {
-            throw new IllegalArgumentException(
-                "종료 시각은 시작 시각으로부터 최소 %d시간 이후여야 합니다.".formatted(AuctionPolicy.MIN_DURATION_HOURS));
+            throw new AuctionException(AuctionErrorCode.AUCTION_DURATION_TOO_SHORT);
         }
         return new Period(startAt, endAt);
     }
