@@ -18,7 +18,7 @@ import site.productservice.infrastructure.ProductJpaRepository;
 import site.productservice.support.RepositoryTest;
 
 @RepositoryTest
-@Import(CatalogRepositoryImpl.class)
+@Import({CatalogRepositoryImpl.class, ActiveProductCounter.class})
 class CatalogRepositoryImplTest {
 
     @Autowired
