@@ -7,7 +7,6 @@ import org.springframework.stereotype.Repository;
 import site.productservice.domain.catalog.CatalogItem;
 import site.productservice.domain.catalog.CatalogPage;
 import site.productservice.domain.catalog.CatalogRepository;
-import site.productservice.infrastructure.ProductJpaRepository;
 
 /**
  * 목록 조회 구현. Pageable을 쓰지 않고 EntityManager로 직접 질의한다 — PageRequest는 offset을
@@ -26,7 +25,7 @@ public class CatalogRepositoryImpl implements CatalogRepository {
             """;
 
     private final EntityManager entityManager;
-    private final ProductJpaRepository productJpaRepository;
+    private final ActiveProductCounter activeProductCounter;
 
     /** 다음 페이지가 있는지 알아내려고 size보다 한 건 더 조회한다. 그 한 건은 판단에만 쓰고 버린다. */
     @Override
@@ -35,7 +34,7 @@ public class CatalogRepositoryImpl implements CatalogRepository {
         // 예외 대신 빈 페이지로 답한다 — 범위 밖 페이지를 다루는 방식이 아래와 같아야 한다
         long offset = (long) page * size;
         if (offset > Integer.MAX_VALUE) {
-            return new CatalogPage(List.of(), productJpaRepository.countActive(), false);
+            return new CatalogPage(List.of(), activeProductCounter.countActive(), false);
         }
 
         List<CatalogItem> fetched = entityManager.createQuery(ACTIVE_PAGE_JPQL, CatalogItem.class)
@@ -45,6 +44,6 @@ public class CatalogRepositoryImpl implements CatalogRepository {
 
         boolean hasNext = fetched.size() > size;
         List<CatalogItem> items = hasNext ? List.copyOf(fetched.subList(0, size)) : fetched;
-        return new CatalogPage(items, productJpaRepository.countActive(), hasNext);
+        return new CatalogPage(items, activeProductCounter.countActive(), hasNext);
     }
 }

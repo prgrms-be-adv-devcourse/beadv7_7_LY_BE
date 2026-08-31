@@ -10,6 +10,7 @@ import site.productservice.domain.Artist;
 import site.productservice.domain.PressType;
 import site.productservice.domain.Product;
 import site.productservice.domain.catalog.CatalogRepository;
+import site.productservice.infrastructure.catalog.ActiveProductCounter;
 import site.productservice.infrastructure.catalog.CatalogRepositoryImpl;
 import site.productservice.support.RepositoryTest;
 
@@ -18,7 +19,7 @@ import site.productservice.support.RepositoryTest;
  * 페이지 수가 맞지 않게 되는데, 오류 없이 숫자만 틀리므로 여기서 잡는다.
  */
 @RepositoryTest
-@Import(CatalogRepositoryImpl.class)
+@Import({CatalogRepositoryImpl.class, ActiveProductCounter.class})
 @DisplayName("목록 전체 건수 조회")
 class ProductCountActiveTest {
 

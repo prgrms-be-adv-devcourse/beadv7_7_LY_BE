@@ -15,6 +15,13 @@ spring:
   profiles:
     active: local
 
+  # 판매 중인 상품 수를 담아 두는 캐시. 이름은 ActiveProductCounter.CACHE_NAME과 같아야 한다
+  cache:
+    type: caffeine
+    cache-names: activeProductCount
+    caffeine:
+      spec: expireAfterWrite=${ACTIVE_PRODUCT_COUNT_TTL:24h}
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}
