@@ -43,7 +43,8 @@ public class WithdrawServiceFacade implements WithdrawService {
             return WithdrawRequestResult.from(existing.get());
         }
 
-        withdrawApplicationService.validateBankAccount(userId);
+        // TODO 계좌 검증 롤백 및 계좌 사용 로직 추가 #351
+        //withdrawApplicationService.validateBankAccount(userId);
         try {
             return retryingWithdrawService.requestWithdraw(userId, amount, idempotencyKey);
         } catch (UndeclaredThrowableException e) {
