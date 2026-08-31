@@ -28,6 +28,7 @@ class OrderCompletedEventTest {
             .buyerId(3L)
             .sellerId(4L)
             .finalBidPrice(BigDecimal.valueOf(15_000))
+            .orderedAt(LocalDateTime.of(2026, 7, 20, 10, 0))
             .completedAt(LocalDateTime.of(2026, 7, 27, 10, 0))
             .build();
 
@@ -41,6 +42,8 @@ class OrderCompletedEventTest {
         assertThat(restored.getOrderId()).isEqualTo(1L);
         assertThat(restored.getAuctionId()).isEqualTo(2L);
         assertThat(restored.getFinalBidPrice()).isEqualByComparingTo(BigDecimal.valueOf(15_000));
+        assertThat(restored.getOrderedAt()).isEqualTo(original.getOrderedAt());
+        assertThat(restored.getCompletedAt()).isEqualTo(original.getCompletedAt());
     }
 
     @Test

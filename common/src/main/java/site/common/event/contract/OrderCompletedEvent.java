@@ -17,6 +17,7 @@ public class OrderCompletedEvent extends Event {
     private final Long buyerId;
     private final Long sellerId;
     private final BigDecimal finalBidPrice;
+    private final LocalDateTime orderedAt;
     private final LocalDateTime completedAt;
 
     @Builder
@@ -29,6 +30,7 @@ public class OrderCompletedEvent extends Event {
         @JsonProperty("buyerId") final Long buyerId,
         @JsonProperty("sellerId") final Long sellerId,
         @JsonProperty("finalBidPrice") final BigDecimal finalBidPrice,
+        @JsonProperty("orderedAt") final LocalDateTime orderedAt,
         @JsonProperty("completedAt") final LocalDateTime completedAt
     ) {
         super(eventId, occurredAt);
@@ -37,6 +39,7 @@ public class OrderCompletedEvent extends Event {
         this.buyerId = buyerId;
         this.sellerId = sellerId;
         this.finalBidPrice = finalBidPrice;
+        this.orderedAt = orderedAt;
         this.completedAt = completedAt;
     }
 

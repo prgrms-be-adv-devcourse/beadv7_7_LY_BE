@@ -36,6 +36,7 @@ public class OrderEventPublisher {
                 .buyerId(order.getBuyerId())
                 .sellerId(order.getSellerId())
                 .finalBidPrice(order.getFinalBidPrice())
+                .orderedAt(order.getOrderedAt())
                 .completedAt(order.getCompletedAt())
                 .build());
     }
