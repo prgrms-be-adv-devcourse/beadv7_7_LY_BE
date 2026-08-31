@@ -14,7 +14,7 @@ public sealed interface AuctionStatusDetail {
                          List<BidDetailResult> bidDetails, Boolean myHighest) implements AuctionStatusDetail {
     }
 
-    record EndedWonDetail(BidDetailResult bidDetail) implements AuctionStatusDetail {
+    record EndedWonDetail(BidDetailResult bidDetail, List<BidDetailResult> bidDetails) implements AuctionStatusDetail {
     }
 
     record EndedFailedDetail() implements AuctionStatusDetail {

@@ -98,13 +98,16 @@ class AuctionDetailResponseTest {
         BidDetailResult winningBid = new BidDetailResult("winner_3", BigDecimal.valueOf(15_000), START_AT.plusMinutes(1));
 
         // when
-        AuctionDetailResponse response = AuctionDetailResponse.from(resultWith(new AuctionStatusDetail.EndedWonDetail(winningBid)));
+        AuctionDetailResponse response = AuctionDetailResponse.from(
+                resultWith(new AuctionStatusDetail.EndedWonDetail(winningBid, List.of(winningBid))));
 
         // then
         assertThat(response.status()).isEqualTo("ENDED_WON");
         assertThat(response.won()).isTrue();
         assertThat(response.winningBid().bidder()).isEqualTo("winner_3");
         assertThat(response.winningBid().amount()).isEqualByComparingTo(BigDecimal.valueOf(15_000));
+        assertThat(response.recentBids()).hasSize(1);
+        assertThat(response.recentBids().get(0).bidder()).isEqualTo("winner_3");
     }
 
     @Test

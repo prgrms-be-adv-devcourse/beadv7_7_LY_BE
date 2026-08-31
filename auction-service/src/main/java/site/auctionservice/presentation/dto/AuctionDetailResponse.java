@@ -37,8 +37,10 @@ public record AuctionDetailResponse(
         BigDecimal highestBidAmount,
         BigDecimal nextMinBidAmount,
         Long bidCount,
-        List<BidInfo> recentBids,
         Boolean myHighest,
+
+        // RUNNING/ENDED_WON 공통
+        List<BidInfo> recentBids,
 
         // ENDED_WON/ENDED_FAILED 공통
         Boolean won,
@@ -77,7 +79,8 @@ public record AuctionDetailResponse(
             case AuctionStatusDetail.ClosingDetail closing -> builder.status(CLOSING_STATUS);
             case AuctionStatusDetail.EndedWonDetail endedWon -> builder.status(AuctionStatus.ENDED_WON.name())
                     .won(true)
-                    .winningBid(BidInfo.from(endedWon.bidDetail()));
+                    .winningBid(BidInfo.from(endedWon.bidDetail()))
+                    .recentBids(endedWon.bidDetails().stream().map(BidInfo::from).toList());
             case AuctionStatusDetail.EndedFailedDetail endedFailed -> builder.status(AuctionStatus.ENDED_FAILED.name())
                     .won(false);
         }
