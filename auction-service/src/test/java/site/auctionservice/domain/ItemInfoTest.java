@@ -2,6 +2,8 @@ package site.auctionservice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +37,10 @@ class ItemInfoTest {
         String tooShort = "짧음";
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooShort, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooShort, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ITEM_DESCRIPTION_LENGTH_INVALID);
     }
 
     @Test
@@ -45,7 +50,10 @@ class ItemInfoTest {
         String tooLong = "가".repeat(501);
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooLong, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, tooLong, null))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ITEM_DESCRIPTION_LENGTH_INVALID);
     }
 
     @Test
@@ -55,7 +63,10 @@ class ItemInfoTest {
         List<String> images = List.of("1.png", "2.png", "3.png", "4.png", "5.png", "6.png");
 
         // when & then
-        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, "충분히 긴 설명입니다.", images)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ItemInfo.of(ItemCondition.MINT, "충분히 긴 설명입니다.", images))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.ITEM_IMAGE_COUNT_EXCEEDED);
     }
 
     @Test

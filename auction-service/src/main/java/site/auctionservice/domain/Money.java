@@ -4,6 +4,8 @@ import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -21,13 +23,13 @@ public class Money {
     public static Money from(BigDecimal value) {
         Objects.requireNonNull(value, "금액은 null일 수 없습니다.");
         if (value.compareTo(BigDecimal.ZERO) < 0)
-            throw new IllegalArgumentException("금액은 0원 이상이어야 합니다. 입력값: " + value);
+            throw new AuctionException(AuctionErrorCode.MONEY_AMOUNT_NEGATIVE);
         return new Money(value);
     }
 
     public static Money of(long value) {
         if (value < 0)
-            throw new IllegalArgumentException("금액은 0원 이상이어야 합니다. 입력값: " + value);
+            throw new AuctionException(AuctionErrorCode.MONEY_AMOUNT_NEGATIVE);
         return new Money(BigDecimal.valueOf(value));
     }
 

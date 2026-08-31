@@ -2,6 +2,8 @@ package site.auctionservice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.time.LocalDateTime;
 
@@ -20,7 +22,10 @@ class PeriodTest {
         LocalDateTime tooShortEnd = start.plusMinutes(59);
 
         // when & then
-        assertThatThrownBy(() -> Period.of(start, tooShortEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Period.of(start, tooShortEnd))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.AUCTION_DURATION_TOO_SHORT);
     }
 
     @Test

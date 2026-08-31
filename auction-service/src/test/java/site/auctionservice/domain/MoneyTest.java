@@ -2,6 +2,8 @@ package site.auctionservice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.math.BigDecimal;
 
@@ -17,7 +19,10 @@ class MoneyTest {
         BigDecimal negativeAmount = BigDecimal.valueOf(-1);
 
         // when & then
-        assertThatThrownBy(() -> Money.from(negativeAmount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Money.from(negativeAmount))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.MONEY_AMOUNT_NEGATIVE);
     }
 
     @Test
@@ -73,7 +78,10 @@ class MoneyTest {
         Money subtractAmount = Money.of(1_500L);
 
         // when & then
-        assertThatThrownBy(() -> money.minus(subtractAmount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> money.minus(subtractAmount))
+                .isInstanceOf(AuctionException.class)
+                .extracting(e -> ((AuctionException) e).getErrorCode())
+                .isEqualTo(AuctionErrorCode.MONEY_AMOUNT_NEGATIVE);
     }
 
     @Test

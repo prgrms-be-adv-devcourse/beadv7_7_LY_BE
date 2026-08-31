@@ -7,6 +7,8 @@ import jakarta.persistence.Embedded;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import site.auctionservice.exception.AuctionErrorCode;
+import site.auctionservice.exception.AuctionException;
 
 import java.util.Objects;
 
@@ -38,19 +40,16 @@ public class Pricing {
         Objects.requireNonNull(bidUnit, "입찰 단위는 null일 수 없습니다.");
         Objects.requireNonNull(shippingFee, "배송비는 null일 수 없습니다.");
         if (startPrice.isLessThan(AuctionPolicy.MIN_START_PRICE)) {
-            throw new IllegalArgumentException(
-                "시작가는 %s원 이상이어야 합니다.".formatted(AuctionPolicy.MIN_START_PRICE.getValue()));
+            throw new AuctionException(AuctionErrorCode.START_PRICE_TOO_LOW);
         }
         if (bidUnit.isLessThan(AuctionPolicy.MIN_BID_UNIT)) {
-            throw new IllegalArgumentException(
-                "입찰 단위는 %s원 이상이어야 합니다.".formatted(AuctionPolicy.MIN_BID_UNIT.getValue()));
+            throw new AuctionException(AuctionErrorCode.BID_UNIT_TOO_LOW);
         }
         if (!bidUnit.isMultipleOf(AuctionPolicy.MIN_BID_UNIT)) {
-            throw new IllegalArgumentException(
-                "입찰 단위는 %s원의 배수여야 합니다.".formatted(AuctionPolicy.MIN_BID_UNIT.getValue()));
+            throw new AuctionException(AuctionErrorCode.BID_UNIT_NOT_MULTIPLE_OF_MIN_UNIT);
         }
         if (bidUnit.isGreaterThanOrEqual(startPrice)) {
-            throw new IllegalArgumentException("입찰 단위는 시작가보다 작아야 합니다.");
+            throw new AuctionException(AuctionErrorCode.BID_UNIT_NOT_LESS_THAN_START_PRICE);
         }
         return new Pricing(startPrice, bidUnit, shippingFee);
     }

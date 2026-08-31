@@ -47,6 +47,18 @@ public enum AuctionErrorCode implements ErrorCode {
     IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5023", "이미지는 최대 5장까지 업로드할 수 있습니다."),
     IMAGE_URL_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "AERR-5024", "허용되지 않은 이미지 주소입니다."),
 
+    // 도메인 값객체(VO) 검증
+    MONEY_AMOUNT_NEGATIVE(HttpStatus.BAD_REQUEST, "AERR-5031", "금액은 0원 이상이어야 합니다."),
+    AUCTION_DURATION_TOO_SHORT(HttpStatus.BAD_REQUEST, "AERR-5032", "경매 기간이 최소 진행 시간보다 짧습니다."),
+    START_PRICE_TOO_LOW(HttpStatus.BAD_REQUEST, "AERR-5033", "시작가가 최소 금액보다 낮습니다."),
+    BID_UNIT_TOO_LOW(HttpStatus.BAD_REQUEST, "AERR-5034", "입찰 단위가 최소 금액보다 낮습니다."),
+    BID_UNIT_NOT_MULTIPLE_OF_MIN_UNIT(HttpStatus.BAD_REQUEST, "AERR-5035", "입찰 단위가 기준 단위의 배수가 아닙니다."),
+    BID_UNIT_NOT_LESS_THAN_START_PRICE(HttpStatus.BAD_REQUEST, "AERR-5036", "입찰 단위는 시작가보다 작아야 합니다."),
+    ITEM_DESCRIPTION_LENGTH_INVALID(HttpStatus.BAD_REQUEST, "AERR-5037", "상품 설명 길이가 유효하지 않습니다."),
+    ITEM_IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "AERR-5038", "상품 이미지 개수가 제한을 초과했습니다."),
+    EXTENSION_TIME_TOO_SHORT(HttpStatus.BAD_REQUEST, "AERR-5039", "연장 시간이 최소 시간보다 짧습니다."),
+    EXTENSION_TIME_TOO_LONG(HttpStatus.BAD_REQUEST, "AERR-5040", "연장 시간이 최대 시간을 초과했습니다."),
+
     ;
 
     private final HttpStatus status;
