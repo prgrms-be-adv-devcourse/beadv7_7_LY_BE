@@ -58,7 +58,8 @@ public class WithdrawApplicationService implements WithdrawService {
 
     @Override
     public WithdrawRequestResult requestWithdraw(Long userId, Money amount, String idempotencyKey) {
-        validateBankAccount(userId);
+        // TODO 계좌 검증 롤백 및 계좌 사용 로직 추가 #351
+        //validateBankAccount(userId);
         Withdraw withdraw = executeDeductionAndOutbox(userId, amount, idempotencyKey);
         return WithdrawRequestResult.from(withdraw);
     }

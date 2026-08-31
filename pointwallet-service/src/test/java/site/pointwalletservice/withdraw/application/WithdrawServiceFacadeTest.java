@@ -48,7 +48,8 @@ class WithdrawServiceFacadeTest {
 
         // then
         assertThat(result).isEqualTo(expected);
-        verify(withdrawApplicationService).validateBankAccount(USER_ID);
+        // TODO 계좌 검증 롤백 및 계좌 사용 로직 추가 #351
+        //verify(withdrawApplicationService).validateBankAccount(USER_ID);
         verify(retryingWithdrawService).requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY);
     }
 
@@ -74,21 +75,22 @@ class WithdrawServiceFacadeTest {
                 .requestWithdraw(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
-    @Test
-    @DisplayName("계좌 검증에서 실패하면(계좌 없음) 재시도 서비스는 아예 호출되지 않는다")
-    void 계좌검증_실패시_재시도서비스_미호출() {
-        // given
-        when(withdrawApplicationService.findExisting(USER_ID, IDEMPOTENCY_KEY)).thenReturn(Optional.empty());
-        WithdrawException bankAccountNotFound = new WithdrawException(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
-        org.mockito.Mockito.doThrow(bankAccountNotFound)
-                .when(withdrawApplicationService).validateBankAccount(USER_ID);
-
-        // when & then
-        assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY))
-                .isSameAs(bankAccountNotFound);
-
-        verify(retryingWithdrawService, never()).requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY);
-    }
+    // TODO 계좌 검증 롤백 및 계좌 사용 로직 추가 #351
+//    @Test
+//    @DisplayName("계좌 검증에서 실패하면(계좌 없음) 재시도 서비스는 아예 호출되지 않는다")
+//    void 계좌검증_실패시_재시도서비스_미호출() {
+//        // given
+//        when(withdrawApplicationService.findExisting(USER_ID, IDEMPOTENCY_KEY)).thenReturn(Optional.empty());
+//        WithdrawException bankAccountNotFound = new WithdrawException(WithdrawErrorCode.BANK_ACCOUNT_NOT_FOUND);
+//        org.mockito.Mockito.doThrow(bankAccountNotFound)
+//                .when(withdrawApplicationService).validateBankAccount(USER_ID);
+//
+//        // when & then
+//        assertThatThrownBy(() -> sut.requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY))
+//                .isSameAs(bankAccountNotFound);
+//
+//        verify(retryingWithdrawService, never()).requestWithdraw(USER_ID, AMOUNT, IDEMPOTENCY_KEY);
+//    }
 
     @Test
     @DisplayName("재시도 소진으로 UndeclaredThrowableException(cause=RetryException(cause=WithdrawLockContentionException))이 " +
