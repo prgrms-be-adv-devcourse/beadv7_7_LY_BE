@@ -13,8 +13,8 @@ import site.fulfillmentservice.settlement.application.SettlementBatchScheduler;
  * 스케줄러의 날짜 계산 로직을 그대로 재사용하므로, 오늘이 몇 일이든 이번 달 25일 이전에
  * completedAt된 PENDING 항목들이 정상적으로 배치 대상이 된다.
  */
-@Profile("local")
-@ConditionalOnProperty(name = "settlement.batch-trigger.enabled", havingValue = "true")
+//@Profile("local")
+//@ConditionalOnProperty(name = "settlement.batch-trigger.enabled", havingValue = "true")
 @RestController
 @RequiredArgsConstructor
 public class SettlementBatchTriggerController {
