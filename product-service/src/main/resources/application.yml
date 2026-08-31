@@ -27,6 +27,9 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER_NAME}
     password: ${DB_PASSWORD}
+    hikari:
+      # 기본값 10으로는 동시 요청이 몰릴 때 커넥션을 얻지 못한 요청이 줄을 선다
+      maximum-pool-size: ${DB_POOL_SIZE:30}
 
   jpa:
     open-in-view: false
