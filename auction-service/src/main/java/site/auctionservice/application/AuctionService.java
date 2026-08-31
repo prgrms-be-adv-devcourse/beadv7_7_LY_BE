@@ -135,7 +135,7 @@ public class AuctionService {
             : switch (auction.getEffectiveStatusAt(now)) {
                 case SCHEDULED -> new AuctionStatusDetail.ScheduledDetail();
                 case RUNNING -> getRunningDetail(auction, viewerId);
-                case ENDED_WON -> getEndedWonDetail(auction.getHighestBid().getBidId());
+                case ENDED_WON -> getEndedWonDetail(auction);
                 case ENDED_FAILED -> new AuctionStatusDetail.EndedFailedDetail();
                 case CANCELED, FORCE_CANCELED -> throw new AuctionException(AuctionErrorCode.AUCTION_NOT_FOUND);
             };
@@ -147,17 +147,12 @@ public class AuctionService {
         List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(),
             RECENT_BID_LIMIT);
         HighestBid highestBid = auction.getHighestBid();
-        // 같은 입찰자가 recentBids 안에 여러 번 등장할 수 있어(outbid 후 재입찰), 중복 없이 한 번씩만 조회한다.
-        Map<Long, String> nicknamesByBidderId = recentBids.stream()
-            .map(Bid::getBidderId)
-            .distinct()
-            .collect(Collectors.toMap(bidderId -> bidderId, this::getNicknameOrFallback));
+        List<BidDetailResult> recentBidDetails = toBidDetailResults(recentBids);
         return new AuctionStatusDetail.RunningDetail(
             highestBid == null ? null : highestBid.getAmount().getValue(),
             auction.getPricing().nextMinBidAmount(highestBid).getValue(),
-            bidRepository.countByAuctionId(auction.getId()), recentBids.stream()
-            .map(bid -> BidDetailResult.of(bid, nicknamesByBidderId.get(bid.getBidderId())))
-            .toList(), auction.isHighestBidder(viewerId));
+            bidRepository.countByAuctionId(auction.getId()), recentBidDetails,
+            auction.isHighestBidder(viewerId));
     }
 
     // 닉네임은 경매 상세의 부가 표시 정보라, 조회 실패가 경매 상세 조회 전체를 막지 않도록 fallback 처리한다.
@@ -170,11 +165,26 @@ public class AuctionService {
         }
     }
 
-    private AuctionStatusDetail.EndedWonDetail getEndedWonDetail(Long bidId) {
-        Bid bid = bidRepository.findById(bidId)
+    private List<BidDetailResult> toBidDetailResults(List<Bid> bids) {
+        // 같은 입찰자가 여러 번 등장할 수 있어(outbid 후 재입찰), 중복 없이 한 번씩만 조회한다.
+        Map<Long, String> nicknamesByBidderId = bids.stream()
+            .map(Bid::getBidderId)
+            .distinct()
+            .collect(Collectors.toMap(bidderId -> bidderId, this::getNicknameOrFallback));
+        return bids.stream()
+            .map(bid -> BidDetailResult.of(bid, nicknamesByBidderId.get(bid.getBidderId())))
+            .toList();
+    }
+
+    private AuctionStatusDetail.EndedWonDetail getEndedWonDetail(Auction auction) {
+        Long bidId = auction.getHighestBid().getBidId();
+        Bid winningBid = bidRepository.findById(bidId)
             .orElseThrow(() -> new AuctionException(AuctionErrorCode.BID_NOT_FOUND));
+        List<Bid> recentBids = bidRepository.findRecentByAuctionId(auction.getId(),
+            RECENT_BID_LIMIT);
         return new AuctionStatusDetail.EndedWonDetail(
-            BidDetailResult.of(bid, getNicknameOrFallback(bid.getBidderId())));
+            BidDetailResult.of(winningBid, getNicknameOrFallback(winningBid.getBidderId())),
+            toBidDetailResults(recentBids));
     }
 
 

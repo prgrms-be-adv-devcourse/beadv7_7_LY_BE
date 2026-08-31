@@ -652,12 +652,14 @@ class AuctionServiceTest {
         // given
         HighestBid highestBid = HighestBid.of(Money.of(15_000L), 3L, 20L);
         Auction auction = auctionWith(AuctionStatus.ENDED_WON, PAST_START, PAST_END, highestBid);
+        ReflectionTestUtils.setField(auction, "id", 1L);
         Bid winningBid = Bid.place(1L, 3L, Money.of(15_000L), PAST_START.plusMinutes(1));
         given(auctionRepository.findById(1L)).willReturn(Optional.of(auction));
         given(productPort.getProductDetail(100L)).willReturn(productDetail);
         given(memberPort.getNickname(1L)).willReturn("vinyl_king");
         given(memberPort.getNickname(3L)).willReturn("winner_3");
         given(bidRepository.findById(20L)).willReturn(Optional.of(winningBid));
+        given(bidRepository.findRecentByAuctionId(1L, 5)).willReturn(List.of(winningBid));
 
         // when
         AuctionDetailResult result = auctionService.getAuctionDetail(1L, null);
@@ -666,6 +668,8 @@ class AuctionServiceTest {
         AuctionStatusDetail.EndedWonDetail endedWon = (AuctionStatusDetail.EndedWonDetail) result.detail();
         assertThat(endedWon.bidDetail().amount()).isEqualByComparingTo(BigDecimal.valueOf(15_000));
         assertThat(endedWon.bidDetail().bidderNickname()).isEqualTo("winner_3");
+        assertThat(endedWon.bidDetails()).hasSize(1);
+        assertThat(endedWon.bidDetails().getFirst().bidderNickname()).isEqualTo("winner_3");
     }
 
     @Test
