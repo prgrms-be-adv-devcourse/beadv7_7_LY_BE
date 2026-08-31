@@ -75,6 +75,12 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
     /** 글자나 숫자를 하나라도 가진 조각만 조건으로 삼는다. */
     private static final Pattern SEARCHABLE_TOKEN = Pattern.compile(".*[\\p{L}\\p{N}].*");
 
+    /**
+     * 앞부분만 친 검색어를 받아주는 절의 가중치. 이름을 끝까지 친 사람이 항상 위에 와야 하므로 정확 매칭보다
+     * 훨씬 낮게 두고, 앞부분이 겹칠 뿐인 다른 아티스트가 오타 결과보다는 쓸모 있으므로 오타 절보다는 높게 둔다.
+     */
+    private static final float PREFIX_BOOST = 0.7f;
+
     /** 정확 일치는 두 절 모두에 걸려 이미 위로 오고, 이 가산점은 앞부분만 겹치는 번호와의 점수 차를 더 벌린다. */
     private static final float CATALOG_EXACT_BOOST = 2.0f;
     private static final String CATALOG_FIELD = "normalizedCatalogNumber";
@@ -152,7 +158,14 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
                     .query(keyword)
                     .type(TextQueryType.CrossFields)
                     .operator(Operator.And)
-                    .fields(RELEVANCE_FIELDS)));
+                    .fields(RELEVANCE_FIELDS)))
+                // 이름을 끝까지 치지 않아도 찾게 한다. 주 필드는 형태소로 쪼개져 있어 「르세」가 「르세라핌」에
+                // 닿지 못하므로, 표기가 통째로 남은 surface 필드에서만 앞부분을 맞춰본다.
+                .should(s -> s.multiMatch(mm -> mm
+                    .query(keyword)
+                    .type(TextQueryType.PhrasePrefix)
+                    .boost(PREFIX_BOOST)
+                    .fields(ARTIST_SURFACE_FIELDS)));
 
             // 조건이 하나도 없는 묶음은 그 자체로 모든 문서에 걸린다. 그래서 얹을 단어가 없으면 버킷을 만들지 않는다.
             if (!tokens.isEmpty()) {
@@ -174,7 +187,7 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
     }
 
     /**
-     * 오타 버킷. 단어마다 절을 만들어 전부 만족해야 통과시킨다 — 한 절에 몰아넣고 operator를 and로 주면
+     * 오타 버킷. 공백으로 나눈 단어마다 절을 만들어 전부 만족해야 통과시킨다 — 한 절에 몰아넣고 operator를 and로 주면
      * "모든 단어가 한 필드 안에" 있어야 해서, 아티스트와 제목에 단어가 나뉘어 걸리는 검색어를 놓친다.
      * 단어별로는 어느 필드에서 걸려도 되고, 각 단어가 한 글자까지 틀려도 같은 단어로 본다.
      * <p>
@@ -187,6 +200,9 @@ public class ProductSearchRepositoryImpl implements ProductSearchRepository {
             typo.must(m -> m.multiMatch(mm -> mm
                 .query(token)
                 .type(TextQueryType.BestFields)
+                // 한 단어도 분석기를 거치면 여러 조각이 된다(「르세라핌」→「르」·「세라핌」).
+                // 이 조각들 사이에 조건이 없으면 「르」 하나만 걸린 상품까지 전부 결과에 들어온다.
+                .operator(Operator.And)
                 .fuzziness(TYPO_FUZZINESS)
                 .prefixLength(TYPO_PREFIX_LENGTH)
                 .fields(RELEVANCE_FIELDS)));

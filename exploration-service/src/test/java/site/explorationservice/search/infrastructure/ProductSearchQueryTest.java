@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ConstantScoreQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.PrefixQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
@@ -29,15 +30,15 @@ import site.explorationservice.search.domain.ProductSearchHit;
 class ProductSearchQueryTest {
 
     @Test
-    @DisplayName("점수 버킷을 부스트용·일반 관련도용·오타용 세 개로 나눈다")
-    void should_버킷_세_개() {
+    @DisplayName("점수 버킷을 부스트용·일반 관련도용·앞부분 일치용·오타용 네 개로 나눈다")
+    void should_버킷_네_개() {
         // given
         // when
         final BoolQuery bool = ProductSearchRepositoryImpl.buildQuery("장기하").bool();
 
         // then
         // 버킷이 하나로 합쳐지면 아티스트 정확 매치와 일반 관련도가 같은 잣대로 채점돼 부스트가 무의미해진다
-        assertThat(bool.should()).hasSize(3);
+        assertThat(bool.should()).hasSize(4);
     }
 
     @Test
@@ -213,7 +214,7 @@ class ProductSearchQueryTest {
 
         // then
         // 조건이 하나도 없는 묶음은 그 자체로 모든 문서에 걸려, 카탈로그 43.5만 건이 통째로 나간다
-        assertThat(bool.should()).hasSize(2);
+        assertThat(bool.should()).hasSize(3);
     }
 
     @Test
@@ -227,6 +228,62 @@ class ProductSearchQueryTest {
         // 정확히 맞는 문서는 두 절에 모두 걸려 점수가 합산된다. 오타 절이 세면 그 우위가 뒤집히고,
         // 0이면 오타로 걸린 문서가 점수를 못 받아 결과 맨 뒤로 밀린다
         assertThat(typo.boost()).isBetween(0.1f, 0.9f);
+    }
+
+    @Test
+    @DisplayName("오타 절의 각 단어는 분석기가 쪼갠 조각을 모두 만족해야 통과한다")
+    void 오타_절은_쪼갠_조각을_모두_요구한다() {
+        // given
+        // when
+        final BoolQuery typo = typoClause("르세라핌");
+
+        // then
+        // 검색어는 두 번 나뉜다. 공백으로 한 번, 분석기가 한 번 더(「르세라핌」→「르」·「세라핌」).
+        // 안쪽에 조건이 없으면 「르」 하나만 걸린 상품까지 들어와 11건이 986건이 된다.
+        // 영문은 한 단어가 조각 하나로 남아 조건이 같으므로 오타 허용이 그대로 동작한다
+        assertThat(typo.must()).allSatisfy(clause ->
+            assertThat(clause.multiMatch().operator()).isEqualTo(Operator.And));
+    }
+
+    /** 앞부분 일치 절만 골라낸다 — 유일한 phrase_prefix 절이라는 점으로 찾는다. */
+    private MultiMatchQuery prefixClause(final String keyword) {
+        return ProductSearchRepositoryImpl.buildQuery(keyword).bool().should().stream()
+            .filter(Query::isMultiMatch)
+            .map(Query::multiMatch)
+            .filter(mm -> mm.type() == TextQueryType.PhrasePrefix)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("앞부분 일치를 받아주는 절이 없다"));
+    }
+
+    @Test
+    @DisplayName("앞부분 일치 절은 표기 그대로인 필드만 본다")
+    void 앞부분_일치_절_필드() {
+        // given
+        // when
+        final MultiMatchQuery prefix = prefixClause("르세");
+
+        // then
+        // 주 필드는 형태소로 쪼개져 있어 「르세」가 「르」·「세」가 되고 「르세라핌」과 이어지지 않는다.
+        // 표기가 통째로 남은 surface 필드라야 앞에서부터 몇 글자가 같은지 견줄 수 있다
+        assertThat(prefix.fields()).containsExactly("artistName.surface", "artistAliases.surface");
+        assertThat(prefix.fields())
+            .allSatisfy(field -> assertThat(existsInDocument(stripBoost(field)))
+                .as("필드 '%s'가 ProductDocument에 존재해야 한다", field)
+                .isTrue());
+    }
+
+    @Test
+    @DisplayName("앞부분 일치 절은 정확 매칭보다 낮고 오타 절보다 높은 가중치를 받는다")
+    void 앞부분_일치_절_가중치() {
+        // given
+        // when
+        final MultiMatchQuery prefix = prefixClause("르세");
+
+        // then
+        // 이름을 끝까지 친 사람의 결과가 항상 위여야 하므로 정확 매칭(100)보다 훨씬 낮다.
+        // 다만 앞부분이 겹치는 아티스트는 오타로 걸린 문서보다 쓸모 있어 오타 절(0.5)보다는 높게 둔다
+        assertThat(prefix.boost()).isGreaterThan(typoClause("르세").boost());
+        assertThat(prefix.boost()).isLessThan(1.0f);
     }
 
     @Test
