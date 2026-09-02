@@ -23,6 +23,7 @@ import site.memberservice.member.domain.PhoneNumber;
 import site.memberservice.member.domain.repository.MemberCredentials;
 
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,8 +55,10 @@ class AuthServiceTest {
         );
         this.refreshTokenRepository = Mockito.mock(RefreshTokenRepository.class);
         this.refreshTokenIssuer = Mockito.mock(RefreshTokenIssuer.class);
+        // 허가증이 부족해서 막히는 상황은 이 단위테스트의 관심사가 아니라, 넉넉하게 잡아둔다.
+        final Semaphore argon2ConcurrencyLimiter = new Semaphore(100);
 
-        authService = new AuthService(memberService, passwordEncoder, authTokenProvider, refreshTokenRepository, refreshTokenIssuer);
+        authService = new AuthService(memberService, passwordEncoder, authTokenProvider, refreshTokenRepository, refreshTokenIssuer, argon2ConcurrencyLimiter);
     }
 
     @DisplayName("유효한 이메일, 비밀번호로 로그인하면 인증 객체를 생성해 반환한다.")

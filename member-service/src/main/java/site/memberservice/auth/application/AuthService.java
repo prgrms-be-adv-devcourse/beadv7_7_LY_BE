@@ -14,26 +14,32 @@ import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.repository.MemberCredentials;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
 import static java.lang.String.format;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
+import static site.memberservice.auth.exception.AuthErrorCode.LOGIN_CONCURRENCY_EXCEEDED;
 
 @RequiredArgsConstructor
 @Service
 public class AuthService {
+
+    private static final long ARGON2_ACQUIRE_TIMEOUT_SECONDS = 5;
 
     private final MemberService memberService;
     private final PasswordEncoder passwordEncoder;
     private final AuthTokenProvider authTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenIssuer refreshTokenIssuer;
+    private final Semaphore argon2ConcurrencyLimiter;
 
     public LoginResult login(final LoginCommand command) {
         final MemberCredentials credentials = memberService.findMemberCredentials(command.email())
             .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS, format("존재하지 않는 회원의 이메일입니다. input: %s", command.email())));
 
-        // Argon2id 연산 수행
-        if (!passwordEncoder.matches(command.password(), credentials.password())) {
+        if (!matchesWithConcurrencyLimit(command.password(), credentials.password())) {
             throw new AuthException(INVALID_CREDENTIALS, "유효하지 않는 회원 비밀번호입니다.");
         }
 
@@ -44,6 +50,26 @@ public class AuthService {
         final RefreshToken refreshToken = refreshTokenIssuer.upsert(memberId, refreshTokenValue);
 
         return new LoginResult(accessToken.getValue(), refreshToken.getValue());
+    }
+
+    private boolean matchesWithConcurrencyLimit(final String rawPassword, final String encodedPassword) {
+        final boolean acquired;
+        try {
+            acquired = argon2ConcurrencyLimiter.tryAcquire(ARGON2_ACQUIRE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AuthException(LOGIN_CONCURRENCY_EXCEEDED, "로그인 처리 중 인터럽트가 발생했습니다.", e);
+        }
+
+        if (!acquired) {
+            throw new AuthException(LOGIN_CONCURRENCY_EXCEEDED, "로그인 요청이 몰려 처리할 수 없습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        try {
+            return passwordEncoder.matches(rawPassword, encodedPassword);
+        } finally {
+            argon2ConcurrencyLimiter.release();
+        }
     }
 
     public String reissueAccessToken(final String refreshTokenValue) {
