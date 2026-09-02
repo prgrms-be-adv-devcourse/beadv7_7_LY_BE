@@ -14,12 +14,12 @@ import { Trend } from 'k6/metrics';
 // 실행 (Tier별 동접 수를 VUS로 넘긴다 — Tier 1=15, Tier 2=75, Tier 3=300):
 //   k6 run -e VUS=15  k6/login-concurrency-test.js
 //   k6 run -e VUS=75  k6/login-concurrency-test.js
-//   k6 run -e VUS=300 k6/login-concurrency-test.js
+//   k6 run -e VUS=300 k6/login-concurrency-test.js가
 //
 // 커넥션 풀/타임아웃은 member-service의 운영 기본값(HikariCP maximum-pool-size=10, connection-timeout=30s)을
 // 그대로 쓴다 — 별도로 줄이지 않는다.
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8081';
 const VUS = parseInt(__ENV.VUS || '15', 10);
 const RAW_PASSWORD = 'testPw1234!';
 
@@ -28,6 +28,9 @@ const RAW_PASSWORD = 'testPw1234!';
 // 지연(특히 p50)이 실제보다 낮게 보인다. 이를 분리해서 로그인 구간만 따로 집계한다.
 const registerDuration = new Trend('register_duration', true);
 const loginDuration = new Trend('login_duration', true);
+// login_duration은 성공(200)·실패(503, 세마포어 타임아웃) 요청이 섞여 있어서, "성공한 요청만"의
+// 순수 지연을 보려면 따로 분리해서 집계해야 한다.
+const loginSuccessDuration = new Trend('login_success_duration', true);
 
 export const options = {
     scenarios: {
@@ -106,6 +109,9 @@ export default function (data) {
     );
 
     loginDuration.add(loginRes.timings.duration);
+    if (loginRes.status === 200) {
+        loginSuccessDuration.add(loginRes.timings.duration);
+    }
 
     check(loginRes, {
         '로그인 200 응답': (res) => res.status === 200,
