@@ -26,7 +26,7 @@ import static site.memberservice.auth.exception.AuthErrorCode.LOGIN_CONCURRENCY_
 @Service
 public class AuthService {
 
-    private static final long ARGON2_ACQUIRE_TIMEOUT_SECONDS = 5;
+    private static final long ARGON2_ACQUIRE_TIMEOUT_SECONDS = 7;
 
     private final MemberService memberService;
     private final PasswordEncoder passwordEncoder;
