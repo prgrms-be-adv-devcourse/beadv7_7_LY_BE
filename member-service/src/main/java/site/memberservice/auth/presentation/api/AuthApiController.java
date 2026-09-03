@@ -29,8 +29,8 @@ public class AuthApiController {
     public ResponseEntity<ApiResponse<Void>> login(@RequestBody LoginRequest request) {
         final LoginResult loginResult = authService.login(request.toCommand());
 
-        final ResponseCookie accessTokenCookie = authCookieProvider.createAccessTokenCookie(loginResult.accessToken());
-        final ResponseCookie refreshTokenCookie = authCookieProvider.createRefreshTokenCookie(loginResult.refreshToken());
+        final ResponseCookie accessTokenCookie = authCookieProvider.createAccessTokenCookie(loginResult.accessToken(), request.keepLoggedIn());
+        final ResponseCookie refreshTokenCookie = authCookieProvider.createRefreshTokenCookie(loginResult.refreshToken(), request.keepLoggedIn());
 
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
