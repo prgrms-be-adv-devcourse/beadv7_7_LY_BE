@@ -22,8 +22,12 @@ public class AuthCookieProvider {
         return createCookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, Duration.ofMillis(accessTokenValidTime));
     }
 
-    public ResponseCookie createRefreshTokenCookie(final String refreshToken) {
-        return createCookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, Duration.ofMillis(refreshTokenValidTime));
+    public ResponseCookie createAccessTokenCookie(final String accessToken, final boolean keepLoggedIn) {
+        return createCookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, resolveMaxAge(accessTokenValidTime, keepLoggedIn));
+    }
+
+    public ResponseCookie createRefreshTokenCookie(final String refreshToken, final boolean keepLoggedIn) {
+        return createCookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, resolveMaxAge(refreshTokenValidTime, keepLoggedIn));
     }
 
     public ResponseCookie expireAccessTokenCookie() {
@@ -34,13 +38,24 @@ public class AuthCookieProvider {
         return createCookie(REFRESH_TOKEN_COOKIE_NAME, "", Duration.ZERO);
     }
 
+    private Duration resolveMaxAge(final long validTime, final boolean keepLoggedIn) {
+        if (keepLoggedIn) {
+            return Duration.ofMillis(validTime);
+        }
+        return null;
+    }
+
     private ResponseCookie createCookie(final String name, final String value, final Duration maxAge) {
-        return ResponseCookie.from(name, value)
+        final ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
             .httpOnly(true)
             .secure(true)
             .path("/")
-            .maxAge(maxAge)
-            .sameSite("Lax")
-            .build();
+            .sameSite("Lax");
+
+        if (maxAge != null) {
+            builder.maxAge(maxAge);
+        }
+
+        return builder.build();
     }
 }
