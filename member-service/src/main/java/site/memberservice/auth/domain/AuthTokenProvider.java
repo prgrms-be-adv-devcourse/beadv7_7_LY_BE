@@ -8,5 +8,7 @@ public interface AuthTokenProvider {
 
     AuthToken createRefreshToken(Long memberId);
 
+    AuthToken createRefreshToken(Long memberId, long validTime);
+
     Long validateRefreshToken(AuthToken token);
 }

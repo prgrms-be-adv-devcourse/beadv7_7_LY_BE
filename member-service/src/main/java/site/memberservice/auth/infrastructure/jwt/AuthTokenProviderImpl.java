@@ -48,6 +48,11 @@ public class AuthTokenProviderImpl implements AuthTokenProvider {
         return generateToken(memberId, refreshTokenSecretKey, refreshTokenValidTime);
     }
 
+    @Override
+    public AuthToken createRefreshToken(final Long memberId, final long validTime) {
+        return generateToken(memberId, refreshTokenSecretKey, validTime);
+    }
+
     private AuthToken generateToken(final Long memberId, final SecretKey secretKey, final long accessTokenValidTime) {
         final Claims claims = Jwts.claims()
             .subject(memberId.toString())

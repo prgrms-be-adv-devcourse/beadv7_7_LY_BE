@@ -14,6 +14,7 @@ import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.repository.MemberCredentials;
 
+import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +28,7 @@ import static site.memberservice.auth.exception.AuthErrorCode.LOGIN_CONCURRENCY_
 public class AuthService {
 
     private static final long ARGON2_ACQUIRE_TIMEOUT_SECONDS = 7;
+    private static final long PUBLIC_PC_REFRESH_TOKEN_VALID_TIME = Duration.ofHours(12).toMillis();
 
     private final MemberService memberService;
     private final PasswordEncoder passwordEncoder;
@@ -45,7 +47,10 @@ public class AuthService {
 
         final Long memberId = credentials.id();
         final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
-        final String refreshTokenValue = authTokenProvider.createRefreshToken(memberId).getValue();
+        final AuthToken refreshTokenToken = command.keepLoggedIn()
+            ? authTokenProvider.createRefreshToken(memberId)
+            : authTokenProvider.createRefreshToken(memberId, PUBLIC_PC_REFRESH_TOKEN_VALID_TIME);
+        final String refreshTokenValue = refreshTokenToken.getValue();
 
         final RefreshToken refreshToken = refreshTokenIssuer.upsert(memberId, refreshTokenValue);
 

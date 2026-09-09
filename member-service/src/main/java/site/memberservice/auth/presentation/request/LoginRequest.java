@@ -7,7 +7,8 @@ public record LoginRequest(String email, String password, boolean keepLoggedIn) 
     public LoginCommand toCommand() {
         return new LoginCommand(
             email,
-            password
+            password,
+            keepLoggedIn
         );
     }
 }
