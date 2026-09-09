@@ -6,9 +6,9 @@ public interface AuthTokenProvider {
 
     Long validateAccessToken(AuthToken token);
 
-    AuthToken createRefreshToken(Long memberId);
+    AuthToken createRefreshToken(Long memberId, LoginType loginType);
 
-    AuthToken createRefreshToken(Long memberId, long validTime);
+    long resolveRefreshTokenValidTime(LoginType loginType);
 
-    Long validateRefreshToken(AuthToken token);
+    RefreshTokenClaims validateRefreshToken(AuthToken token);
 }

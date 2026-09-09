@@ -8,13 +8,14 @@ import site.memberservice.auth.application.dto.LoginCommand;
 import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.domain.AuthToken;
 import site.memberservice.auth.domain.AuthTokenProvider;
+import site.memberservice.auth.domain.LoginType;
 import site.memberservice.auth.domain.RefreshToken;
+import site.memberservice.auth.domain.RefreshTokenClaims;
 import site.memberservice.auth.domain.repository.RefreshTokenRepository;
 import site.memberservice.auth.exception.AuthException;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.repository.MemberCredentials;
 
-import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +29,6 @@ import static site.memberservice.auth.exception.AuthErrorCode.LOGIN_CONCURRENCY_
 public class AuthService {
 
     private static final long ARGON2_ACQUIRE_TIMEOUT_SECONDS = 7;
-    private static final long PUBLIC_PC_REFRESH_TOKEN_VALID_TIME = Duration.ofHours(12).toMillis();
 
     private final MemberService memberService;
     private final PasswordEncoder passwordEncoder;
@@ -47,10 +47,8 @@ public class AuthService {
 
         final Long memberId = credentials.id();
         final AuthToken accessToken = authTokenProvider.createAccessToken(memberId);
-        final AuthToken refreshTokenToken = command.keepLoggedIn()
-            ? authTokenProvider.createRefreshToken(memberId)
-            : authTokenProvider.createRefreshToken(memberId, PUBLIC_PC_REFRESH_TOKEN_VALID_TIME);
-        final String refreshTokenValue = refreshTokenToken.getValue();
+        final LoginType loginType = LoginType.from(command.keepLoggedIn());
+        final String refreshTokenValue = authTokenProvider.createRefreshToken(memberId, loginType).getValue();
 
         final RefreshToken refreshToken = refreshTokenIssuer.upsert(memberId, refreshTokenValue);
 
@@ -79,13 +77,13 @@ public class AuthService {
 
     public String reissueAccessToken(final String refreshTokenValue) {
         final AuthToken refreshToken = new AuthToken(refreshTokenValue);
-        final Long memberId = authTokenProvider.validateRefreshToken(refreshToken);
+        final RefreshTokenClaims claims = authTokenProvider.validateRefreshToken(refreshToken);
 
-        if (!refreshTokenRepository.existsByValueAndMemberId(refreshToken.getValue(), memberId)) {
+        if (!refreshTokenRepository.existsByValueAndMemberId(refreshToken.getValue(), claims.memberId())) {
             throw new AuthException(INVALID_AUTH_TOKEN, "유효하지 않은 리프레쉬 토큰 입니다.");
         }
 
-        return authTokenProvider.createAccessToken(memberId).getValue();
+        return authTokenProvider.createAccessToken(claims.memberId()).getValue();
     }
 
     @Transactional
