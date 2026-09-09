@@ -52,8 +52,11 @@ public class AuthApiController {
     }
 
     @DeleteMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@MemberId final Long memberId) {
-        authService.logout(memberId);
+    public ResponseEntity<ApiResponse<Void>> logout(
+        @MemberId final Long memberId,
+        @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        authService.logout(memberId, refreshToken);
 
         final ResponseCookie expiredAccessTokenCookie = authCookieProvider.expireAccessTokenCookie();
         final ResponseCookie expiredRefreshTokenCookie = authCookieProvider.expireRefreshTokenCookie();
