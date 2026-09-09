@@ -11,6 +11,7 @@ import site.memberservice.auth.domain.AuthTokenProvider;
 import site.memberservice.auth.domain.LoginType;
 import site.memberservice.auth.domain.RefreshTokenClaims;
 import site.memberservice.auth.exception.AuthException;
+import site.memberservice.auth.exception.RefreshTokenReuseDetectedException;
 import site.memberservice.auth.infrastructure.redis.RefreshTokenStore;
 import site.memberservice.member.application.MemberService;
 import site.memberservice.member.domain.repository.MemberCredentials;
@@ -19,7 +20,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.String.format;
-import static site.memberservice.auth.exception.AuthErrorCode.INVALID_AUTH_TOKEN;
 import static site.memberservice.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 import static site.memberservice.auth.exception.AuthErrorCode.LOGIN_CONCURRENCY_EXCEEDED;
 
@@ -79,7 +79,8 @@ public class AuthService {
         final RefreshTokenClaims claims = authTokenProvider.validateRefreshToken(refreshToken);
 
         if (!refreshTokenStore.matches(claims.memberId(), claims.loginType(), refreshToken.getValue())) {
-            throw new AuthException(INVALID_AUTH_TOKEN, "유효하지 않은 리프레쉬 토큰 입니다.");
+            refreshTokenStore.removeAll(claims.memberId());
+            throw new RefreshTokenReuseDetectedException("유효하지 않은 리프레쉬 토큰 입니다.");
         }
 
         return authTokenProvider.createAccessToken(claims.memberId()).getValue();

@@ -1,5 +1,6 @@
 package site.memberservice.auth.presentation.api;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -14,6 +15,7 @@ import site.common.response.ApiResponse;
 import site.common.web.MemberId;
 import site.memberservice.auth.application.AuthService;
 import site.memberservice.auth.application.dto.LoginResult;
+import site.memberservice.auth.exception.RefreshTokenReuseDetectedException;
 import site.memberservice.auth.presentation.request.LoginRequest;
 import site.memberservice.auth.presentation.support.AuthCookieProvider;
 
@@ -40,9 +42,17 @@ public class AuthApiController {
 
     @PostMapping("/renewal")
     public ResponseEntity<ApiResponse<Void>> renewal(
-        @CookieValue(name = "refreshToken", required = false) String refreshToken
+        @CookieValue(name = "refreshToken", required = false) String refreshToken,
+        final HttpServletResponse response
     ) {
-        final String accessToken = authService.reissueAccessToken(refreshToken);
+        final String accessToken;
+        try {
+            accessToken = authService.reissueAccessToken(refreshToken);
+        } catch (final RefreshTokenReuseDetectedException e) {
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieProvider.expireAccessTokenCookie().toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieProvider.expireRefreshTokenCookie().toString());
+            throw e;
+        }
 
         final ResponseCookie accessTokenCookie = authCookieProvider.createAccessTokenCookie(accessToken);
 

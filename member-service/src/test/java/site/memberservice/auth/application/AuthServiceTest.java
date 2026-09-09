@@ -16,6 +16,7 @@ import site.memberservice.auth.application.dto.LoginResult;
 import site.memberservice.auth.domain.AuthTokenProvider;
 import site.memberservice.auth.domain.LoginType;
 import site.memberservice.auth.exception.AuthException;
+import site.memberservice.auth.exception.RefreshTokenReuseDetectedException;
 import site.memberservice.auth.infrastructure.jwt.AuthTokenProviderImpl;
 import site.memberservice.auth.infrastructure.redis.RefreshTokenStore;
 import site.memberservice.member.application.MemberService;
@@ -199,9 +200,9 @@ class AuthServiceTest {
         assertThat(accessToken).isNotBlank();
     }
 
-    @DisplayName("Redis에 저장된 값과 다른 리프레시 토큰으로 재발급을 요청하면 예외가 발생한다.")
+    @DisplayName("Redis에 저장된 값과 다른(비정상) 리프레시 토큰으로 재발급을 요청하면 예외가 발생하고 해당 회원의 모든 세션이 제거된다.")
     @Test
-    void reissueAccessTokenThrowsWhenTokenDoesNotMatch() {
+    void reissueAccessTokenThrowsAndRevokesAllSessionsWhenTokenDoesNotMatch() {
         // Given
         final Long memberId = 1727L;
         final String refreshTokenValue = authTokenProvider.createRefreshToken(memberId, LoginType.NORMAL).getValue();
@@ -210,8 +211,9 @@ class AuthServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> authService.reissueAccessToken(refreshTokenValue))
-            .isInstanceOf(AuthException.class)
+            .isInstanceOf(RefreshTokenReuseDetectedException.class)
             .hasMessage("유효하지 않은 리프레쉬 토큰 입니다.");
+        verify(refreshTokenStore).removeAll(memberId);
     }
 
     @DisplayName("정상적인 refreshToken 쿠키로 로그아웃하면 해당 회원/타입의 저장값을 제거한다.")

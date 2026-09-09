@@ -1,6 +1,8 @@
 package site.memberservice.auth.infrastructure.redis;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,13 @@ public class RefreshTokenStore {
         if (expectedValue.equals(redisTemplate.opsForValue().get(key))) {
             redisTemplate.delete(key);
         }
+    }
+
+    public void removeAll(final Long memberId) {
+        final List<String> keys = Arrays.stream(LoginType.values())
+            .map(loginType -> key(memberId, loginType))
+            .toList();
+        redisTemplate.delete(keys);
     }
 
     private String key(final Long memberId, final LoginType loginType) {

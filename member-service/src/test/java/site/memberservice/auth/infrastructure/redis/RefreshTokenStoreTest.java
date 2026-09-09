@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import site.memberservice.auth.domain.LoginType;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -92,5 +93,15 @@ class RefreshTokenStoreTest {
 
         // Then
         verify(redisTemplate, never()).delete(KEY);
+    }
+
+    @DisplayName("removeAll은 로그인 타입에 상관없이 회원의 모든 키를 삭제한다.")
+    @Test
+    void removeAllDeletesEveryLoginTypeKey() {
+        // When
+        refreshTokenStore.removeAll(1727L);
+
+        // Then
+        verify(redisTemplate).delete(List.of("refresh-token:1727:NORMAL", "refresh-token:1727:PUBLIC_PC"));
     }
 }
