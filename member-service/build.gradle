@@ -16,6 +16,9 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // Spring Security Crypto
     implementation 'org.springframework.security:spring-security-crypto'
 
